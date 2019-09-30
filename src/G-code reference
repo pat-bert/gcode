@@ -1,0 +1,50 @@
+G0: Rapid move
+Syntax:G0 [X{X position}] [Y{Y position}] [Z{Z position}] [E{Extruder position}] [F{Feedrate}]
+Move in a line to the given position.
+
+G1: Controlled move
+Syntax:G1 [X{X position}] [Y{Y position}] [Z{Z position}] [E{Extruder position}] [F{Feedrate}]
+Move in a line to the given position.
+
+G02 arc clockwise
+G03 arc counterclockwise
+G04 <P> <S> dwell in milliseconds or seconds
+
+G17/18/19 Set planes for nozzle to move in (XY, ZX, YZ)
+
+G20/G21 Set units to in/mm
+
+G28: Move to origin
+Syntax:G28 [X{Move X axis}] [Y{Move Y axis}] [Z{Move Z axis}]
+Moves the given axis to its origin. Given values are ignored.
+
+G90/91 Coordinates are absolute/relative to origin
+
+G92: Set position
+Syntax:G92 [X{X position}] [Y{Y position}] [Z{Z position}] [E{Extruder position}]
+Changes the origin, so that the current position represents the given coordinates.
+
+===============================================================================================
+
+M82: Disable extruder relative mode
+Syntax:M82
+Disables relive mode for extruder values.
+
+M104: Set extruder temperature (fast)
+Syntax:M104 [S{Temperature in °Celsius}]
+Sets target temperature and returns immediately.
+
+M106: Fan on
+Syntax:M106 [S{Fan speed (0..255)}]
+Turns the fan on.
+
+M109: Set extruder temperature
+Syntax:M109 [S{Temperature in °Celsius}]
+Sets target temperature and waits until temperature is reached.
+
+M140: Set heated bed temperature (fast)
+Syntax:M140 [S{Temperature in °Celsius}]
+Sets target temperature and returns immediately.
+
+M190 Wait for bed temperature
+Syntax: M190 [S{Temperature in °Celsius}]
