@@ -1,0 +1,26 @@
+Robot can be moved in separate modes
+- Joint: Rotation around J1-J6
+- XYZ: Moving along coordinates, automatically rotating the joints
+    - ABC: Rotating tool around control point (set tool length in parameters, default = 0)
+    - XYZ456?
+    - Cylinder: Y-> arc
+- Tool: Move along tool coordinate system (e.g. xyz, tool orientation is preserved)
+
+-> From Controller Setup to Maintenance
+
+MELFA-Basic IV
+- Robot operation control:
+    MOV (joint interpolation)
+    MVS (linear interpolation)
+    MVR, MVR2, MVR3, MVC (circular interpolation)
+    CNT (continuous movement)
+    ACCEL, OADL (Acc/dec time and SC)
+    FINE, MOV and DLY (confirm target pos reached)
+    PREC (High accuracy ctrl)
+    HOPEN, HCLOSE, TOOL (hand and tool ctrl)
+- Program control:
+    GOTO, IF THEN ELSE, WAIT, ETC. (branching, waiting)
+    FOR NEXT, WHILE WEND (Repetition)
+    DEF ACT, ACT (Interrupt)
+    DLY (Timer)
+    END (Stopping)
