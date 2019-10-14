@@ -1,3 +1,32 @@
+from BaseCmd import BaseCmd
+from MelfaCMD import MelfaCMD
+from typing import *
+
+
+class LangDictEntry:
+    """
+    Implementation of one individual entry in a language dictionary which defines its translation.
+    """
+
+    def __init__(self, name: Union[str, Iterable[str]], output_cmd_id: str, translate_callback=(lambda x, *_: x)):
+        """
+        Define a language dictionary entry.
+        :param name: Unique name for identification
+        :param translate_callback: Function to convert entry, defaults to feed through second argument
+        """
+        self.name = name
+        self.output_id = output_cmd_id
+        self.translate_callback = translate_callback
+
+    def transpose(self, input_obj: BaseCmd) -> BaseCmd:
+        """
+        Uses the entry to translate a command.
+        :param input_obj: Input command object.
+        :return:
+        """
+        return self.translate_callback(input_obj, self.name, self.output_id)
+
+
 class LanguageDictionary:
     """
     Implementation of a whole language dictionary consisting of individual entries.
@@ -5,21 +34,28 @@ class LanguageDictionary:
     conversions.
     """
 
-    def __init__(self, translation_entries):
+    def __init__(self, translation_entries: Union[LangDictEntry, Iterable[LangDictEntry]]) -> None:
         """
         Create the dictionary from individual elements for translations.
         :param translation_entries: List of translation descriptions.
         """
-        self.entries = {e.name: e for e in translation_entries}
+        self.entries = {}
+        for e in translation_entries:
+            self.add_entry(e)
 
-    def add_entry(self, entry):
+    def add_entry(self, entry: LangDictEntry) -> None:
         """
         Add another entry.
-        :param entry: Command object
+        :param entry: Entry object or list of it
         """
-        self.entries[entry.name] = entry
+        try:
+            for key in entry.name:
+                self.entries[key] = entry
+                self.entries[key].name = key
+        except TypeError:
+            self.entries[entry.name] = entry
 
-    def remove_entry(self, entry):
+    def remove_entry(self, entry: LangDictEntry) -> Union[None, LangDictEntry]:
         """
         Remove an existing entry.
         :param entry: Command object
@@ -27,7 +63,7 @@ class LanguageDictionary:
         """
         return self.entries.pop(entry.name, None)
 
-    def resolve(self, cmd):
+    def resolve(self, cmd: BaseCmd) -> BaseCmd:
         """
         Fetch the translation of a command using the dictionary
         :param cmd:
@@ -35,7 +71,7 @@ class LanguageDictionary:
         """
         try:
             # Look up the passed cmd using its id and call the transpose method
-            self.entries[cmd.id].transpose(cmd)
+            return self.entries[cmd.id].transpose(cmd)
         except KeyError:
             # Unknown command or illegal access for dictionary
             raise
@@ -50,16 +86,52 @@ class LanguageDictionary:
             return self.__add__(other)
 
 
-class LangDictEntry:
+class TransposeG2Melfa:
     """
-    Implementation of one individual entry in a language dictionary which defines its translation.
+    Class to collect all transposing functions from G-code to Melfa
     """
+    CODE_ID = 'code_id'
 
-    def __init__(self, name, transpose):
+    @classmethod
+    def feed_through(cls, *args: Any) -> Any:
         """
-        Define a language dictionary entry.
-        :param name: Unique name for identification
-        :param transpose: Function to convert entry
+        Feeds through the first argument and ignores the rest.
+        :param args:
+        :return:
         """
-        self.name = name
-        self.transpose = transpose
+        mapping = {
+            cls.CODE_ID: args[2]
+        }
+        return cls.init_melfa(mapping)
+
+    @classmethod
+    def ignore(cls, *_: Any) -> None:
+        """
+        Ignores the input and returns a comment as command.
+        :param _: Pass anything
+        :return: None
+        """
+        return MelfaCMD.read_cmd_str(MelfaCMD.COMMENT)
+
+    @classmethod
+    def init_melfa(cls, mapping: Mapping) -> MelfaCMD:
+        return MelfaCMD(
+            mapping[cls.CODE_ID]
+        )
+
+
+def create_entries_g2melfa() -> List[LangDictEntry]:
+    entries = [
+        # Linear interpolation
+        LangDictEntry(['G0', 'G1'], '?', TransposeG2Melfa.feed_through),
+        # Circular interpolation
+        LangDictEntry('G2', '?', TransposeG2Melfa.feed_through),
+        LangDictEntry('G3', '?', TransposeG2Melfa.feed_through)
+    ]
+
+    return entries
+
+
+def create_lang_dict_g2melfa() -> LanguageDictionary:
+    entries = create_entries_g2melfa()
+    return LanguageDictionary(entries)

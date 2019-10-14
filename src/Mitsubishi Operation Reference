@@ -8,7 +8,7 @@ Robot can be moved in separate modes
 
 -> From Controller Setup to Maintenance
 
-MELFA-Basic IV
+Robot programs written in MELFA-Basic IV using Teachbox or RT Toolbox (hopefully detects robot automatically)
 - Robot operation control:
     MOV (joint interpolation)
     MVS (linear interpolation)
@@ -24,3 +24,5 @@ MELFA-Basic IV
     DEF ACT, ACT (Interrupt)
     DLY (Timer)
     END (Stopping)
+
+-> Transmit new positions every 7,1 ms via TCP/IP

@@ -1,10 +1,6 @@
 from BaseCmd import BaseCmd
 from Coordinate import Coordinate
-
-supported_g_codes = {
-    'G': [0, 1, 2, 3, 4, 17, 18, 19, 20, 21, 28, 90, 91],
-    'M': [104, 106, 109, 140],
-}
+from typing import *
 
 
 class GCmd(BaseCmd):
@@ -34,9 +30,15 @@ class GCmd(BaseCmd):
     MISC_CMD_IDS = 'M'
     # Comment descriptor
     COMMENT = ';'
+    # Supported commands
+    SUPPORTED_G_CODES = {
+        'G': [0, 1, 2, 3, 4, 17, 18, 19, 20, 21, 28, 90, 91],
+        'M': [104, 106, 109, 140],
+    }
 
-    def __init__(self, code_id, abs_cr=None, rel_cr=None, speed=None, f_speed=None, time_ms=None, misc_cmd=None,
-                 home='', line_number=None):
+    def __init__(self, code_id: str, abs_cr: Tuple[float] = None, rel_cr: Tuple[float] = None, speed: float = None,
+                 f_speed: float = None, time_ms: int = None, misc_cmd: Union[float, str] = None, home: str = '',
+                 line_number: int = None) -> None:
         """
         Initialise an object.
         :param code_id: G-Code identifier
@@ -62,14 +64,14 @@ class GCmd(BaseCmd):
         if not self._is_valid():
             raise ValueError('Unsupported or unknown command passed: ' + self.id)
 
-    def _is_valid(self):
+    def _is_valid(self) -> bool:
         """
         Validate input.
         :return:
         """
         cmd_char = self.id[0]
         cmd_cnt = int(self.id[1:])
-        return cmd_char in supported_g_codes.keys() and cmd_cnt in supported_g_codes[cmd_char]
+        return cmd_char in self.SUPPORTED_G_CODES.keys() and cmd_cnt in self.SUPPORTED_G_CODES[cmd_char]
 
     def __str__(self):
         """
@@ -99,7 +101,7 @@ class GCmd(BaseCmd):
         return total_str.strip()
 
     @classmethod
-    def read_cmd_str(cls, command_str):
+    def read_cmd_str(cls, command_str: str) -> Union['GCmd', None]:
         """
         Converts a command string into an object.
         :param command_str: Input string
@@ -154,14 +156,7 @@ class GCmd(BaseCmd):
 
                 # Get relative arguments
                 rel_cr = list(args.get(axis, None) for axis in cls.REL_COORDINATES)
-                if rel_cr.count(None) == len(rel_cr):
-                    rel_cr = None
-                else:
-                    for val in rel_cr:
-                        try:
-                            val = float(val)
-                        except TypeError:
-                            pass
+                rel_cr = cls.expand_coordinates(rel_cr)
 
                 # Get absolute coordinates or home axis respectively
                 if cmd_id == cls.HOME_CMD:
@@ -170,15 +165,24 @@ class GCmd(BaseCmd):
                 else:
                     home = ''
                     abs_cr = list(args.get(axis, None) for axis in cls.ABS_COORDINATES)
-                    if abs_cr.count(None) == len(abs_cr):
-                        abs_cr = None
-                    else:
-                        for val in abs_cr:
-                            try:
-                                val = float(val)
-                            except TypeError:
-                                pass
+                    abs_cr = cls.expand_coordinates(abs_cr)
 
                 # Initialise command
                 return cls(cmd_id, abs_cr=abs_cr, rel_cr=rel_cr, speed=speed, f_speed=f_speed, time_ms=time_ms,
                            misc_cmd=misc_cmd, home=home)
+
+    @classmethod
+    def expand_coordinates(cls, coordinates: List[Union[str, None]]) -> Union[Tuple[float], None]:
+        """
+
+        :param coordinates:
+        :return:
+        """
+        if coordinates.count(None) == len(coordinates):
+            coordinates = None
+        else:
+            try:
+                coordinates = tuple([float(i) for i in coordinates])
+            except TypeError:
+                pass
+        return coordinates
