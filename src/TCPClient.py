@@ -15,15 +15,18 @@ class TCPClient:
     Implements the PC-side of the TCP/IP connection.
     """
     # Network parameters
-    HOST = '127.0.0.1'
-    PORT = 10001
+    HOST = '192.168.0.1'
+    PORT = 10002
     BUFSIZE = 1024
 
     # Basic commands for R3 protocol
-    SRV_ON_MSG = ''
-    SRV_OFF_MSG = ''
-    CNTL_ON_MSG = ''
-    CNTL_OFF_MSG = ''
+    SRV_ON = 'SRVON'
+    SRV_OFF = 'SRVOFF'
+    CNTL_ON = 'CNTLON'
+    CNTL_OFF = 'CNTLOFF'
+
+    # Delimiter
+    DELIM = ';'
 
     # Parameters for R3 protocol
     ROBOT_NO = 1
@@ -86,8 +89,8 @@ class TCPClient:
         Initialises the robot communication
         :return:
         """
-        self.send(self.CNTL_ON_MSG)
-        self.send(self.SRV_ON_MSG)
+        self.send(self.CNTL_ON)
+        self.send(self.SRV_ON)
 
     def send(self, msg: str) -> None:
         """
@@ -104,8 +107,8 @@ class TCPClient:
         :return:
         """
         # Finish robot communication
-        self.send(self.SRV_OFF_MSG)
-        self.send(self.CNTL_OFF_MSG)
+        self.send(self.SRV_OFF)
+        self.send(self.CNTL_OFF)
         # Put close object
         self.send_q.put(None)
         # Wait for task to finish
@@ -122,7 +125,8 @@ class TCPClient:
             # Get an item from the outgoing queue of the protocol
             msg = self.send_q.get()
             # Process the message
-            self.process_msg(msg)
+            self.process_msg(
+                bytes(str(self.ROBOT_NO) + self.DELIM + str(self.PROGRAM_NO) + self.DELIM + str(msg), encoding='utf-8'))
             # Indicate that the task is done
             self.send_q.task_done()
 
@@ -135,4 +139,16 @@ class TCPClient:
         # TODO Implement R3 protocol and message transformation
         self.s.send(msg)
         ans = self.s.recv(self.bufsize)
+        print(ans)
         sleep(1)
+
+
+if __name__ == '__main__':
+    tcp_client = TCPClient()
+    tcp_client.connect()
+
+    try:
+        tcp_client.start()
+        sleep(5)
+    finally:
+        tcp_client.close()
