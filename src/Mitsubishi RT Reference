@@ -3,3 +3,6 @@ Robot does not move to the given coordinates if they are outside of the reachabl
 would be too high
     -> Need for additional points as interpolation?
 
+Check following commands:
+OADL
+CNT

@@ -1,5 +1,5 @@
 from BaseCmd import BaseCmd
-from MelfaCMD import MelfaCMD
+from MelfaCmd import MelfaCmd
 from typing import *
 
 
@@ -111,11 +111,11 @@ class TransposeG2Melfa:
         :param _: Pass anything
         :return: None
         """
-        return MelfaCMD.read_cmd_str(MelfaCMD.COMMENT)
+        return MelfaCmd.read_cmd_str(MelfaCmd.COMMENT)
 
     @classmethod
-    def init_melfa(cls, mapping: Mapping) -> MelfaCMD:
-        return MelfaCMD(
+    def init_melfa(cls, mapping: Mapping) -> MelfaCmd:
+        return MelfaCmd(
             mapping[cls.CODE_ID]
         )
 

@@ -5,7 +5,9 @@
       <w>bufsize</w>
       <w>cmds</w>
       <w>cntl</w>
+      <w>gcode</w>
       <w>melfa</w>
+      <w>ovrd</w>
     </words>
   </dictionary>
 </component>

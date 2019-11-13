@@ -3,7 +3,9 @@ from typing import *
 
 
 class Coordinate:
-    def __init__(self, values, axes, digits=3):
+    DIGITS = 2
+
+    def __init__(self, values, axes, digits=DIGITS):
         """
         :param values: List of coordinate values
         :param axes: List of axis descriptors
@@ -14,6 +16,14 @@ class Coordinate:
             self.coordinate = {i[0]: i[1] for i in zip(axes, values)}
         except TypeError:
             self.coordinate = {}
+
+    def to_melfa_response(self):
+        txt = ['{};{:.{d}f}'.format(key, v, d=self.digits) for (key, v) in self.coordinate.items()]
+        return ';'.join(txt)
+
+    def to_melfa_point(self):
+        txt = [str(i) for i in self.coordinate.values()]
+        return '(' + ','.join(txt) + ')' + '(7,0)'
 
     def __str__(self):
         """

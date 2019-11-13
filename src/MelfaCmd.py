@@ -3,9 +3,46 @@ import numpy as np
 from BaseCmd import BaseCmd
 from typing import *
 from Coordinate import Coordinate
+from GCmd import GCmd
+
+# Basic commands for R3 protocol
+DELIMITER = ';'
+COM_OPEN = 'OPEN=NARCUSER'
+COM_CLOSE = 'CLOSE'
+SRV_ON = 'SRVON'
+SRV_OFF = 'SRVOFF'
+CNTL_ON = 'CNTLON'
+CNTL_OFF = 'CNTLOFF'
+DIRECT_CMD = 'EXEC'
+MOVE_SAFE_POSITION = 'MOVSP'
+PARAMETER_SAFE_POSITION = 'JSAFE'
+LINEAR_INTRP = DIRECT_CMD + 'MVS '
+JOINT_INTRP = DIRECT_CMD + 'MOV '
+ALARM_RESET_CMD = 'RSTALRM'
+
+# Parameter modifications
+PARAMETER_READ = 'PNR'
+
+# Reachable area
+JOINT_BORDERS = 'MEJAR'
+XYZ_BORDERS = 'MEPAR'
+
+# Current positions
+CURRENT_XYZABC = 'PPOSF'
+CURRENT_JOINT = 'JPOSF'
+
+# Speed manipulations
+OVERWRITE_CMD = 'OVRD'
+MVS_SPEED = DIRECT_CMD + 'SPD '
+MVS_MAX_SPEED = 'M_NSPD'
+MOV_SPEED = DIRECT_CMD + 'JOVRD '
+MOV_MAX_SPEED = ''
+
+# Parameters
+SERVO_INIT_SEC = 5
 
 
-class MelfaCMD(BaseCmd):
+class MelfaCmd(BaseCmd):
     """
     This class implements a command for the Mitsubishi Melfa series.
     """
@@ -28,8 +65,12 @@ class MelfaCMD(BaseCmd):
         pass
 
     @classmethod
-    def read_cmd_str(cls, command_str) -> Union['MelfaCMD', None]:
+    def read_cmd_str(cls, command_str) -> Union['MelfaCmd', None]:
         return cls('0')
+
+
+def translate_cmd(cmd: GCmd) -> MelfaCmd:
+    return MelfaCmd('1')
 
 
 class InterpolationMov:

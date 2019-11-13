@@ -10,7 +10,7 @@ class GCmd(BaseCmd):
     # Define number of relevant post-comma digits
     DIGITS = 3
     # Code standard
-    CMD_REMOVE_LEAD_ZERO = True
+    CMD_REMOVE_LEAD_ZERO = False
     # Define axis descriptors for absolute coordinates
     ABS_COORDINATES = 'XYZ'
     # Define axis descriptors for relative coordinates
