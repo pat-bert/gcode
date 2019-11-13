@@ -304,15 +304,15 @@ def cmp_response(poll_cmd: str, response_t: str, poll_rate_ms: int = 3, timeout_
 def flat_square():
     axes = 'XYZABC'
 
-    increment = Coordinate([0, 0, 5, 0, 0, 0], axes)
+    increment = Coordinate([0, 0, 15, 0, 0, 0], axes)
     p_l = [
-        Coordinate([500, 150, 200, 180, 0, 0], axes),
-        Coordinate([500, -150, 200, 180, 0, 0], axes),
-        Coordinate([600, -150, 200, 180, 0, 0], axes),
-        Coordinate([600, 150, 200, 180, 0, 0], axes)
+        Coordinate([500, 100, 200, 180, 0, 0], axes),
+        Coordinate([500, -100, 200, 180, 0, 0], axes),
+        Coordinate([600, -100, 200, 180, 0, 0], axes),
+        Coordinate([600, 100, 200, 180, 0, 0], axes)
     ]
 
-    for _ in range(35):
+    for _ in range(10):
         # Square
         for point in p_l:
             tcp_client.send(MelfaCmd.LINEAR_INTRP + point.to_melfa_point())
