@@ -47,7 +47,11 @@ except ImportError:
 
 # Own libraries
 from ApplicationExceptions import ApiException
-from commands import demo_mode, interpret_gcode, execute_r3, interactive_gcode, interactive_melfa
+from execute_r3 import execute_r3
+from interpret_gcode import interpret_gcode
+from interactive_gcode import interactive_gcode
+from demo import demo_mode
+from interactive_melfa import interactive_melfa
 
 if __name__ == '__main__':
     # Gather command line arguments

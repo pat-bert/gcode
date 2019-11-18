@@ -12,7 +12,7 @@ import ApplicationExceptions
 import MelfaCmd
 from ApplicationExceptions import TcpError
 from Coordinate import *
-from MelfaRobot import joint_borders, xyz_borders, go_safe_pos, reset_speeds, check_speed_threshold
+from refactor import joint_borders, xyz_borders, go_safe_pos, reset_speeds, check_speed_threshold
 
 
 class TcpClientR3(object):
@@ -202,31 +202,3 @@ class TcpClientR3(object):
 
             # Indicate that the task is done
             self.send_q.task_done()
-
-
-def cmp_response(poll_cmd: str, response_t: str, tcp_client, poll_rate_ms: int = 3, timeout_s: int = 300):
-    """
-    Uses a given command to poll for a given response.
-    :param tcp_client:
-    :param poll_cmd: Command used to execute the poll
-    :param response_t: Target response string
-    :param poll_rate_ms: Poll rate in milliseconds
-    :param timeout_s: Time until timeout in seconds
-    :return:
-    """
-    t = 0
-    timeout_ms = timeout_s * 1000
-    while t < timeout_ms:
-        # Handle communication
-        tcp_client.send(poll_cmd)
-        response_act = tcp_client.receive()
-
-        # Check response
-        if response_act.startswith(response_t):
-            break
-
-        # Delay
-        sleep(poll_rate_ms / 1000)
-        t += poll_rate_ms
-    else:
-        raise TcpError("Timeout for check.")
