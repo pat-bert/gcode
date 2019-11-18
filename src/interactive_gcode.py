@@ -33,7 +33,7 @@ def interactive_gcode(ip, port, log_file=None) -> None:
                 raise KeyboardInterrupt
             elif len(usr_msg) > 0:
                 # TODO G-Code interactive mode
-                print(usr_msg)
+                print("Not implemented")
     except KeyboardInterrupt:
         pass
     except ApplicationExceptions.MelfaBaseException as e:

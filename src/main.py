@@ -47,11 +47,11 @@ except ImportError:
 
 # Own libraries
 from ApplicationExceptions import ApiException
-from execute_r3 import execute_r3
-from interpret_gcode import interpret_gcode
-from interactive_gcode import interactive_gcode
 from demo import demo_mode
+from interpret_gcode import interpret_gcode
+from execute_r3 import execute_r3
 from interactive_melfa import interactive_melfa
+from interactive_gcode import interactive_gcode
 
 if __name__ == '__main__':
     # Gather command line arguments
@@ -105,10 +105,12 @@ if __name__ == '__main__':
         print(e)
         print("This might have happened due to different versions of CLI documentation and parsing.")
     except NotImplementedError:
-        # This might be used in some functions.
+        # This might be used in some functions
         print("Encountered not implemented feature.")
     except Exception as e:
+        # Exception that has not been caught and rethrown as a proper ApiException (= Bug)
         print("External or unexpected exception!")
         raise e
     else:
+        # Everything okay, no exception occurred
         sys.exit(0)
