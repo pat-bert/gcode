@@ -367,5 +367,3 @@ if __name__ == '__main__':
     finally:
         # Cleaning up
         tcp_client.close()
-
-# TODO Check safe pos is reached

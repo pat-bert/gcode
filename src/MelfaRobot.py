@@ -97,7 +97,26 @@ class MelfaRobot(object):
         sleep(MelfaCmd.SERVO_INIT_SEC)
         self.servo = activate
 
+    def read_parameter(self, parameter: AnyStr):
+        self.tcp.send(MelfaCmd.PARAMETER_READ + parameter)
+        response = self.tcp.receive()
+        return response
+
+    # Speed functions
+    def set_speed_factors(self, factor):
+        """
+        Set the speed modification factors for joint and interpolation movement.
+        :param factor:
+        :return:
+        """
+        pass
+
     def reset_speed_factors(self):
+        """
+        Reset the speed modification factors to maximum speed.
+        :return:
+        """
+        # TODO Check whether OVRD can be set as well
         pass
 
     # Movement functions
