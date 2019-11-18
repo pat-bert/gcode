@@ -26,7 +26,7 @@ class MelfaRobot(object):
             raise TypeError('Illegal number of axes.')
 
         self.tcp: TcpClientR3 = tcp_client
-        self.joints: Iterable[AnyStr] = set(['J' + str(i) for i in range(1, number_axes + 1)])
+        self.joints: Sized[AnyStr] = set(['J' + str(i) for i in range(1, number_axes + 1)])
         self.servo: bool = False
         self.com_ctrl: bool = False
 
@@ -177,8 +177,19 @@ class MelfaRobot(object):
         else:
             pass
 
+        # Current position
+        self.tcp.send(MelfaCmd.CURRENT_XYZABC)
+        response = self.tcp.receive()
+
+        # Reconstruct coordinate
+        start_pos = Coordinate.from_melfa_response(response, len(self.joints))
+
         # TODO Send move command with coordinates and direct/indirect flag
-        self.tcp.send(MelfaCmd.CIRCULAR_INTRP)
+
+        # TODO Check reason for error -> might need to write variables first
+        positions = ','.join([start_pos.to_melfa_crcl(), target_pos.to_melfa_crcl(), center_pos.to_melfa_crcl()])
+        self.tcp.send(MelfaCmd.CIRCULAR_INTRP + positions)
+        self.tcp.receive()
 
         # Wait until position is reached
         cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)

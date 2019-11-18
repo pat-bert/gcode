@@ -1,6 +1,7 @@
 import ApplicationExceptions
 from MelfaRobot import MelfaRobot
 from TcpClientR3 import TcpClientR3
+from GCmd import GCmd
 
 
 def interactive_gcode(ip, port, log_file=None) -> None:
@@ -32,8 +33,10 @@ def interactive_gcode(ip, port, log_file=None) -> None:
             if usr_msg.lower() in ['quit']:
                 raise KeyboardInterrupt
             elif len(usr_msg) > 0:
-                # TODO G-Code interactive mode
-                print("Not implemented")
+                gcode = GCmd.read_cmd_str(usr_msg)
+                print(str(gcode))
+                # TODO Translate G-code
+                # TODO Execute R3 command
     except KeyboardInterrupt:
         pass
     except ApplicationExceptions.MelfaBaseException as e:

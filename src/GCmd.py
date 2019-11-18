@@ -8,7 +8,7 @@ class GCmd(BaseCmd):
     This class implements a base G-code command.
     """
     # Define number of relevant post-comma digits
-    DIGITS = 3
+    DIGITS = 2
     # Code standard
     CMD_REMOVE_LEAD_ZERO = False
     # Define axis descriptors for absolute coordinates

@@ -58,7 +58,8 @@ if __name__ == '__main__':
     args = docopt(__doc__, argv=None, help=True, version=__version__, options_first=False)
 
     # Create input schemata
-    log_schema = Schema({Opt('-l'): Or(os.path.exists, None, error='Log file should exist')}, ignore_extra_keys=True)
+    log_schema = Schema({Opt('-l'): Or(str, None, error='Log file should be possible to open')},
+                        ignore_extra_keys=True)
     input_schema = Schema({'IN_FILE': And(os.path.exists, error='IN_FILE should exist')}, ignore_extra_keys=True)
     output_schema = Schema({'-o': And(os.path.exists, error='Output file should exist')}, ignore_extra_keys=True)
     connection_schema = Schema({

@@ -38,22 +38,12 @@ def cylinder(robot: MelfaRobot):
     """
     # Base coordinates
     z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.axes)
+    start = Coordinate([500, 0, 200, 180, 0, 0], robot.axes)
+    target = Coordinate([550, 50, 200, 180, 0, 0], robot.axes)
     center = Coordinate([550, 0, 200, 180, 0, 0], robot.axes)
-    start = Coordinate([500, 50, 200, 180, 0, 0], robot.axes)
 
-    # Go to start
     robot.linear_move_poll(start, 0)
-
-    is_clockwise = True
-    # Go to points
-    for _ in range(10):
-        # Circle
-        robot.circular_move_poll(start, center, is_clockwise, 0)
-        # Increment z
-        center += z_vector
-        start += z_vector
-        # Toggle direction
-        is_clockwise = not is_clockwise
+    robot.circular_move_poll(target, center, True, 0)
 
 
 def demo_mode(ip=None, port=None):
@@ -73,8 +63,7 @@ def demo_mode(ip=None, port=None):
             if selection == '1':
                 cube(robot)
             elif selection == '2':
-                # cylinder(robot)
-                pass
+                cylinder(robot)
             else:
                 break
     except KeyboardInterrupt:

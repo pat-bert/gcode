@@ -57,11 +57,12 @@ def check_speed_threshold(tcp_client, speed_threshold=10):
     speed = get_ovrd_speed(tcp_client)
     if speed > speed_threshold:
         try:
-            speed_correct_value = speed_threshold / speed * 100
-            tcp_client.send(MelfaCmd.MVS_SPEED + str(speed_correct_value))
-            tcp_client.receive()
-            tcp_client.send(MelfaCmd.MOV_SPEED + str(speed_correct_value / 10))
-            tcp_client.receive()
+            raise ApplicationExceptions.MelfaBaseException
+            # speed_correct_value = speed_threshold / speed * 100
+            # tcp_client.send(MelfaCmd.MVS_SPEED + str(speed_correct_value))
+            # tcp_client.receive()
+            # tcp_client.send(MelfaCmd.MOV_SPEED + str(speed_correct_value / 10))
+            # tcp_client.receive()
         except ApplicationExceptions.MelfaBaseException:
             raise ApplicationExceptions.MelfaBaseException(
                 "Please ensure a speed lower or equal 10% in interactive mode!")

@@ -17,13 +17,24 @@ class Coordinate:
         except TypeError:
             self.coordinate = {}
 
+    @classmethod
+    def from_melfa_response(cls, melfa_str: str, number_axes: int):
+        segments = melfa_str.split(';')
+        values = [float(i) for i in segments[1:2 * number_axes:2]]
+        axes = segments[0:2 * number_axes:2]
+        return cls(values, axes)
+
     def to_melfa_response(self):
         txt = ['{};{:.{d}f}'.format(key, v, d=self.digits) for (key, v) in self.coordinate.items()]
         return ';'.join(txt)
 
     def to_melfa_point(self):
-        txt = [str(i) for i in self.coordinate.values()]
+        txt = ['{:.{d}f}'.format(i, d=self.digits) for i in self.coordinate.values()]
         return '(' + ','.join(txt) + ')' + '(7,0)'
+
+    def to_melfa_crcl(self):
+        txt = ['{:.{d}f}'.format(i, d=self.digits) for i in self.coordinate.values()]
+        return '(' + ','.join(txt) + ')' + '(7,00100000)'
 
     def __str__(self):
         """

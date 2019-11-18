@@ -149,7 +149,10 @@ class TcpClientR3(object):
         """
         # Put the message to the outgoing queue of the protocol
         if msg is not None:
-            self.send_q.put(msg)
+            if len(msg) <= 127:
+                self.send_q.put(msg)
+            else:
+                raise ValueError('The message cannot be longer than 127 characters.')
 
     def wait_send(self, msg: str) -> None:
         """
