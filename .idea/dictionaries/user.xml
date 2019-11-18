@@ -8,6 +8,7 @@
       <w>gcode</w>
       <w>melfa</w>
       <w>ovrd</w>
+      <w>xyzabc</w>
     </words>
   </dictionary>
 </component>

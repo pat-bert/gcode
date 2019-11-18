@@ -6,15 +6,16 @@ Content:    Implement TCP/IP communication to robot
 import socket
 import threading
 from time import sleep
-from typing import *
 from queue import Queue
-import MelfaError
+
+import ApplicationExceptions
 import MelfaCmd
 from ApplicationExceptions import TcpError
 from Coordinate import *
+from MelfaRobot import joint_borders, xyz_borders, go_safe_pos, reset_speeds, check_speed_threshold
 
 
-class TCPClient(object):
+class TcpClientR3(object):
     """
     Implements the PC-side of the TCP/IP connection.
     """
@@ -24,7 +25,7 @@ class TCPClient(object):
     BUFSIZE = 1024
 
     # Delimiter
-    DELIM = MelfaCmd.DELIMITER
+    DELIMITER = MelfaCmd.DELIMITER
     ENCODING = 'utf-8'
 
     # Parameters for R3 protocol
@@ -65,19 +66,21 @@ class TCPClient(object):
             # Create new socket
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             # Open connection to controller
+            print("Initialising TCP connection.")
             self.s.connect((self.host, self.port))
+            print("Connected.")
         except ConnectionError as e:
             print(e)
             print("No connection possible.")
-            raise
+            raise TcpError
         except TimeoutError:
             print("Connection could not be established within time.")
-            raise
+            raise TcpError
         else:
             # Start thread
             self.t.start()
 
-    def start(self, speed_threshold) -> None:
+    def start(self, speed_threshold, internal=True) -> None:
         """
         Initialises the robot communication
         :return:
@@ -95,31 +98,32 @@ class TCPClient(object):
         self.receive()
         sleep(MelfaCmd.SERVO_INIT_SEC)
 
-        # Check speed
-        check_speed_threshold(speed_threshold)
+        if internal:
+            # Check speed
+            check_speed_threshold(self, speed_threshold=speed_threshold)
 
-        # Go safe position
-        go_safe_pos()
-
-        # Print movement borders
-        xyz_borders()
-        joint_borders()
+            # Go safe position
+            go_safe_pos(self)
+            # Print movement borders
+            xyz_borders(self)
+            joint_borders(self)
 
         # Wait until setup is executed
         self.recv_q.join()
         self.send_q.join()
         print("Done.")
 
-    def close(self) -> None:
+    def close(self, internal=True) -> None:
         """
         Terminate the worker thread for the protocol communication.
         :return:
         """
         # Finish robot communication
         print("Finishing control...")
-        go_safe_pos()
-        # Reset speed
-        reset_speeds()
+        if internal:
+            go_safe_pos(self)
+            # Reset speed
+            reset_speeds(self)
         self.send(MelfaCmd.SRV_OFF)
         self.receive()
         self.send(MelfaCmd.CNTL_OFF)
@@ -161,7 +165,7 @@ class TCPClient(object):
 
     def receive(self, silence_errors=False) -> str:
         response = self.recv_q.get()
-        exception = MelfaError.ErrorDispatch[response[:3]]
+        exception = ApplicationExceptions.ErrorDispatch[response[:3]]
         self.recv_q.task_done()
         if exception is not None and not silence_errors:
             # Something went wrong
@@ -183,7 +187,7 @@ class TCPClient(object):
                 break
 
             # Robot message
-            msg_str = str(self.ROBOT_NO) + self.DELIM + str(self.PROGRAM_NO) + self.DELIM + str(msg)
+            msg_str = str(self.ROBOT_NO) + self.DELIMITER + str(self.PROGRAM_NO) + self.DELIMITER + str(msg)
             print("Sending:\t " + msg_str)
             msg_b = bytes(msg_str, encoding=self.ENCODING)
 
@@ -200,83 +204,10 @@ class TCPClient(object):
             self.send_q.task_done()
 
 
-def go_safe_pos():
-    # Read safe position
-    tcp_client.send(MelfaCmd.PARAMETER_READ + MelfaCmd.PARAMETER_SAFE_POSITION)
-    safe_pos = tcp_client.receive()
-    axes = ['J' + str(i) for i in range(1, 7)]
-    safe_pos_values = safe_pos.split(';')[1]
-    safe_pos_values = [float(i) for i in safe_pos_values.split(', ')]
-    safe_pos = Coordinate(safe_pos_values, axes)
-
-    # Return to safe position
-    tcp_client.send(MelfaCmd.MOVE_SAFE_POSITION)
-    tcp_client.receive()
-    cmp_response(MelfaCmd.CURRENT_JOINT, safe_pos.to_melfa_response())
-
-
-def get_ovrd_speed():
-    tcp_client.wait_send(MelfaCmd.OVERWRITE_CMD)
-    speed = tcp_client.receive()
-    return float(speed)
-
-
-def reset_speeds():
-    tcp_client.send(MelfaCmd.MVS_SPEED + MelfaCmd.MVS_MAX_SPEED)
-    tcp_client.receive()
-    # TODO Reset MOV Speed
-    # tcp_client.send(MelfaCmd.MOV_SPEED + MelfaCmd.MOV_MAX_SPEED)
-    # tcp_client.receive()
-
-
-def check_speed_threshold(speed_threshold=10):
-    reset_speeds()
-    # Check for low speed
-    speed = get_ovrd_speed()
-    if speed > speed_threshold:
-        try:
-            speed_correct_value = speed_threshold / speed * 100
-            tcp_client.send(MelfaCmd.MVS_SPEED + str(speed_correct_value))
-            tcp_client.receive()
-            tcp_client.send(MelfaCmd.MOV_SPEED + str(speed_correct_value / 10))
-            tcp_client.receive()
-        except MelfaError.MelfaBaseException:
-            raise MelfaError.MelfaBaseException("Please ensure a speed lower or equal 10% in interactive mode!")
-    else:
-        print("Speed of " + str(speed) + "%. Okay!")
-
-
-def interactive_shell():
-    while True:
-        usr_msg = input("Melfa>")
-        if usr_msg.lower() in ['quit']:
-            raise KeyboardInterrupt
-        elif len(usr_msg) > 0:
-            tcp_client.wait_send(usr_msg.upper())
-            try:
-                tcp_client.receive()
-            except MelfaError.MelfaBaseException as ex:
-                # Print error message
-                if len(ex.status) > 0:
-                    print(str(ex))
-                else:
-                    # Resolve empty status codes
-                    print("Empty status code. Trying to resolve.")
-                    tcp_client.wait_send("ERROR")
-                    try:
-                        tcp_client.receive()
-                    except MelfaError.MelfaBaseException as ex_res:
-                        print(str(ex_res))
-                # Reset alarm
-                sleep(1)
-                print("Error Reset")
-                tcp_client.send(MelfaCmd.ALARM_RESET_CMD)
-                tcp_client.receive(silence_errors=True)
-
-
-def cmp_response(poll_cmd: str, response_t: str, poll_rate_ms: int = 3, timeout_s: int = 300):
+def cmp_response(poll_cmd: str, response_t: str, tcp_client, poll_rate_ms: int = 3, timeout_s: int = 300):
     """
     Uses a given command to poll for a given response.
+    :param tcp_client:
     :param poll_cmd: Command used to execute the poll
     :param response_t: Target response string
     :param poll_rate_ms: Poll rate in milliseconds
@@ -299,71 +230,3 @@ def cmp_response(poll_cmd: str, response_t: str, poll_rate_ms: int = 3, timeout_
         t += poll_rate_ms
     else:
         raise TcpError("Timeout for check.")
-
-
-def flat_square():
-    axes = 'XYZABC'
-
-    increment = Coordinate([0, 0, 15, 0, 0, 0], axes)
-    p_l = [
-        Coordinate([500, 100, 200, 180, 0, 0], axes),
-        Coordinate([500, -100, 200, 180, 0, 0], axes),
-        Coordinate([600, -100, 200, 180, 0, 0], axes),
-        Coordinate([600, 100, 200, 180, 0, 0], axes)
-    ]
-
-    for _ in range(10):
-        # Square
-        for point in p_l:
-            tcp_client.send(MelfaCmd.LINEAR_INTRP + point.to_melfa_point())
-            tcp_client.receive()
-            cmp_response(MelfaCmd.CURRENT_XYZABC, point.to_melfa_response())
-
-        # Back to first point
-        tcp_client.send(MelfaCmd.LINEAR_INTRP + p_l[0].to_melfa_point())
-        tcp_client.receive()
-        cmp_response(MelfaCmd.CURRENT_XYZABC, p_l[0].to_melfa_response())
-
-        p_l = [i + increment for i in p_l]
-
-
-def xyz_borders():
-    tcp_client.send(MelfaCmd.PARAMETER_READ + MelfaCmd.XYZ_BORDERS)
-    response = tcp_client.receive()
-    coordinate_str = response.split(MelfaCmd.DELIMITER)[1]
-    coordinates = coordinate_str.split(', ')
-    return [float(i) for i in coordinates]
-
-
-def joint_borders():
-    tcp_client.send(MelfaCmd.PARAMETER_READ + MelfaCmd.JOINT_BORDERS)
-    response = tcp_client.receive()
-    coordinate_str = response.split(MelfaCmd.DELIMITER)[1]
-    coordinates = coordinate_str.split(', ')
-    return [float(i) for i in coordinates]
-
-
-if __name__ == '__main__':
-    # Create TCP client
-    tcp_client = TCPClient()
-    tcp_client.connect()
-
-    # Executing communication
-    try:
-        tcp_client.start(speed_threshold=10)
-        selection = input("Please choose a mode (1=interactive, 2=flat square): ")
-        if selection == '1':
-            interactive_shell()
-        elif selection == '2':
-            flat_square()
-        else:
-            raise NotImplementedError
-    except KeyboardInterrupt:
-        pass
-    except NotImplementedError:
-        pass
-    except MelfaError.MelfaBaseException as e:
-        print(str(e))
-    finally:
-        # Cleaning up
-        tcp_client.close()
