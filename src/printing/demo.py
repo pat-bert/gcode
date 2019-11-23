@@ -1,7 +1,7 @@
-import ApplicationExceptions
-from Coordinate import Coordinate
-from MelfaRobot import MelfaRobot
-from TcpClientR3 import TcpClientR3
+from printing import ApplicationExceptions
+from printing.Coordinate import Coordinate
+from printing.MelfaRobot import MelfaRobot
+from printing.TcpClientR3 import TcpClientR3
 
 
 def cube(robot: MelfaRobot):

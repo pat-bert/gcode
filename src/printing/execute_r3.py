@@ -1,5 +1,5 @@
-from ApplicationExceptions import *
-from TcpClientR3 import TcpClientR3
+from printing.ApplicationExceptions import *
+from printing.TcpClientR3 import TcpClientR3
 
 
 def execute_r3(f_input: str, ip, port, f_log: str = 'run.log') -> None:

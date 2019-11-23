@@ -1,7 +1,6 @@
-import ApplicationExceptions
-from MelfaRobot import MelfaRobot
-from TcpClientR3 import TcpClientR3
-from GCmd import GCmd
+from printing import ApplicationExceptions
+from printing.GCmd import GCmd
+from printing.GPrinter import GPrinter
 
 
 def interactive_gcode(ip, port, log_file=None) -> None:
@@ -18,29 +17,23 @@ def interactive_gcode(ip, port, log_file=None) -> None:
         # TODO Implement logging
         pass
 
-    # Create TCP client
-    tcp_client = TcpClientR3(host=ip, port=port)
-    tcp_client.connect()
-
-    # Create robot object
-    MelfaRobot(tcp_client, number_axes=6)
+    # Create printer object
+    printer = GPrinter.default_init(ip, port)
 
     # Executing communication
     try:
-        tcp_client.start(speed_threshold=10, internal=False)
         while True:
             usr_msg = input("G-Code>")
             if usr_msg.lower() in ['quit']:
                 raise KeyboardInterrupt
             elif len(usr_msg) > 0:
+                # Parse G-code
                 gcode = GCmd.read_cmd_str(usr_msg)
                 print(str(gcode))
-                # TODO Translate G-code
-                # TODO Execute R3 command
+                printer.execute(gcode)
     except KeyboardInterrupt:
         pass
     except ApplicationExceptions.MelfaBaseException as e:
         print(str(e))
     finally:
-        # Cleaning up
-        tcp_client.close(internal=False)
+        printer.shutdown()

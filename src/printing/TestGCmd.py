@@ -1,5 +1,5 @@
 import unittest
-from GCmd import GCmd
+from printing.GCmd import GCmd
 
 
 class TestGCmd(unittest.TestCase):

@@ -1,10 +1,10 @@
-from GCmd import GCmd
-import MelfaCmd
-from MelfaRobot import MelfaRobot
+from printing.GCmd import GCmd
+from printing import MelfaCmd
+from printing.MelfaRobot import MelfaRobot
 from typing import *
 
 
-def translate_gcode(gcode: GCmd, interactive, gcode_prev: Union[GCmd, None] = None, robot: MelfaRobot = None) \
+def gcode2melfa(gcode: GCmd, interactive, gcode_prev: Union[GCmd, None] = None, robot: MelfaRobot = None) \
         -> Union[AnyStr, None]:
     """
     Translates a G-Code to a Mitsubishi Melfa R3 command.

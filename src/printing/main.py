@@ -46,12 +46,12 @@ except ImportError:
     sys.exit(-10)
 
 # Own libraries
-from ApplicationExceptions import ApiException
-from demo import demo_mode
-from interpret_gcode import interpret_gcode
-from execute_r3 import execute_r3
-from interactive_melfa import interactive_melfa
-from interactive_gcode import interactive_gcode
+from printing.ApplicationExceptions import ApiException
+from printing.demo import demo_mode
+from printing.interpret_gcode import interpret_gcode
+from printing.execute_r3 import execute_r3
+from printing.interactive_melfa import interactive_melfa
+from printing.interactive_gcode import interactive_gcode
 
 if __name__ == '__main__':
     # Gather command line arguments

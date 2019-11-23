@@ -8,11 +8,10 @@ import threading
 from time import sleep
 from queue import Queue
 
-import ApplicationExceptions
-import MelfaCmd
-from ApplicationExceptions import TcpError
-from Coordinate import *
-from refactor import joint_borders, xyz_borders, go_safe_pos, reset_speeds, check_speed_threshold
+from printing import ApplicationExceptions, MelfaCmd
+from printing.ApplicationExceptions import TcpError
+from printing.Coordinate import *
+from printing.refactor import joint_borders, xyz_borders, go_safe_pos, reset_speeds, check_speed_threshold
 
 
 class TcpClientR3(object):

@@ -1,6 +1,7 @@
-from BaseCmd import BaseCmd
-from Coordinate import Coordinate
 from typing import *
+
+from printing.BaseCmd import BaseCmd
+from printing.Coordinate import Coordinate
 
 
 class GCmd(BaseCmd):

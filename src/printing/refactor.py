@@ -1,25 +1,24 @@
 from time import sleep
 
-import ApplicationExceptions
-import MelfaCmd
-from ApplicationExceptions import TcpError
-from Coordinate import Coordinate
+from printing import ApplicationExceptions, MelfaCmd
+from printing.ApplicationExceptions import TcpError
+from printing.Coordinate import Coordinate
+
+
+def cmd_coordinate_response(tcp_client, command):
+    tcp_client.send(command)
+    response = tcp_client.receive()
+    coordinate_str = response.split(MelfaCmd.DELIMITER)[1]
+    coordinates = coordinate_str.split(', ')
+    return [float(i) for i in coordinates]
 
 
 def joint_borders(tcp_client):
-    tcp_client.send(MelfaCmd.PARAMETER_READ + MelfaCmd.JOINT_BORDERS)
-    response = tcp_client.receive()
-    coordinate_str = response.split(MelfaCmd.DELIMITER)[1]
-    coordinates = coordinate_str.split(', ')
-    return [float(i) for i in coordinates]
+    return cmd_coordinate_response(tcp_client, MelfaCmd.PARAMETER_READ + MelfaCmd.JOINT_BORDERS)
 
 
 def xyz_borders(tcp_client):
-    tcp_client.send(MelfaCmd.PARAMETER_READ + MelfaCmd.XYZ_BORDERS)
-    response = tcp_client.receive()
-    coordinate_str = response.split(MelfaCmd.DELIMITER)[1]
-    coordinates = coordinate_str.split(', ')
-    return [float(i) for i in coordinates]
+    return cmd_coordinate_response(tcp_client, MelfaCmd.PARAMETER_READ + MelfaCmd.XYZ_BORDERS)
 
 
 def go_safe_pos(tcp_client):
