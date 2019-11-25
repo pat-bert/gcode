@@ -1,3 +1,4 @@
+from printing.Coordinate import Coordinate
 from printing.GCmd import GCmd
 from printing import MelfaCmd
 from printing.MelfaRobot import MelfaRobot

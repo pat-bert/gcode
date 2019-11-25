@@ -13,9 +13,9 @@ class GCmd(BaseCmd):
     # Code standard
     CMD_REMOVE_LEAD_ZERO = False
     # Define axis descriptors for absolute coordinates
-    ABS_COORDINATES = 'XYZ'
+    ABS_AXES = 'XYZ'
     # Define axis descriptors for relative coordinates
-    REL_COORDINATES = 'IJK'
+    REL_AXES = 'IJK'
     # Define speed descriptor
     SPEED_DESCRIPTOR = 'F'
     # Define feeder descriptor
@@ -53,8 +53,8 @@ class GCmd(BaseCmd):
         :param line_number: Optional number for resend identification
         """
         self.id = code_id
-        self.cartesian_abs = Coordinate(abs_cr, self.ABS_COORDINATES, self.DIGITS)
-        self.cartesian_rel = Coordinate(rel_cr, self.REL_COORDINATES, self.DIGITS)
+        self.cartesian_abs: Coordinate = Coordinate(abs_cr, self.ABS_AXES, self.DIGITS)
+        self.cartesian_rel: Coordinate = Coordinate(rel_cr, self.ABS_AXES, self.DIGITS, print_axes=self.REL_AXES)
         self.speed = speed
         self.feeder_speed = f_speed
         self.time_ms = time_ms
@@ -87,6 +87,8 @@ class GCmd(BaseCmd):
 
         if self.cartesian_rel is not None:
             rel_str = str(self.cartesian_rel)
+            for abs_axis, rel_axis in zip(self.ABS_AXES, self.REL_AXES):
+                rel_str = rel_str.replace(abs_axis, rel_axis)
             if len(rel_str) > 0:
                 rel_str += ' '
         else:
@@ -156,16 +158,16 @@ class GCmd(BaseCmd):
                     misc_cmd = None
 
                 # Get relative arguments
-                rel_cr = list(args.get(axis, None) for axis in cls.REL_COORDINATES)
+                rel_cr = list(args.get(axis, None) for axis in cls.REL_AXES)
                 rel_cr = cls.expand_coordinates(rel_cr)
 
                 # Get absolute coordinates or home axis respectively
                 if cmd_id == cls.HOME_CMD:
                     abs_cr = None
-                    home = ''.join([axis for axis in cls.ABS_COORDINATES if axis in args])
+                    home = ''.join([axis for axis in cls.ABS_AXES if axis in args])
                 else:
                     home = ''
-                    abs_cr = list(args.get(axis, None) for axis in cls.ABS_COORDINATES)
+                    abs_cr = list(args.get(axis, None) for axis in cls.ABS_AXES)
                     abs_cr = cls.expand_coordinates(abs_cr)
 
                 # Initialise command

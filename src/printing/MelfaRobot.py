@@ -2,12 +2,12 @@ from math import sin, cos
 from time import sleep
 from typing import *
 
-from printing import MelfaCmd
+from printing import MelfaCmd, ApplicationExceptions
 from printing.Coordinate import Coordinate
 from printing.GRedirect import RedirectionTargets
 from printing.PrinterComponent import PrinterComponent
 from printing.TcpClientR3 import TcpClientR3
-from printing.refactor import cmp_response, xyz_borders, joint_borders
+from printing.refactor import cmp_response, xyz_borders, joint_borders, reset_speeds, get_ovrd_speed
 
 
 class MelfaRobot(PrinterComponent):
@@ -18,7 +18,7 @@ class MelfaRobot(PrinterComponent):
     redirector = RedirectionTargets.MOVER
     axes = 'XYZABC'
 
-    def __init__(self, tcp_client, number_axes: int = 6):
+    def __init__(self, tcp_client, speed_threshold=10, number_axes: int = 6):
         """
         Initialises the robot.
         :param tcp_client: Communication object for TCP/IP-protocol
@@ -30,15 +30,13 @@ class MelfaRobot(PrinterComponent):
             raise TypeError('Illegal number of axes.')
 
         self.tcp: TcpClientR3 = tcp_client
-        self.joints: Sized[AnyStr] = set(['J' + str(i) for i in range(1, number_axes + 1)])
+        self.joints: Sized[AnyStr] = list(['J' + str(i) for i in range(1, number_axes + 1)])
         self.servo: bool = False
         self.com_ctrl: bool = False
+        self.speed_threshold = speed_threshold
 
     # Administration functions
-    def boot(self):
-        pass
-
-    def start(self, safe_return: bool = True) -> None:
+    def boot(self, safe_return: bool = True) -> None:
         """
         Starts the robot and initialises it.
         :param safe_return: Flag, whether the robot should return to its safe position
@@ -46,6 +44,8 @@ class MelfaRobot(PrinterComponent):
         """
         # Communication & Control on
         self.change_communication_state(True)
+        # Check speed first
+        self.check_speed_threshold(self.speed_threshold)
         # Servos on
         self.change_servo_state(True)
         # Safe position
@@ -58,13 +58,20 @@ class MelfaRobot(PrinterComponent):
         :param safe_return: Flag, whether the robot should return to its safe position
         :return: None
         """
+        # TODO Fix deadlock when operation control is lost
+        # Finish robot communication
+        print("Finishing control...")
         # Safe position
         if safe_return:
             self.go_safe_pos()
+        # Reset speed
+        reset_speeds(self.tcp)
         # Servos off
         self.change_servo_state(False)
         # Communication & Control off
         self.change_communication_state(False)
+        # Shutdown TCP
+        self.tcp.close()
 
     def maintenance(self):
         # Communication & Control on
@@ -262,6 +269,25 @@ class MelfaRobot(PrinterComponent):
 
         # Define origin
         origin = Coordinate(coordinate_avg, self.axes)
+
+    def check_speed_threshold(self, speed_threshold):
+        reset_speeds(self.tcp)
+        # Check for low speed
+        speed = get_ovrd_speed(self.tcp)
+        if speed > speed_threshold:
+            try:
+                self.tcp.send(MelfaCmd.OVERWRITE_CMD + '=' + str(speed_threshold))
+                self.tcp.receive()
+                print("Reduced speed to threshold value: " + str(speed_threshold))
+            except ApplicationExceptions.MelfaBaseException:
+                raise ApplicationExceptions.MelfaBaseException(
+                    "Please ensure a speed lower or equal 10% in interactive mode!")
+        else:
+            print("Speed of " + str(speed) + "%. Okay!")
+
+    def stop(self):
+        self.tcp.send(MelfaCmd.STOP_CMD)
+        self.tcp.receive()
 
 
 def radius(l2, l3, l4, j2, j3):

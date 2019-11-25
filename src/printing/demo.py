@@ -55,9 +55,9 @@ def demo_mode(ip=None, port=None):
     tcp_client.connect()
 
     # Executing communication
+    robot = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10)
+    robot.boot(safe_return=True)
     try:
-        tcp_client.start(speed_threshold=10)
-        robot = MelfaRobot(tcp_client, number_axes=6)
         while True:
             selection = input("Please choose a mode (1=cube, 2=cylinder): ")
             if selection == '1':
@@ -74,4 +74,4 @@ def demo_mode(ip=None, port=None):
         print(str(e))
     finally:
         # Cleaning up
-        tcp_client.close()
+        robot.shutdown(safe_return=True)

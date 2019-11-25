@@ -5,9 +5,11 @@
       <w>bufsize</w>
       <w>cmds</w>
       <w>cntl</w>
+      <w>extruder</w>
       <w>gcode</w>
       <w>melfa</w>
       <w>ovrd</w>
+      <w>redirector</w>
       <w>xyzabc</w>
     </words>
   </dictionary>

@@ -5,10 +5,13 @@ from typing import *
 class Coordinate:
     DIGITS = 2
 
-    def __init__(self, values, axes, digits=DIGITS):
+    def __init__(self, values, axes, digits=DIGITS, print_axes=None):
         """
+
         :param values: List of coordinate values
         :param axes: List of axis descriptors
+        :param digits: Represented number of digits
+        :param print_axes: Allow renaming for string representation
         """
         self.digits = digits
         # Create dictionary of coordinates
@@ -16,6 +19,10 @@ class Coordinate:
             self.coordinate = {i[0]: i[1] for i in zip(axes, values)}
         except TypeError:
             self.coordinate = {}
+        if print_axes is not None and len(print_axes) != len(axes):
+            raise TypeError('Axes and print representation need to be of same length.')
+        else:
+            self.print_axes = print_axes
 
     @classmethod
     def from_melfa_response(cls, melfa_str: str, number_axes: int):
@@ -41,7 +48,12 @@ class Coordinate:
         Converts coordinates into space-separated string if coordinate value exists.
         :return:
         """
-        txt = ['{}{:.{d}f}'.format(key, v, d=self.digits) for (key, v) in self.coordinate.items() if v is not None]
+        if self.print_axes is not None:
+            txt = ['{}{:.{d}f}'.format(key, v, d=self.digits) for (key, v) in
+                   zip(self.print_axes, self.coordinate.values())
+                   if v is not None]
+        else:
+            txt = ['{}{:.{d}f}'.format(key, v, d=self.digits) for (key, v) in self.coordinate.items() if v is not None]
         return ' '.join(txt)
 
     def __add__(self, other: 'Coordinate') -> 'Coordinate':
@@ -52,7 +64,16 @@ class Coordinate:
         """
         axis_list = self.coordinate.keys()
         if axis_list == other.coordinate.keys():
-            values = (self.coordinate[axis] + other.coordinate[axis] for axis in axis_list)
+            values = []
+            for axis in axis_list:
+                try:
+                    val = self.coordinate[axis] + other.coordinate[axis]
+                except TypeError:
+                    val = None
+                    values.append(val)
+                else:
+                    values.append(val)
+            values = tuple(values)
             digits = min(self.digits, other.digits)
             return Coordinate(values, axis_list, digits)
         else:

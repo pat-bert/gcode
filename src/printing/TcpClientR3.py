@@ -11,7 +11,7 @@ from queue import Queue
 from printing import ApplicationExceptions, MelfaCmd
 from printing.ApplicationExceptions import TcpError
 from printing.Coordinate import *
-from printing.refactor import joint_borders, xyz_borders, go_safe_pos, reset_speeds, check_speed_threshold
+from printing.refactor import joint_borders, xyz_borders, go_safe_pos, reset_speeds
 
 
 class TcpClientR3(object):
@@ -79,56 +79,11 @@ class TcpClientR3(object):
             # Start thread
             self.t.start()
 
-    def start(self, speed_threshold, internal=True) -> None:
-        """
-        Initialises the robot communication
-        :return:
-        """
-        print("Initialising control...")
-
-        # Open communication and obtain control
-        self.send(MelfaCmd.COM_OPEN)
-        self.receive()
-        self.send(MelfaCmd.CNTL_ON)
-        self.receive()
-
-        # Switch servos on
-        self.send(MelfaCmd.SRV_ON)
-        self.receive()
-        sleep(MelfaCmd.SERVO_INIT_SEC)
-
-        if internal:
-            # Check speed
-            check_speed_threshold(self, speed_threshold=speed_threshold)
-
-            # Go safe position
-            go_safe_pos(self)
-            # Print movement borders
-            xyz_borders(self)
-            joint_borders(self)
-
-        # Wait until setup is executed
-        self.recv_q.join()
-        self.send_q.join()
-        print("Done.")
-
-    def close(self, internal=True) -> None:
+    def close(self) -> None:
         """
         Terminate the worker thread for the protocol communication.
         :return:
         """
-        # Finish robot communication
-        print("Finishing control...")
-        if internal:
-            go_safe_pos(self)
-            # Reset speed
-            reset_speeds(self)
-        self.send(MelfaCmd.SRV_OFF)
-        self.receive()
-        self.send(MelfaCmd.CNTL_OFF)
-        self.receive()
-        self.send(MelfaCmd.COM_CLOSE)
-        self.receive()
         # Put close object
         self.send_q.put(None)
         # Wait for queue to finish

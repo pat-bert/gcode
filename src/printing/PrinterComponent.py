@@ -7,11 +7,11 @@ class PrinterComponent(object, metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def boot(self):
+    def boot(self, *args, **kwargs):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def shutdown(self):
+    def shutdown(self, *args, **kwargs):
         raise NotImplementedError
 
     @property

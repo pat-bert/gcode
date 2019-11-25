@@ -13,11 +13,13 @@ def interactive_melfa(ip, port, log_file=None) -> None:
         pass
 
     # Create robot object
-    robot = MelfaRobot(TcpClientR3(host=ip, port=port), number_axes=6)
-    robot.tcp.connect()
+    tcp = TcpClientR3(host=ip, port=port)
+    tcp.connect()
+    robot = MelfaRobot(tcp, number_axes=6, speed_threshold=10)
+
     # Executing communication
     try:
-        robot.tcp.start(speed_threshold=10)
+        robot.boot(safe_return=True)
         while True:
             usr_msg = input("Melfa>")
             if usr_msg.lower() in ['quit']:
@@ -49,4 +51,4 @@ def interactive_melfa(ip, port, log_file=None) -> None:
         print(str(e))
     finally:
         # Cleaning up
-        robot.tcp.close()
+        robot.shutdown(safe_return=True)

@@ -85,7 +85,7 @@ if __name__ == '__main__':
 
             if args['--execute']:
                 input_schema.validate(args)
-                execute_r3(args['IN_FILE'], ip, port)
+                execute_r3(args['IN_FILE'], ip, port, f_log=log)
             elif args['--gi']:
                 interactive_gcode(ip, port, log_file=log)
             elif args['--mi']:

@@ -1,4 +1,5 @@
 from printing.ApplicationExceptions import *
+from printing.MelfaRobot import MelfaRobot
 from printing.TcpClientR3 import TcpClientR3
 
 
@@ -27,7 +28,9 @@ def execute_r3(f_input: str, ip, port, f_log: str = 'run.log') -> None:
     try:
         # TODO Add start up checks and communication
         tcp = TcpClientR3(host=ip, port=port)
-        # tcp.start(speed_threshold=10)
+        tcp.connect()
+        robot = MelfaRobot(tcp, number_axes=6, speed_threshold=10)
+        robot.boot(safe_return=True)
     except TcpError:
         raise
     except PreCheckError:

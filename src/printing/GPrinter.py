@@ -44,18 +44,16 @@ class GPrinter(object):
         self._mover.shutdown()
         self._extruder.shutdown()
         self._heater.shutdown()
-        # Cleaning up
-        self._mover.tcp.close(internal=False)
+        self._mover.shutdown(safe_return=True)
 
     @classmethod
     def default_init(cls, ip, port):
         # Create TCP client
         tcp_client = TcpClientR3(host=ip, port=port)
         tcp_client.connect()
-        tcp_client.start(speed_threshold=10, internal=False)
 
         # Create mover object
-        mover = MelfaRobot(tcp_client, number_axes=6)
+        mover = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10)
 
         # TODO Create extruder object
         extruder = PrinterComponent()
