@@ -18,3 +18,7 @@ class PrinterComponent(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def redirector(self):
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def handle_gcode(self, *args):
+        raise NotImplementedError

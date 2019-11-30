@@ -1,8 +1,11 @@
+from printing.Extruder import Extruder
 from printing.GCmd import GCmd
 from printing.GRedirect import RedirectionTargets, GRedirect
+from printing.Heater import Heater
 from printing.MelfaRobot import MelfaRobot
 from printing.PrinterComponent import PrinterComponent
 from printing.TcpClientR3 import TcpClientR3
+from printing.UxHandler import UxHandler
 from printing.gcode2melfa import gcode2melfa
 
 
@@ -27,15 +30,15 @@ class GPrinter(object):
         except ValueError as e:
             print(e)
         else:
-            if target is RedirectionTargets.BROADCAST:
-                pass
-            elif target is RedirectionTargets.MOVER:
+            if target is RedirectionTargets.MOVER or RedirectionTargets.BROADCAST:
                 # Redirect command to Melfa
                 gcode2melfa(gcode, 1, robot=self._mover)
+            if target is RedirectionTargets.EXTRUDER or RedirectionTargets.BROADCAST:
+                self._extruder.handle_gcode(gcode)
             elif target is RedirectionTargets.HEATERS:
-                # TODO Redirect command to other hardware
-                pass
-            elif target is RedirectionTargets.EXTRUDER:
+                self._heater.handle_gcode(gcode)
+            elif target is RedirectionTargets.UX:
+                # TODO Redirect command to UX
                 pass
             else:
                 raise ValueError("Unsupported redirection target: {}".format(target))
@@ -55,11 +58,14 @@ class GPrinter(object):
         # Create mover object
         mover = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10)
 
-        # TODO Create extruder object
-        extruder = PrinterComponent()
+        # Create extruder object
+        extruder = Extruder()
 
-        # TODO Create heater object
-        heater = PrinterComponent()
+        # Create heater object
+        heater = Heater()
+
+        # Create UX object
+        user_output = UxHandler()
 
         # Create printer object
         return cls(mover, extruder, heater)
