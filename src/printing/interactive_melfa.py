@@ -5,7 +5,7 @@ from printing.MelfaRobot import MelfaRobot
 from printing.TcpClientR3 import TcpClientR3
 
 
-def interactive_melfa(ip, port, log_file=None) -> None:
+def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:
     print("Launching interactive R3 protocol shell...")
 
     if log_file is not None:
@@ -19,7 +19,7 @@ def interactive_melfa(ip, port, log_file=None) -> None:
 
     # Executing communication
     try:
-        robot.boot(safe_return=True)
+        robot.boot(safe_return=safe_return)
         while True:
             usr_msg = input("Melfa>")
             if usr_msg.lower() in ['quit']:
@@ -51,4 +51,4 @@ def interactive_melfa(ip, port, log_file=None) -> None:
         print(str(e))
     finally:
         # Cleaning up
-        robot.shutdown(safe_return=True)
+        robot.shutdown(safe_return=safe_return)

@@ -35,8 +35,11 @@ class MelfaRobot(PrinterComponent):
         self.com_ctrl: bool = False
         self.speed_threshold = speed_threshold
 
+    def handle_gcode(self, *args):
+        raise NotImplementedError
+
     # Administration functions
-    def boot(self, safe_return: bool = True) -> None:
+    def boot(self, safe_return: bool = False) -> None:
         """
         Starts the robot and initialises it.
         :param safe_return: Flag, whether the robot should return to its safe position
@@ -52,7 +55,35 @@ class MelfaRobot(PrinterComponent):
         if safe_return:
             self.go_safe_pos()
 
-    def shutdown(self, safe_return: bool = True) -> None:
+        """
+        Variables go into this program
+        """
+        # Program init
+        # self.tcp.send('LOAD=1')
+        # self.tcp.receive()
+        """
+        Global variables declare
+        """
+        try:
+            self.tcp.send('EXECDEF POS P1')
+            self.tcp.receive()
+        except ApplicationExceptions.MelfaBaseException:
+            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+            self.tcp.receive()
+        try:
+            self.tcp.send('EXECDEF POS P2')
+            self.tcp.receive()
+        except ApplicationExceptions.MelfaBaseException:
+            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+            self.tcp.receive()
+        try:
+            self.tcp.send('EXECDEF POS P3')
+            self.tcp.receive()
+        except ApplicationExceptions.MelfaBaseException:
+            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+            self.tcp.receive()
+
+    def shutdown(self, safe_return: bool = False) -> None:
         """
         Safely shuts down the robot.
         :param safe_return: Flag, whether the robot should return to its safe position
@@ -63,6 +94,11 @@ class MelfaRobot(PrinterComponent):
         print("Finishing control...")
         # Safe position
         if safe_return:
+            # Error reset to ensure safe return
+            sleep(2)
+            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+            self.tcp.receive(silence_errors=True)
+            sleep(1)
             self.go_safe_pos()
         # Reset speed
         reset_speeds(self.tcp)
@@ -122,13 +158,27 @@ class MelfaRobot(PrinterComponent):
         return response
 
     # Speed functions
-    def set_speed_factors(self, factor):
+    def set_speed(self, speed: float, mode: str):
         """
         Set the speed modification factors for joint and interpolation movement.
-        :param factor:
+        :param speed: Speed (for linear interpolation in mm/s, for joint interpolation in %)
+        :param mode
         :return:
         """
-        pass
+        if speed <= 0:
+            raise ValueError("Speed needs to be larger than zero.")
+        elif mode == 'joint' and speed > 100:
+            raise ValueError("Speed needs to be smaller than 100%.")
+
+        ovrd_speed_factor = get_ovrd_speed(self.tcp) / 100
+        speed_val = speed / ovrd_speed_factor
+        if mode == 'linear':
+            self.tcp.send(MelfaCmd.MVS_SPEED + '{:.{d}f}'.format(speed_val, d=2))
+        elif mode == 'joint':
+            self.tcp.send(MelfaCmd.MOV_SPEED + '{:.{d}f}'.format(speed_val, d=2))
+        else:
+            raise ValueError("Unknown speed type <" + str(mode) + ">")
+        self.tcp.receive()
 
     def reset_speed_factors(self):
         """
@@ -164,7 +214,8 @@ class MelfaRobot(PrinterComponent):
         :param speed: Movement speed for tool.
         :return:
         """
-        # TODO Set speed accordingly
+        # Set speed
+        self.set_speed(speed, 'linear')
 
         # Send move command
         self.tcp.send(MelfaCmd.LINEAR_INTRP + target_pos.to_melfa_point())
@@ -174,16 +225,18 @@ class MelfaRobot(PrinterComponent):
         cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
 
     def circular_move_poll(self, target_pos: Coordinate, center_pos: Coordinate, is_clockwise: bool,
-                           speed: float) -> None:
+                           speed: float, start_pos=None) -> None:
         """
         Moves the robot on a (counter-)clockwise arc around a center position to a target position.
+        :param start_pos:
         :param target_pos: Coordinate for the target position.
         :param center_pos: Coordinate for the center of the arc.
         :param is_clockwise: Flag to indicate clockwise|counter-clockwise direction.
         :param speed: Movement speed for tool.
         :return:
         """
-        # TODO Set speed accordingly
+        # Set speed
+        self.set_speed(speed, 'linear')
 
         # Set direct/indirect movement flag
         if is_clockwise:
@@ -191,18 +244,50 @@ class MelfaRobot(PrinterComponent):
         else:
             pass
 
-        # Current position
-        self.tcp.send(MelfaCmd.CURRENT_XYZABC)
-        response = self.tcp.receive()
+        if start_pos is None:
+            # Current position
+            self.tcp.send(MelfaCmd.CURRENT_XYZABC)
+            response = self.tcp.receive()
 
-        # Reconstruct coordinate
-        start_pos = Coordinate.from_melfa_response(response, len(self.joints))
+            # Reconstruct coordinate
+            start_pos = Coordinate.from_melfa_response(response, len(self.joints))
+
+        # Save positions to program 1
+        start_str = start_pos.to_melfa_point()
+        target_str = target_pos.to_melfa_point()
+        centre_str = center_pos.to_melfa_point()
+
+        """
+        Global (?) variables
+        """
+        sleep(0.01)
+        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P1=' + start_str)
+        self.tcp.receive()
+        sleep(0.01)
+        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P2=' + target_str)
+        self.tcp.receive()
+        sleep(0.01)
+        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P3=' + centre_str)
+        self.tcp.receive()
+        sleep(0.01)
+        """
+        Write variables in program 1 (needs to be loaded and saved)
+        """
+        # self.tcp.send('HOT1;P1=' + start_str)
+        # self.tcp.receive()
+        # self.tcp.send('HOT1;P2=' + target_str)
+        # self.tcp.receive()
+        # self.tcp.send('HOT1;P3=' + centre_str)
+        # self.tcp.receive()
+        # self.tcp.send('SAVE')
+        # self.tcp.receive()
 
         # TODO Send move command with coordinates and direct/indirect flag
 
         # TODO Check reason for error -> might need to write variables first
-        positions = ','.join([start_pos.to_melfa_crcl(), target_pos.to_melfa_crcl(), center_pos.to_melfa_crcl()])
-        self.tcp.send(MelfaCmd.CIRCULAR_INTRP + positions)
+        positions = ','.join([start_str, target_str, centre_str])
+        self.tcp.send(MelfaCmd.CIRCULAR_INTRP + 'P1,P2,P3')
+        # self.tcp.send(MelfaCmd.CIRCULAR_INTRP + positions)
         self.tcp.receive()
 
         # Wait until position is reached
@@ -284,10 +369,6 @@ class MelfaRobot(PrinterComponent):
                     "Please ensure a speed lower or equal 10% in interactive mode!")
         else:
             print("Speed of " + str(speed) + "%. Okay!")
-
-    def stop(self):
-        self.tcp.send(MelfaCmd.STOP_CMD)
-        self.tcp.receive()
 
 
 def radius(l2, l3, l4, j2, j3):

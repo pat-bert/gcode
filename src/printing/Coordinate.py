@@ -39,10 +39,6 @@ class Coordinate:
         txt = ['{:.{d}f}'.format(i, d=self.digits) for i in self.coordinate.values()]
         return '(' + ','.join(txt) + ')' + '(7,0)'
 
-    def to_melfa_crcl(self):
-        txt = ['{:.{d}f}'.format(i, d=self.digits) for i in self.coordinate.values()]
-        return '(' + ','.join(txt) + ')' + '(7,00100000)'
-
     def __str__(self):
         """
         Converts coordinates into space-separated string if coordinate value exists.

@@ -50,7 +50,7 @@ def reset_speeds(tcp_client):
     # tcp_client.receive()
 
 
-def cmp_response(poll_cmd: str, response_t: str, tcp_client, poll_rate_ms: int = 3, timeout_s: int = 300):
+def cmp_response(poll_cmd: str, response_t: str, tcp_client, poll_rate_ms: int = 5, timeout_s: int = 300):
     """
     Uses a given command to poll for a given response.
     :param tcp_client:

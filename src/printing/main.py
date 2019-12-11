@@ -6,10 +6,10 @@ Translate G-Code to Mitsubishi commands!
 
 Usage:
     main.py (-I | --interpret) IN_FILE [-o OUTPUT_FILE] [-l LOG_FILE] [--quiet | --verbose]
-    main.py (-E | --execute) IN_FILE [-l LOG_FILE] [--ip=<ip>] [--port=<port>] [--quiet | --verbose]
-    main.py --gi [--ip=<ip>] [--port=<port>]  [-l LOG_FILE]  [--quiet | --verbose]
-    main.py --mi [--ip=<ip>] [--port=<port>]  [-l LOG_FILE]  [--quiet | --verbose]
-    main.py --demo [--ip=<ip>] [--port=<port>] [-l LOG_FILE]
+    main.py (-E | --execute) IN_FILE [-l LOG_FILE] [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
+    main.py --gi [--ip=<ip>] [--port=<port>]  [-l LOG_FILE]  [--quiet | --verbose] [--safe]
+    main.py --mi [--ip=<ip>] [--port=<port>]  [-l LOG_FILE]  [--quiet | --verbose] [--safe]
+    main.py --demo [--ip=<ip>] [--port=<port>] [-l LOG_FILE] [--safe]
     main.py (-h | --help)
     main.py --version
 
@@ -27,6 +27,7 @@ Options:
     --port=<port>   Specify port of the robot [default: 10002].
     --quiet         Print less text.
     --verbose       Print more text.
+    --safe          Start and finish at safe position.
 
 """
 
@@ -57,7 +58,9 @@ if __name__ == '__main__':
     # Gather command line arguments
     args = docopt(__doc__, argv=None, help=True, version=__version__, options_first=False)
 
-    # Create input schemata
+    """
+    Create input schemata - Options accepting user input as value are checked for plausibility
+    """
     log_schema = Schema({Opt('-l'): Or(str, None, error='Log file should be possible to open')},
                         ignore_extra_keys=True)
     input_schema = Schema({'IN_FILE': And(os.path.exists, error='IN_FILE should exist')}, ignore_extra_keys=True)
@@ -69,7 +72,9 @@ if __name__ == '__main__':
                       error='Port needs to be unsigned short (16 bits): 0..65535)')
     }, ignore_extra_keys=True)
 
-    # Dispatch sub-functions
+    """
+    Dispatch sub-functions - new sub-commands are called here
+    """
     try:
         # Options usable in all commands
         log_schema.validate(args)
@@ -81,7 +86,7 @@ if __name__ == '__main__':
         else:
             # Functions using TCP/IP-connection
             args.update(connection_schema.validate(args))
-            ip, port, log = args['--ip'], args['--port'], args['-l']
+            ip, port, log, safe = args['--ip'], args['--port'], args['-l'], args['--safe']
 
             if args['--execute']:
                 input_schema.validate(args)
@@ -89,9 +94,9 @@ if __name__ == '__main__':
             elif args['--gi']:
                 interactive_gcode(ip, port, log_file=log)
             elif args['--mi']:
-                interactive_melfa(ip, port, log_file=log)
+                interactive_melfa(ip, port, log_file=log, safe_return=safe)
             elif args['--demo']:
-                demo_mode(ip, port)
+                demo_mode(ip, port, safe_return=safe)
             else:
                 raise ApiException("Unknown option passed. Type --help for more info.")
     except SchemaError as e:
