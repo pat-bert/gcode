@@ -1,4 +1,4 @@
-from math import sin, cos
+from math import sin, cos, pi
 from time import sleep
 from typing import *
 
@@ -7,6 +7,7 @@ from printing.Coordinate import Coordinate
 from printing.GRedirect import RedirectionTargets
 from printing.PrinterComponent import PrinterComponent
 from printing.TcpClientR3 import TcpClientR3
+from printing.circle_util import get_angle
 from printing.refactor import cmp_response, xyz_borders, joint_borders, reset_speeds, get_ovrd_speed
 
 
@@ -235,15 +236,7 @@ class MelfaRobot(PrinterComponent):
         :param speed: Movement speed for tool.
         :return:
         """
-        # Set speed
-        self.set_speed(speed, 'linear')
-
-        # Set direct/indirect movement flag
-        if is_clockwise:
-            pass
-        else:
-            pass
-
+        # Determine start position
         if start_pos is None:
             # Current position
             self.tcp.send(MelfaCmd.CURRENT_XYZABC)
@@ -251,6 +244,27 @@ class MelfaRobot(PrinterComponent):
 
             # Reconstruct coordinate
             start_pos = Coordinate.from_melfa_response(response, len(self.joints))
+
+        # Set speed
+        self.set_speed(speed, 'linear')
+
+        # Determine the angle
+        angle = get_angle(start_pos, target_pos, center_pos)
+
+        # Adjust the angle according to the direction
+        if is_clockwise:
+            # Angle needs to be positive
+            if angle < 0:
+                angle += 2 * pi
+        else:
+            # Angle needs to be negative
+            if angle > 0:
+                angle -= 2 * pi
+
+        # Intermediate points for angles >= 180°
+        if abs(angle) >= pi:
+            # TODO Calculate intermediate point to move in two arcs
+            pass
 
         # Save positions to program 1
         start_str = start_pos.to_melfa_point()

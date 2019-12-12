@@ -14,11 +14,11 @@ class RedirectionTargets(Enum):
 
 class GRedirect(object):
     broadcast = [
-        'G0',  # Rapid movement
-        'G1',  # Move
-        'G2',  # Clockwise arc
-        'G3',  # Counter-clockwise arc
-        'G4',  # Dwell
+        'G00',  # Rapid movement
+        'G01',  # Move
+        'G02',  # Clockwise arc
+        'G03',  # Counter-clockwise arc
+        'G04',  # Dwell
         'G20',  # Set units to inch
         'G21',  # Set units to mm
         'G90',  # Absolute positioning
@@ -34,6 +34,9 @@ class GRedirect(object):
         'M300',  # Play beep
     ]
     mover = [
+        'G17',  # Set plane to XY
+        'G18',  # Set plane to XZ
+        'G19',  # Set plane to YZ
         'G28',  # Move to origin
         'M220',  # Set speed factor override percentage
     ]
@@ -68,3 +71,14 @@ class GRedirect(object):
             return RedirectionTargets.UX
         else:
             raise ValueError('Unregistered G-code: {}'.format(g_id))
+
+    @classmethod
+    def supported_gcodes(cls):
+        """
+        Summarizes all G-codes that are supported by any component defined in the redirection
+        """
+        return sorted(cls.broadcast + cls.extruder + cls.mover + cls.heaters + cls.ux, key=lambda x: (x[0], int(x[1:])))
+
+
+if __name__ == '__main__':
+    print(GRedirect.supported_gcodes())

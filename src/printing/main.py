@@ -10,6 +10,7 @@ Usage:
     main.py --gi [--ip=<ip>] [--port=<port>]  [-l LOG_FILE]  [--quiet | --verbose] [--safe]
     main.py --mi [--ip=<ip>] [--port=<port>]  [-l LOG_FILE]  [--quiet | --verbose] [--safe]
     main.py --demo [--ip=<ip>] [--port=<port>] [-l LOG_FILE] [--safe]
+    main.py --ghelp
     main.py (-h | --help)
     main.py --version
 
@@ -28,6 +29,7 @@ Options:
     --quiet         Print less text.
     --verbose       Print more text.
     --safe          Start and finish at safe position.
+    --ghelp         List supported G-code commands.
 
 """
 
@@ -47,6 +49,7 @@ except ImportError:
     sys.exit(-10)
 
 # Own libraries
+from printing.GRedirect import GRedirect
 from printing.ApplicationExceptions import ApiException
 from printing.demo import demo_mode
 from printing.interpret_gcode import interpret_gcode
@@ -76,29 +79,33 @@ if __name__ == '__main__':
     Dispatch sub-functions - new sub-commands are called here
     """
     try:
-        # Options usable in all commands
-        log_schema.validate(args)
-        if args['--interpret']:
-            # Functions without TCP/IP-connection
-            input_schema.validate(args)
-            output_schema.validate(args)
-            interpret_gcode(args['IN_FILE'], args['-o'])
+        if args['--ghelp']:
+            print("Supported G-Codes:")
+            print(GRedirect.supported_gcodes())
         else:
-            # Functions using TCP/IP-connection
-            args.update(connection_schema.validate(args))
-            ip, port, log, safe = args['--ip'], args['--port'], args['-l'], args['--safe']
-
-            if args['--execute']:
+            # Options usable in all commands
+            log_schema.validate(args)
+            if args['--interpret']:
+                # Functions without TCP/IP-connection
                 input_schema.validate(args)
-                execute_r3(args['IN_FILE'], ip, port, f_log=log)
-            elif args['--gi']:
-                interactive_gcode(ip, port, log_file=log)
-            elif args['--mi']:
-                interactive_melfa(ip, port, log_file=log, safe_return=safe)
-            elif args['--demo']:
-                demo_mode(ip, port, safe_return=safe)
+                output_schema.validate(args)
+                interpret_gcode(args['IN_FILE'], args['-o'])
             else:
-                raise ApiException("Unknown option passed. Type --help for more info.")
+                # Functions using TCP/IP-connection
+                args.update(connection_schema.validate(args))
+                ip, port, log, safe = args['--ip'], args['--port'], args['-l'], args['--safe']
+
+                if args['--execute']:
+                    input_schema.validate(args)
+                    execute_r3(args['IN_FILE'], ip, port, f_log=log)
+                elif args['--gi']:
+                    interactive_gcode(ip, port, log_file=log)
+                elif args['--mi']:
+                    interactive_melfa(ip, port, log_file=log, safe_return=safe)
+                elif args['--demo']:
+                    demo_mode(ip, port, safe_return=safe)
+                else:
+                    raise ApiException("Unknown option passed. Type --help for more info.")
     except SchemaError as e:
         # Input validation error
         exit(e)
