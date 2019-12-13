@@ -36,8 +36,21 @@ class Coordinate:
         return ';'.join(txt)
 
     def to_melfa_point(self):
-        txt = ['{:.{d}f}'.format(i, d=self.digits) for i in self.coordinate.values()]
+        angles = {'A': 180, 'B': 0, 'C': 0}
+        for angle, val in angles.items():
+            if angle not in self.coordinate.keys():
+                self.coordinate[angle] = val
+
+        txt = ['{:.{d}f}'.format(i, d=self.digits) if i is not None else '' for i in self.coordinate.values()]
         return '(' + ','.join(txt) + ')' + '(7,0)'
+
+    def update_empty(self, other: 'Coordinate'):
+        for key, val in self.coordinate.items():
+            if val is None:
+                try:
+                    self.coordinate[key] = other.coordinate[key]
+                except KeyError:
+                    raise TypeError('Incompatible axis.')
 
     def __str__(self):
         """

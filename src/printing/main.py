@@ -99,7 +99,7 @@ if __name__ == '__main__':
                     input_schema.validate(args)
                     execute_r3(args['IN_FILE'], ip, port, f_log=log)
                 elif args['--gi']:
-                    interactive_gcode(ip, port, log_file=log)
+                    interactive_gcode(ip, port, log_file=log, safe_return=safe)
                 elif args['--mi']:
                     interactive_melfa(ip, port, log_file=log, safe_return=safe)
                 elif args['--demo']:
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         exit(e)
     except ApiException as e:
         # Intentionally thrown exception by functions of this module
-        print(e)
+        print("Application crashed due to '{}'".format(e))
         sys.exit(-2)
     except KeyError as e:
         # Accessing the arg dictionary with different keys as specified in docstring

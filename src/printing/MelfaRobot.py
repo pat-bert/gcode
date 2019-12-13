@@ -21,11 +21,12 @@ class MelfaRobot(PrinterComponent):
     redirector = [RedirectionTargets.MOVER, RedirectionTargets.BROADCAST]
     axes = 'XYZABC'
 
-    def __init__(self, tcp_client, speed_threshold=10, number_axes: int = 6):
+    def __init__(self, tcp_client, speed_threshold=10, number_axes: int = 6, safe_return=False):
         """
         Initialises the robot.
         :param tcp_client: Communication object for TCP/IP-protocol
         :param number_axes: Number of robot axes, declared by 'J[n]', n>=1
+        :param safe_return:
         """
         if not hasattr(tcp_client, 'send') or not hasattr(tcp_client, 'receive'):
             raise TypeError('TCP-client does not implement required methods.')
@@ -37,12 +38,12 @@ class MelfaRobot(PrinterComponent):
         self.servo: bool = False
         self.com_ctrl: bool = False
         self.speed_threshold = speed_threshold
+        self.safe_return = safe_return
 
     # Administration functions
-    def boot(self, safe_return: bool = False, *args, **kwargs) -> None:
+    def boot(self, *args, **kwargs) -> None:
         """
         Starts the robot and initialises it.
-        :param safe_return: Flag, whether the robot should return to its safe position
         :return: None
         """
         # Communication & Control on
@@ -52,7 +53,7 @@ class MelfaRobot(PrinterComponent):
         # Servos on
         self.change_servo_state(True)
         # Safe position
-        if safe_return:
+        if self.safe_return:
             self.go_safe_pos()
 
         """
@@ -89,25 +90,26 @@ class MelfaRobot(PrinterComponent):
         :param safe_return: Flag, whether the robot should return to its safe position
         :return: None
         """
-        # TODO Fix deadlock when operation control is lost
         # Finish robot communication
         print("Finishing control...")
-        # Safe position
-        if safe_return:
-            # Error reset to ensure safe return
-            sleep(2)
-            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
-            self.tcp.receive(silence_errors=True)
-            sleep(1)
-            self.go_safe_pos()
-        # Reset speed
-        reset_speeds(self.tcp)
-        # Servos off
-        self.change_servo_state(False)
-        # Communication & Control off
-        self.change_communication_state(False)
-        # Shutdown TCP
-        self.tcp.close()
+        try:
+            # Safe position
+            if self.safe_return:
+                # Error reset to ensure safe return
+                sleep(2)
+                self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+                self.tcp.receive(silence_errors=True)
+                sleep(1)
+                self.go_safe_pos()
+            # Reset speed
+            reset_speeds(self.tcp)
+        finally:
+            # Servos off
+            self.change_servo_state(False)
+            # Communication & Control off
+            self.change_communication_state(False)
+            # Shutdown TCP in ANY CASE
+            self.tcp.close()
 
     def maintenance(self):
         # Communication & Control on
@@ -214,15 +216,22 @@ class MelfaRobot(PrinterComponent):
         :param speed: Movement speed for tool.
         :return:
         """
-        # Set speed
-        self.set_speed(speed, 'linear')
+        if speed is not None:
+            # Set speed
+            self.set_speed(speed, 'linear')
 
-        # Send move command
-        self.tcp.send(MelfaCmd.LINEAR_INTRP + target_pos.to_melfa_point())
-        self.tcp.receive()
+        # Only send command if any coordinates are passed, otherwise just set the speed
+        if len(target_pos.coordinate.values()) > 0 and any(a is not None for a in target_pos.coordinate.values()):
+            # Send move command
+            self.tcp.send(MelfaCmd.LINEAR_INTRP + target_pos.to_melfa_point())
+            self.tcp.receive()
 
-        # Wait until position is reached
-        cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
+            # Fill None values with current position to predict correct response
+            current_pos = self.get_pos()
+            target_pos.update_empty(current_pos)
+
+            # Wait until position is reached
+            cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
 
     def circular_move_poll(self, target_pos: Coordinate, center_pos: Coordinate, is_clockwise: bool,
                            speed: float, start_pos=None) -> None:
@@ -237,12 +246,7 @@ class MelfaRobot(PrinterComponent):
         """
         # Determine start position
         if start_pos is None:
-            # Current position
-            self.tcp.send(MelfaCmd.CURRENT_XYZABC)
-            response = self.tcp.receive()
-
-            # Reconstruct coordinate
-            start_pos = Coordinate.from_melfa_response(response, len(self.joints))
+            start_pos = self.get_pos()
 
         # Set speed
         self.set_speed(speed, 'linear')
@@ -305,6 +309,14 @@ class MelfaRobot(PrinterComponent):
 
         # Wait until position is reached
         cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
+
+    def get_pos(self):
+        # Current position
+        self.tcp.send(MelfaCmd.CURRENT_XYZABC)
+        response = self.tcp.receive()
+        # Reconstruct coordinate
+        pos = Coordinate.from_melfa_response(response, len(self.joints))
+        return pos
 
     def calibrate_origin(self, length, width, height, l0, l1, l2, l3, l4, l5):
         # Cartesian limits

@@ -79,4 +79,5 @@ def cmp_response(poll_cmd: str, response_t: str, tcp_client: TcpClientR3, poll_r
         sleep(poll_rate_ms / 1000)
         t += poll_rate_ms
     else:
-        raise TcpError("Timeout after % seconds. Expected: '%' but got '%'".format(timeout_s, response_t, response_act))
+        raise TcpError(
+            "Timeout after {} seconds. Expected: '{}' but got '{}'".format(timeout_s, response_t, response_act))

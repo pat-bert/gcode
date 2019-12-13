@@ -29,8 +29,8 @@ def execute_r3(f_input: str, ip, port, f_log: str = 'run.log') -> None:
         # TODO Add start up checks and communication
         tcp = TcpClientR3(host=ip, port=port)
         tcp.connect()
-        robot = MelfaRobot(tcp, number_axes=6, speed_threshold=10)
-        robot.boot(safe_return=True)
+        robot = MelfaRobot(tcp, number_axes=6, speed_threshold=10, safe_return=True)
+        robot.boot()
     except TcpError:
         raise
     except PreCheckError:

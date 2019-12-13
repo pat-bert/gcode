@@ -65,13 +65,13 @@ class GPrinter(object):
         return comp
 
     @classmethod
-    def default_init(cls, ip, port) -> 'GPrinter':
+    def default_init(cls, ip, port, safe_return=False) -> 'GPrinter':
         # Create TCP client
         tcp_client = TcpClientR3(host=ip, port=port)
         tcp_client.connect()
 
         # Create mover object
-        mover = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10)
+        mover = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return)
 
         # Create extruder object
         extruder = Extruder()
