@@ -5,16 +5,33 @@ Content:    Implement TCP/IP communication to robot
 """
 import socket
 import threading
-from time import sleep
 from queue import Queue
+from time import sleep
 
 from printing import ApplicationExceptions, MelfaCmd
 from printing.ApplicationExceptions import TcpError
 from printing.Coordinate import *
-from printing.refactor import joint_borders, xyz_borders, go_safe_pos, reset_speeds
 
 
-class TcpClientR3(object):
+class Msg(object):
+    def __init__(self, msg, silent_send, silent_recv):
+        self.msg = msg
+        self.ss = silent_send
+        self.sr = silent_recv
+
+    def unpack(self):
+        return self.msg, self.ss, self.sr
+
+
+class AbstractTcp(object):
+    def send(self, *args, **kwargs):
+        pass
+
+    def receive(self, *args, **kwargs):
+        pass
+
+
+class TcpClientR3(AbstractTcp):
     """
     Implements the PC-side of the TCP/IP connection.
     """
@@ -95,15 +112,18 @@ class TcpClientR3(object):
         self.s.close()
         print("Done.")
 
-    def send(self, msg: str) -> None:
+    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False) -> None:
         """
         Sends a message via the worker thread for the protocol communication.
         :param msg:
+        :param silent_send:
+        :param silent_recv:
         :return:
         """
         # Put the message to the outgoing queue of the protocol
         if msg is not None:
             if len(msg) <= 127:
+                msg = Msg(msg, silent_send, silent_recv)
                 self.send_q.put(msg)
             else:
                 raise ValueError('The message cannot be longer than 127 characters.')
@@ -143,9 +163,13 @@ class TcpClientR3(object):
                 self.send_q.task_done()
                 break
 
+            # Unpack message
+            msg, silent_send, silent_recv = msg.unpack()
+
             # Robot message
             msg_str = str(self.ROBOT_NO) + self.DELIMITER + str(self.PROGRAM_NO) + self.DELIMITER + str(msg)
-            print("Sending:\t " + msg_str)
+            if not silent_send:
+                print("Sending:\t " + msg_str)
             msg_b = bytes(msg_str, encoding=self.ENCODING)
 
             # Send the message
@@ -154,7 +178,8 @@ class TcpClientR3(object):
             # Handle the receive
             response: bytes = self.s.recv(self.bufsize)
             response_str = str(response, encoding=self.ENCODING)
-            print("Received:\t " + response_str)
+            if not silent_recv:
+                print("Received:\t " + response_str)
             self.recv_q.put(response_str)
 
             # Indicate that the task is done

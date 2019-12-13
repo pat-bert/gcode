@@ -4,14 +4,14 @@ from printing.PrinterComponent import PrinterComponent
 
 
 class Extruder(PrinterComponent):
-    redirector = RedirectionTargets.EXTRUDER
+    redirector = [RedirectionTargets.BROADCAST, RedirectionTargets.EXTRUDER]
 
-    def boot(self):
+    def boot(self, *args, **kwargs):
         pass
 
-    def shutdown(self):
+    def shutdown(self, *args, **kwargs):
         pass
 
-    def handle_gcode(self, gcode: GCmd):
+    def handle_gcode(self, gcode: GCmd, *args, **kwargs):
         # TODO Implement G Codes
-        raise NotImplementedError
+        pass

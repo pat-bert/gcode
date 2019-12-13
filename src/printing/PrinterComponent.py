@@ -1,4 +1,6 @@
 import abc
+from printing.GRedirect import RedirectionTargets
+from typing import *
 
 
 class PrinterComponent(object, metaclass=abc.ABCMeta):
@@ -16,9 +18,9 @@ class PrinterComponent(object, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def redirector(self):
+    def redirector(self) -> Iterable[RedirectionTargets]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def handle_gcode(self, *args):
+    def handle_gcode(self, *args, **kwargs):
         raise NotImplementedError

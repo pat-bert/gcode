@@ -14,11 +14,11 @@ class RedirectionTargets(Enum):
 
 class GRedirect(object):
     broadcast = [
-        'G00',  # Rapid movement
-        'G01',  # Move
-        'G02',  # Clockwise arc
-        'G03',  # Counter-clockwise arc
-        'G04',  # Dwell
+        'G0',  # Rapid movement
+        'G1',  # Move
+        'G2',  # Clockwise arc
+        'G3',  # Counter-clockwise arc
+        'G4',  # Dwell
         'G20',  # Set units to inch
         'G21',  # Set units to mm
         'G90',  # Absolute positioning

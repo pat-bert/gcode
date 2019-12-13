@@ -3,13 +3,13 @@ from printing.PrinterComponent import PrinterComponent
 
 
 class Heater(PrinterComponent):
-    redirector = RedirectionTargets.HEATERS
+    redirector = [RedirectionTargets.HEATERS]
 
-    def handle_gcode(self, *args):
+    def handle_gcode(self, *args, **kwargs):
         pass
 
-    def boot(self):
+    def boot(self, *args, **kwargs):
         pass
 
-    def shutdown(self):
+    def shutdown(self, *args, **kwargs):
         pass

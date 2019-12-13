@@ -3,6 +3,7 @@ from time import sleep
 from printing import MelfaCmd
 from printing.ApplicationExceptions import TcpError
 from printing.Coordinate import Coordinate
+from printing.TcpClientR3 import TcpClientR3
 
 
 def cmd_coordinate_response(tcp_client, command):
@@ -50,7 +51,7 @@ def reset_speeds(tcp_client):
     # tcp_client.receive()
 
 
-def cmp_response(poll_cmd: str, response_t: str, tcp_client, poll_rate_ms: int = 5, timeout_s: int = 300):
+def cmp_response(poll_cmd: str, response_t: str, tcp_client: TcpClientR3, poll_rate_ms: int = 5, timeout_s: int = 60):
     """
     Uses a given command to poll for a given response.
     :param tcp_client:
@@ -62,9 +63,12 @@ def cmp_response(poll_cmd: str, response_t: str, tcp_client, poll_rate_ms: int =
     """
     t = 0
     timeout_ms = timeout_s * 1000
+    response_act = ''
+
+    # Iterate until timeout occurs or expected response is received
     while t < timeout_ms:
         # Handle communication
-        tcp_client.send(poll_cmd)
+        tcp_client.send(poll_cmd, silent_send=True, silent_recv=True)
         response_act = tcp_client.receive()
 
         # Check response
@@ -75,4 +79,4 @@ def cmp_response(poll_cmd: str, response_t: str, tcp_client, poll_rate_ms: int =
         sleep(poll_rate_ms / 1000)
         t += poll_rate_ms
     else:
-        raise TcpError("Timeout for check.")
+        raise TcpError("Timeout after % seconds. Expected: '%' but got '%'".format(timeout_s, response_t, response_act))

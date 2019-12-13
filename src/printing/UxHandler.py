@@ -4,13 +4,13 @@ from printing.PrinterComponent import PrinterComponent
 
 
 class UxHandler(PrinterComponent):
-    redirector = RedirectionTargets.UX
+    redirector = [RedirectionTargets.UX]
 
-    def boot(self):
+    def boot(self, *args, **kwargs):
         pass
 
-    def shutdown(self):
+    def shutdown(self, *args, **kwargs):
         pass
 
-    def handle_gcode(self, gcode: GCmd):
+    def handle_gcode(self, gcode: GCmd, *args, **kwargs):
         pass

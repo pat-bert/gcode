@@ -56,8 +56,8 @@ def cylinder(robot: MelfaRobot, speed):
 
 
 def speed_test(robot, speed):
-    start = Coordinate([500, 50, 200, 180, 0, 0], robot.axes)
-    vector = Coordinate([550, 0, 0, 0, 0, 0], robot.axes)
+    start = Coordinate([350, -200, 600, 180, 0, 0], robot.axes)
+    vector = Coordinate([200, 400, -300, 0, 0, 0], robot.axes)
     finish = start + vector
 
     robot.linear_move_poll(start, speed)
@@ -81,8 +81,11 @@ def demo_mode(ip=None, port=None, safe_return=False):
     robot.boot(safe_return=safe_return)
     try:
         while True:
-            selection = input("Please choose a mode (1=cube, 2=cylinder): ")
-            speed = float(input("Please enter the speed (linear: mm/s): "))
+            selection = input("Please choose a mode (1=cube, 2=cylinder, 3=speed test): ")
+            try:
+                speed = float(input("Please enter the speed (linear: mm/s): "))
+            except ValueError:
+                break
             if selection == '1':
                 cube(robot, speed)
             elif selection == '2':

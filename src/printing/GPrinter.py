@@ -1,3 +1,5 @@
+from typing import *
+
 from printing.Extruder import Extruder
 from printing.GCmd import GCmd
 from printing.GRedirect import RedirectionTargets, GRedirect
@@ -6,7 +8,6 @@ from printing.MelfaRobot import MelfaRobot
 from printing.PrinterComponent import PrinterComponent
 from printing.TcpClientR3 import TcpClientR3
 from printing.UxHandler import UxHandler
-from printing.gcode2melfa import gcode2melfa
 
 
 class GPrinter(object):
@@ -14,15 +15,23 @@ class GPrinter(object):
     Bundles absolutely all components necessary to control the 3D printer.
     """
 
-    def __init__(self, mover: MelfaRobot, extruder: PrinterComponent, heater: PrinterComponent):
-        self._mover = mover
-        self._mover.boot()
+    def __init__(self, *components: PrinterComponent):
+        """
+        Initializes the printer with a set of components.
+        :param components: Usable list of printer components
+        """
+        self.components: Union[Dict[RedirectionTargets, Set[PrinterComponent]], Dict] = {}
 
-        self._extruder = extruder
-        self._extruder.boot()
-
-        self._heater = heater
-        self._heater.boot()
+        # Initialize components and register
+        for printer_component in components:
+            # Link component to all its redirection targets
+            for red in printer_component.redirector:
+                if red not in self.components.keys():
+                    self.components[red] = {printer_component}
+                else:
+                    self.components[red].add(printer_component)
+            # Boot component
+            printer_component.boot()
 
     def execute(self, gcode: GCmd):
         try:
@@ -30,27 +39,33 @@ class GPrinter(object):
         except ValueError as e:
             print(e)
         else:
-            if target is RedirectionTargets.MOVER or RedirectionTargets.BROADCAST:
-                # Redirect command to Melfa
-                gcode2melfa(gcode, 1, robot=self._mover)
-            if target is RedirectionTargets.EXTRUDER or RedirectionTargets.BROADCAST:
-                self._extruder.handle_gcode(gcode)
-            elif target is RedirectionTargets.HEATERS:
-                self._heater.handle_gcode(gcode)
-            elif target is RedirectionTargets.UX:
-                # TODO Redirect command to UX
-                pass
-            else:
+            try:
+                for responsible_component in self.components[target]:
+                    responsible_component.handle_gcode(gcode)
+            except KeyError:
                 raise ValueError("Unsupported redirection target: {}".format(target))
 
-    def shutdown(self):
-        self._mover.shutdown()
-        self._extruder.shutdown()
-        self._heater.shutdown()
-        self._mover.shutdown(safe_return=True)
+    def shutdown(self) -> None:
+        """
+        Shutdown for all unique components.
+        :return:
+        """
+        for comp in self.unique_components:
+            comp.shutdown(safe_return=False)
+
+    @property
+    def unique_components(self) -> Set[PrinterComponent]:
+        """
+        Acquires a list of unique components registered in all redirection targets.
+        :return: Set of PrinterComponent objects.
+        """
+        comp = set()
+        for val_set in self.components.values():
+            comp.update(val_set)
+        return comp
 
     @classmethod
-    def default_init(cls, ip, port):
+    def default_init(cls, ip, port) -> 'GPrinter':
         # Create TCP client
         tcp_client = TcpClientR3(host=ip, port=port)
         tcp_client.connect()
@@ -68,4 +83,4 @@ class GPrinter(object):
         user_output = UxHandler()
 
         # Create printer object
-        return cls(mover, extruder, heater)
+        return cls(mover, extruder, heater, user_output)
