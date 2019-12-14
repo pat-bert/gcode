@@ -1,5 +1,5 @@
 import unittest
-from printing.GCmd import GCmd
+from AM_IR.gcode.GCmd import GCmd
 
 
 class TestGCmd(unittest.TestCase):

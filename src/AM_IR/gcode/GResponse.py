@@ -1,4 +1,4 @@
-from printing.BaseCmd import BaseCmd
+from AM_IR.BaseCmd import BaseCmd
 
 
 class GResponse(BaseCmd):

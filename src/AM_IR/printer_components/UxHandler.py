@@ -1,6 +1,6 @@
-from printing.GCmd import GCmd
-from printing.GRedirect import RedirectionTargets
-from printing.PrinterComponent import PrinterComponent
+from AM_IR.gcode.GCmd import GCmd
+from AM_IR.GRedirect import RedirectionTargets
+from AM_IR.printer_components.PrinterComponent import PrinterComponent
 
 
 class UxHandler(PrinterComponent):

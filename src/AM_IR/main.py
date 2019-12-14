@@ -49,13 +49,13 @@ except ImportError:
     sys.exit(-10)
 
 # Own libraries
-from printing.GRedirect import GRedirect
-from printing.ApplicationExceptions import ApiException
-from printing.demo import demo_mode
-from printing.interpret_gcode import interpret_gcode
-from printing.execute_r3 import execute_r3
-from printing.interactive_melfa import interactive_melfa
-from printing.interactive_gcode import interactive_gcode
+from AM_IR.GRedirect import GRedirect
+from AM_IR.ApplicationExceptions import ApiException
+from AM_IR.cli_commands.demo import demo_mode
+from AM_IR.cli_commands.interpret_gcode import interpret_gcode
+from AM_IR.cli_commands.execute_r3 import execute_r3
+from AM_IR.cli_commands.interactive_melfa import interactive_melfa
+from AM_IR.cli_commands.interactive_gcode import interactive_gcode
 
 if __name__ == '__main__':
     # Gather command line arguments

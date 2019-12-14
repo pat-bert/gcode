@@ -1,16 +1,17 @@
-from math import sin, cos, pi
+from math import pi
 from time import sleep
 from typing import *
 from typing import Union, AnyStr
 
-from printing import MelfaCmd, ApplicationExceptions
-from printing.Coordinate import Coordinate
-from printing.GCmd import GCmd
-from printing.GRedirect import RedirectionTargets
-from printing.PrinterComponent import PrinterComponent
-from printing.TcpClientR3 import TcpClientR3
-from printing.circle_util import get_angle
-from printing.refactor import cmp_response, xyz_borders, joint_borders, reset_speeds, get_ovrd_speed
+from AM_IR import ApplicationExceptions
+from AM_IR.melfa import MelfaCmd
+from AM_IR.Coordinate import Coordinate
+from AM_IR.gcode.GCmd import GCmd
+from AM_IR.GRedirect import RedirectionTargets
+from AM_IR.printer_components.PrinterComponent import PrinterComponent
+from AM_IR.melfa.TcpClientR3 import TcpClientR3
+from AM_IR.circle_util import get_angle
+from AM_IR.refactor import cmp_response
 
 
 class MelfaRobot(PrinterComponent):
@@ -47,42 +48,16 @@ class MelfaRobot(PrinterComponent):
         :return: None
         """
         # Communication & Control on
-        self.change_communication_state(True)
+        self._change_communication_state(True)
         # Check speed first
-        self.check_speed_threshold(self.speed_threshold)
+        self._check_speed_threshold(self.speed_threshold)
         # Servos on
-        self.change_servo_state(True)
+        self._change_servo_state(True)
         # Safe position
         if self.safe_return:
             self.go_safe_pos()
-
-        """
-        Variables go into this program
-        """
-        # Program init
-        # self.tcp.send('LOAD=1')
-        # self.tcp.receive()
-        """
-        Global variables declare
-        """
-        try:
-            self.tcp.send('EXECDEF POS P1')
-            self.tcp.receive()
-        except ApplicationExceptions.MelfaBaseException:
-            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
-            self.tcp.receive()
-        try:
-            self.tcp.send('EXECDEF POS P2')
-            self.tcp.receive()
-        except ApplicationExceptions.MelfaBaseException:
-            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
-            self.tcp.receive()
-        try:
-            self.tcp.send('EXECDEF POS P3')
-            self.tcp.receive()
-        except ApplicationExceptions.MelfaBaseException:
-            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
-            self.tcp.receive()
+        # Variables allocated
+        self._prepare_circle()
 
     def shutdown(self, safe_return: bool = False, *args, **kwargs) -> None:
         """
@@ -102,21 +77,76 @@ class MelfaRobot(PrinterComponent):
                 sleep(1)
                 self.go_safe_pos()
             # Reset speed
-            reset_speeds(self.tcp)
+            self.reset_speed_factors()
         finally:
             # Servos off
-            self.change_servo_state(False)
+            self._change_servo_state(False)
             # Communication & Control off
-            self.change_communication_state(False)
+            self._change_communication_state(False)
             # Shutdown TCP in ANY CASE
             self.tcp.close()
 
-    def maintenance(self):
+    def handle_gcode(self, gcode: GCmd, interactive=True, gcode_prev: Union[GCmd, None] = None, *args, **kwargs) -> \
+            Union[AnyStr, None]:
+        """
+        Translates a G-Code to a Mitsubishi Melfa R3 command.
+        :param gcode: G-Code object
+        :param interactive: Flag indicating whether the command should be executed or stored
+        :param gcode_prev: Optional object for previous G-Code to be considered for speed setting
+        :return:
+        """
+        if interactive:
+            # G-Code is executed directly
+            if gcode.id in ['G00', 'G0']:
+                self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
+            elif gcode.id in ['G01', 'G1']:
+                self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
+            elif gcode.id in ['G02', 'G2']:
+                self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, True,
+                                        gcode.speed)
+            elif gcode.id in ['G03', 'G3']:
+                self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, False,
+                                        gcode.speed)
+            else:
+                raise NotImplementedError
+        else:
+            # Melfa code is saved for later usage
+            if gcode.id in ['G00', 'G0', 'G01', 'G1']:
+                return MelfaCmd.LINEAR_INTRP + gcode.cartesian_abs.to_melfa_point()
+            elif gcode.id in ['G02', 'G2']:
+                raise NotImplementedError
+            elif gcode.id in ['G03', 'G3']:
+                raise NotImplementedError
+            else:
+                raise NotImplementedError
+
+    def _prepare_circle(self) -> None:
+        try:
+            self.tcp.send('EXECDEF POS P1')
+            self.tcp.receive()
+        except ApplicationExceptions.MelfaBaseException:
+            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+            self.tcp.receive()
+        try:
+            self.tcp.send('EXECDEF POS P2')
+            self.tcp.receive()
+        except ApplicationExceptions.MelfaBaseException:
+            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+            self.tcp.receive()
+        try:
+            self.tcp.send('EXECDEF POS P3')
+            self.tcp.receive()
+        except ApplicationExceptions.MelfaBaseException:
+            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+            self.tcp.receive()
+
+    def maintenance(self) -> None:
         # Communication & Control on
-        self.change_communication_state(True)
+        self._change_communication_state(True)
 
     # Utility functions
-    def change_communication_state(self, activate: bool) -> None:
+
+    def _change_communication_state(self, activate: bool) -> None:
         """
         Obtain/release communication and control.
         :param activate: Boolean
@@ -137,7 +167,7 @@ class MelfaRobot(PrinterComponent):
 
         self.com_ctrl = activate
 
-    def change_servo_state(self, activate: bool) -> None:
+    def _change_servo_state(self, activate: bool) -> None:
         """
         Switch the servos on/off.
         :param activate: Boolean
@@ -154,12 +184,13 @@ class MelfaRobot(PrinterComponent):
         sleep(MelfaCmd.SERVO_INIT_SEC)
         self.servo = activate
 
-    def read_parameter(self, parameter: AnyStr):
-        self.tcp.send(MelfaCmd.PARAMETER_READ + parameter)
+    def read_parameter(self, parameter: AnyStr) -> str:
+        self.tcp.send(MelfaCmd.PARAMETER_READ + str(parameter))
         response = self.tcp.receive()
         return response
 
     # Speed functions
+
     def set_speed(self, speed: float, mode: str):
         """
         Set the speed modification factors for joint and interpolation movement.
@@ -172,7 +203,7 @@ class MelfaRobot(PrinterComponent):
         elif mode == 'joint' and speed > 100:
             raise ValueError("Speed needs to be smaller than 100%.")
 
-        ovrd_speed_factor = get_ovrd_speed(self.tcp) / 100
+        ovrd_speed_factor = self._get_ovrd_speed() / 100
         speed_val = speed / ovrd_speed_factor
         if mode == 'linear':
             self.tcp.send(MelfaCmd.MVS_SPEED + '{:.{d}f}'.format(speed_val, d=2))
@@ -187,10 +218,14 @@ class MelfaRobot(PrinterComponent):
         Reset the speed modification factors to maximum speed.
         :return:
         """
-        # TODO Check whether OVRD can be set as well
-        pass
+        self.tcp.send(MelfaCmd.MVS_SPEED + MelfaCmd.MVS_MAX_SPEED)
+        self.tcp.receive()
+        # TODO Reset MOV Speed
+        # tcp_client.send(MelfaCmd.MOV_SPEED + MelfaCmd.MOV_MAX_SPEED)
+        # tcp_client.receive()
 
     # Movement functions
+
     def go_safe_pos(self) -> None:
         """
         Moves the robot to its safe position.
@@ -267,47 +302,23 @@ class MelfaRobot(PrinterComponent):
         # Intermediate points for angles >= 180°
         if abs(angle) >= pi:
             # TODO Calculate intermediate point to move in two arcs
-            pass
+            raise NotImplementedError("Angles >= 180 degrees are not yet supported.")
 
-        # Save positions to program 1
-        start_str = start_pos.to_melfa_point()
-        target_str = target_pos.to_melfa_point()
-        centre_str = center_pos.to_melfa_point()
-
-        """
-        Global (?) variables
-        """
+        # Global variables
         sleep(0.01)
-        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P1=' + start_str)
+        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P1=' + start_pos.to_melfa_point())
         self.tcp.receive()
         sleep(0.01)
-        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P2=' + target_str)
+        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P2=' + target_pos.to_melfa_point())
         self.tcp.receive()
         sleep(0.01)
-        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P3=' + centre_str)
+        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P3=' + center_pos.to_melfa_point())
         self.tcp.receive()
         sleep(0.01)
-        """
-        Write variables in program 1 (needs to be loaded and saved)
-        """
-        # self.tcp.send('HOT1;P1=' + start_str)
-        # self.tcp.receive()
-        # self.tcp.send('HOT1;P2=' + target_str)
-        # self.tcp.receive()
-        # self.tcp.send('HOT1;P3=' + centre_str)
-        # self.tcp.receive()
-        # self.tcp.send('SAVE')
-        # self.tcp.receive()
-
-        # TODO Send move command with coordinates and direct/indirect flag
-
-        # TODO Check reason for error -> might need to write variables first
-        positions = ','.join([start_str, target_str, centre_str])
-        self.tcp.send(MelfaCmd.CIRCULAR_INTRP + 'P1,P2,P3')
-        # self.tcp.send(MelfaCmd.CIRCULAR_INTRP + positions)
-        self.tcp.receive()
 
         # Wait until position is reached
+        self.tcp.send(MelfaCmd.CIRCULAR_INTRP + 'P1,P2,P3')
+        self.tcp.receive()
         cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
 
     def get_pos(self):
@@ -318,76 +329,13 @@ class MelfaRobot(PrinterComponent):
         pos = Coordinate.from_melfa_response(response, len(self.joints))
         return pos
 
-    def calibrate_origin(self, length, width, height, l0, l1, l2, l3, l4, l5):
-        # Cartesian limits
-        cl = xyz_borders(self.tcp)
-        x_min, x_max, y_min, y_max, z_min, z_max = cl
-        coordinate_avg = average(cl)
-
-        # Joint limits
-        joint_limits = joint_borders(self.tcp)
-        j1_min, j1_max, j2_min, j2_max, j3_min, j3_max, _, _, j5_min, j5_max = joint_limits[0:10]
-
-        # Saturate joint limits
-        j1_min = max(-90, j1_min)  # Left
-        j1_max = min(+90, j1_max)  # Right
-        j2_min = max(-90, j2_min)  # Back flat
-        j2_max = min(+90, j2_max)  # Back arm stretched
-        j5_min = max(0, j5_min)  # Front arm stretched
-        j5_max = min(90, j5_max)  # Front arm 90°
-        j3_min = 180 - j2_min - j5_max
-        j3_max = 180 - j2_max - j5_max
-
-        # Borders by J1 (independent of J2 and J3)
-        j1_x_max = min([abs(i) for i in range(j1_min, j1_max)])  # Straight line
-        j1_x_min = min([90 - abs(i) for i in range(j1_min, j1_max)])  # Perpendicular line
-        j1_y_max = j1_x_min
-        j1_y_min = j1_x_max
-
-        # Borders by J2 and J3
-        r_min, r_max = 10000, 0
-        z_min, z_max = 10000, -10000
-
-        j2_r_min, j3_r_min = None, None
-        j2_r_max, j3_r_max = None, None
-        j2_z_min, j3_z_min = None, None
-        j2_z_max, j3_z_max = None, None
-
-        for j2 in range(j2_min, j2_max, 1):
-            for j3 in range(j3_min, j3_max, 1):
-                r_val = radius(l2, l3, l4, j2, j3)
-                z_val = z(l0, l1, l2, l3, l4, l5, j2, j3)
-
-                if r_val < r_min:
-                    r_min = r_val
-                    j2_r_min, j3_r_min = j2, j3
-                if r_val > r_max:
-                    r_max = r_val
-                    j2_r_max, j3_r_max = j2, j3
-                if z_val < z_min:
-                    z_min = z_val
-                    j2_z_min, j3_z_min = j2, j3
-                if z_val > z_max:
-                    z_max = z_val
-                    j2_z_max, j3_z_max = j2, j3
-
-        # Borders by all joints
-        x_min_j = x(r_min, j1_x_min)
-        x_max_j = x(r_max, j1_x_max)
-        y_min_j = y(r_min, j1_y_min)
-        y_max_j = y(r_max, j1_y_max)
-
-        # Define origin
-        origin = Coordinate(coordinate_avg, self.axes)
-
-    def check_speed_threshold(self, speed_threshold):
-        reset_speeds(self.tcp)
+    def _check_speed_threshold(self, speed_threshold):
+        self.reset_speed_factors()
         # Check for low speed
-        speed = get_ovrd_speed(self.tcp)
+        speed = self._get_ovrd_speed()
         if speed > speed_threshold:
             try:
-                self.tcp.send(MelfaCmd.OVERWRITE_CMD + '=' + str(speed_threshold))
-                self.tcp.receive()
+                self._set_ovrd(speed_threshold)
                 print("Reduced speed to threshold value: " + str(speed_threshold))
             except ApplicationExceptions.MelfaBaseException:
                 raise ApplicationExceptions.MelfaBaseException(
@@ -395,56 +343,13 @@ class MelfaRobot(PrinterComponent):
         else:
             print("Speed of " + str(speed) + "%. Okay!")
 
-    def handle_gcode(self, gcode: GCmd, interactive=True, gcode_prev: Union[GCmd, None] = None, *args, **kwargs) -> \
-            Union[AnyStr, None]:
-        """
-        Translates a G-Code to a Mitsubishi Melfa R3 command.
-        :param gcode: G-Code object
-        :param interactive: Flag indicating whether the command should be executed or stored
-        :param gcode_prev: Optional object for previous G-Code to be considered for speed setting
-        :return:
-        """
-        if interactive:
-            # G-Code is executed directly
-            if gcode.id in ['G00', 'G0']:
-                self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
-            elif gcode.id in ['G01', 'G1']:
-                self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
-            elif gcode.id in ['G02', 'G2']:
-                self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, True,
-                                        gcode.speed)
-            elif gcode.id in ['G03', 'G3']:
-                self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, False,
-                                        gcode.speed)
-            else:
-                raise NotImplementedError
-        else:
-            # Melfa code is saved for later usage
-            if gcode.id in ['G00', 'G0', 'G01', 'G1']:
-                return MelfaCmd.LINEAR_INTRP + gcode.cartesian_abs.to_melfa_point()
-            elif gcode.id in ['G02', 'G2']:
-                raise NotImplementedError
-            elif gcode.id in ['G03', 'G3']:
-                raise NotImplementedError
-            else:
-                raise NotImplementedError
+    # OVRD functions
 
+    def _set_ovrd(self, factor):
+        self.tcp.send(MelfaCmd.OVERWRITE_CMD + '=' + str(factor))
+        self.tcp.receive()
 
-def radius(l2, l3, l4, j2, j3):
-    return abs(l2 * sin(j2) + (l3 + l4) * sin(j2 + j3))
-
-
-def x(r, j1):
-    return r * cos(j1)
-
-
-def y(r, j1):
-    return r * sin(j1)
-
-
-def z(l0, l1, l2, l3, l4, l5, j2, j3):
-    return (l0 + l1 - l5) + l2 * cos(j2) + (l3 + l4) * cos(j2 + j3)
-
-
-def average(x):
-    return [0.5 * x[2 * i] + 0.5 * x[2 * i + 1] for i in range(len(x) // 2)]
+    def _get_ovrd_speed(self):
+        self.tcp.wait_send(MelfaCmd.OVERWRITE_CMD)
+        speed = self.tcp.receive()
+        return float(speed)

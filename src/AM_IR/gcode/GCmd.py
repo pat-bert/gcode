@@ -1,7 +1,7 @@
 from typing import *
 
-from printing.BaseCmd import BaseCmd
-from printing.Coordinate import Coordinate
+from AM_IR.BaseCmd import BaseCmd
+from AM_IR.Coordinate import Coordinate
 
 
 class GCmd(BaseCmd):

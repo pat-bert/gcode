@@ -1,9 +1,9 @@
 import time
 
-from printing import ApplicationExceptions
-from printing.Coordinate import Coordinate
-from printing.MelfaRobot import MelfaRobot
-from printing.TcpClientR3 import TcpClientR3
+from AM_IR import ApplicationExceptions
+from AM_IR.Coordinate import Coordinate
+from AM_IR.printer_components.MelfaRobot import MelfaRobot
+from AM_IR.melfa.TcpClientR3 import TcpClientR3
 
 
 def cube(robot: MelfaRobot, speed):

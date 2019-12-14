@@ -2,7 +2,7 @@ from math import atan2, pi
 
 import numpy
 
-from printing.Coordinate import Coordinate
+from AM_IR.Coordinate import Coordinate
 
 
 def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, preferred_plane='XY') -> float:
@@ -36,14 +36,14 @@ def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, preferr
         else:
             raise ValueError('Illegal plane.')
 
-    # Put x-axis in direction of vector to start
+    # Put a-axis in direction of vector to start
     y_axis_r = numpy.array([0, 1, 0])
     x_axis = numpy.cross(y_axis_r, z_axis)
     # Get corresponding y-axis for right-hand system
     y_axis = numpy.cross(z_axis, x_axis)
     y_axis = y_axis / numpy.sqrt(numpy.sum(y_axis ** 2))
 
-    # Projections onto x and y axis
+    # Projections onto a and y axis
     x_b = numpy.dot(x_axis, vecb)
     y_b = numpy.dot(y_axis, vecb)
     x_a = numpy.dot(x_axis, veca)
@@ -59,11 +59,11 @@ def test_get_angle():
     test_table = [
         # XY Plane
 
-        # x-axis to y-axis in XY-plane, first quadrant
+        # a-axis to y-axis in XY-plane, first quadrant
         [(10, 0, 0), (0, 10, 0), (0, 0, 0), pi / 2],
         # 45 degrees
         [(10, 0, 0), (10, 10, 0), (0, 0, 0), pi / 4],
-        # y-axis to x-axis in XY-plane, first quadrant
+        # y-axis to a-axis in XY-plane, first quadrant
         [(0, 10, 0), (5, 0, 0), (0, 0, 0), -pi / 2],
         # 180 degrees, second quadrant
         [(10, 0, 0), (-10, +0, 0), (0, 0, 0), pi],

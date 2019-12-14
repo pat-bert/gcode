@@ -1,6 +1,6 @@
-from printing.ApplicationExceptions import *
-from printing.MelfaRobot import MelfaRobot
-from printing.TcpClientR3 import TcpClientR3
+from AM_IR.ApplicationExceptions import *
+from AM_IR.printer_components.MelfaRobot import MelfaRobot
+from AM_IR.melfa.TcpClientR3 import TcpClientR3
 
 
 def execute_r3(f_input: str, ip, port, f_log: str = 'run.log') -> None:

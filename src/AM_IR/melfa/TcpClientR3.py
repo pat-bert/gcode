@@ -8,9 +8,10 @@ import threading
 from queue import Queue
 from time import sleep
 
-from printing import ApplicationExceptions, MelfaCmd
-from printing.ApplicationExceptions import TcpError
-from printing.Coordinate import *
+from AM_IR import ApplicationExceptions
+from AM_IR.melfa import MelfaCmd
+from AM_IR.ApplicationExceptions import TcpError
+from AM_IR.Coordinate import *
 
 
 class Msg(object):
