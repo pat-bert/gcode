@@ -6,7 +6,7 @@ from AM_IR.printer_components.MelfaRobot import MelfaRobot
 from AM_IR.melfa.TcpClientR3 import TcpClientR3
 
 
-def cube(robot: MelfaRobot, speed):
+def cube(robot: MelfaRobot, speed: float) -> None:
     """
     Demo Example 1 - Cube
     :param robot: Instance of an active robot
@@ -14,12 +14,12 @@ def cube(robot: MelfaRobot, speed):
     :return:
     """
     # Base coordinates
-    z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.axes)
+    z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.AXES)
     square_corners = [
-        Coordinate([500, 50, 200, 180, 0, 0], robot.axes),
-        Coordinate([500, -50, 200, 180, 0, 0], robot.axes),
-        Coordinate([600, -50, 200, 180, 0, 0], robot.axes),
-        Coordinate([600, 50, 200, 180, 0, 0], robot.axes)
+        Coordinate([500, 50, 200, 180, 0, 0], robot.AXES),
+        Coordinate([500, -50, 200, 180, 0, 0], robot.AXES),
+        Coordinate([600, -50, 200, 180, 0, 0], robot.AXES),
+        Coordinate([600, 50, 200, 180, 0, 0], robot.AXES)
     ]
 
     # Go to points
@@ -33,7 +33,7 @@ def cube(robot: MelfaRobot, speed):
         square_corners = [point + z_vector for point in square_corners]
 
 
-def cylinder(robot: MelfaRobot, speed):
+def cylinder(robot: MelfaRobot, speed: float) -> None:
     """
     Demo Example 2 - Cylinder
     :param robot: Instance of an active robot
@@ -41,10 +41,10 @@ def cylinder(robot: MelfaRobot, speed):
     :return:
     """
     # Base coordinates
-    z_vector = Coordinate([0, 0, 15, 0, 0, 0], robot.axes)
-    start = Coordinate([500, 0, 200, 180, 0, 0], robot.axes)
-    target = Coordinate([550, 50, 200, 180, 0, 0], robot.axes)
-    center = Coordinate([550, 0, 200, 180, 0, 0], robot.axes)
+    z_vector = Coordinate([0, 0, 15, 0, 0, 0], robot.AXES)
+    start = Coordinate([500, 0, 200, 180, 0, 0], robot.AXES)
+    target = Coordinate([550, 50, 200, 180, 0, 0], robot.AXES)
+    center = Coordinate([550, 0, 200, 180, 0, 0], robot.AXES)
 
     for _ in range(10):
         # Move circle segment
@@ -55,9 +55,9 @@ def cylinder(robot: MelfaRobot, speed):
         center += z_vector
 
 
-def speed_test(robot, speed):
-    start = Coordinate([350, -200, 600, 180, 0, 0], robot.axes)
-    vector = Coordinate([200, 400, -300, 0, 0, 0], robot.axes)
+def speed_test(robot: MelfaRobot, speed: float) -> None:
+    start = Coordinate([350, -200, 600, 180, 0, 0], robot.AXES)
+    vector = Coordinate([200, 400, -300, 0, 0, 0], robot.AXES)
     finish = start + vector
 
     robot.linear_move_poll(start, speed)
@@ -68,7 +68,7 @@ def speed_test(robot, speed):
     print("Velocity is: " + str(velocity))
 
 
-def demo_mode(ip=None, port=None, safe_return=False):
+def demo_mode(ip=None, port=None, safe_return=False) -> None:
     # Create TCP client
     if ip is not None and port is not None:
         tcp_client = TcpClientR3(host=ip, port=port)

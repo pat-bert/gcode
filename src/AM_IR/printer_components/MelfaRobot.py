@@ -4,14 +4,15 @@ from typing import *
 from typing import Union, AnyStr
 
 from AM_IR import ApplicationExceptions
-from AM_IR.melfa import MelfaCmd
 from AM_IR.Coordinate import Coordinate
-from AM_IR.gcode.GCmd import GCmd
 from AM_IR.GRedirect import RedirectionTargets
-from AM_IR.printer_components.PrinterComponent import PrinterComponent
-from AM_IR.melfa.TcpClientR3 import TcpClientR3
 from AM_IR.circle_util import get_angle
+from AM_IR.gcode.GCmd import GCmd
+from AM_IR.melfa import MelfaCmd
+from AM_IR.melfa.TcpClientR3 import TcpClientR3
+from AM_IR.printer_components.PrinterComponent import PrinterComponent
 from AM_IR.refactor import cmp_response
+from AM_IR.MelfaCoordinateService import MelfaCoordinateService, Plane
 
 
 class MelfaRobot(PrinterComponent):
@@ -20,19 +21,20 @@ class MelfaRobot(PrinterComponent):
     """
 
     redirector = [RedirectionTargets.MOVER, RedirectionTargets.BROADCAST]
-    axes = 'XYZABC'
+    AXES = 'XYZABC'
+    INCH_IN_MM = 25.4
 
     def __init__(self, tcp_client, speed_threshold=10, number_axes: int = 6, safe_return=False):
         """
         Initialises the robot.
         :param tcp_client: Communication object for TCP/IP-protocol
-        :param number_axes: Number of robot axes, declared by 'J[n]', n>=1
+        :param number_axes: Number of robot AXES, declared by 'J[n]', n>=1
         :param safe_return:
         """
         if not hasattr(tcp_client, 'send') or not hasattr(tcp_client, 'receive'):
             raise TypeError('TCP-client does not implement required methods.')
         if not number_axes > 0:
-            raise TypeError('Illegal number of axes.')
+            raise TypeError('Illegal number of AXES.')
 
         self.tcp: TcpClientR3 = tcp_client
         self.joints: Sized[AnyStr] = list(['J' + str(i) for i in range(1, number_axes + 1)])
@@ -40,6 +42,8 @@ class MelfaRobot(PrinterComponent):
         self.com_ctrl: bool = False
         self.speed_threshold = speed_threshold
         self.safe_return = safe_return
+        self.active_plane = Plane.XY
+        self.inch_active = False
 
     # Administration functions
     def boot(self, *args, **kwargs) -> None:
@@ -97,6 +101,8 @@ class MelfaRobot(PrinterComponent):
         """
         if interactive:
             # G-Code is executed directly
+
+            # Movement G-code
             if gcode.id in ['G00', 'G0']:
                 self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
             elif gcode.id in ['G01', 'G1']:
@@ -107,8 +113,31 @@ class MelfaRobot(PrinterComponent):
             elif gcode.id in ['G03', 'G3']:
                 self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, False,
                                         gcode.speed)
+            elif gcode.id in ['G04', 'G4']:
+                self.wait(gcode.time_ms)
+            # Plane selection
+            elif gcode.id == 'G17':
+                self.active_plane = Plane.XY
+            elif gcode.id == 'G18':
+                self.active_plane = Plane.XZ
+            elif gcode.id == 'G19':
+                self.active_plane = Plane.YZ
+
+            # Units
+            elif gcode.id == 'G20':
+                self.inch_active = True
+                raise NotImplementedError("Units are not yet fully supported.")
+            elif gcode.id == 'G21':
+                self.inch_active = False
+                raise NotImplementedError("Units are not yet fully supported.")
+
+            # Homing
+            elif gcode.id == 'G28':
+                raise NotImplementedError("Homing is not supported yet.")
+
+            # Unsupported G-code
             else:
-                raise NotImplementedError
+                raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
         else:
             # Melfa code is saved for later usage
             if gcode.id in ['G00', 'G0', 'G01', 'G1']:
@@ -326,7 +355,7 @@ class MelfaRobot(PrinterComponent):
         self.tcp.send(MelfaCmd.CURRENT_XYZABC)
         response = self.tcp.receive()
         # Reconstruct coordinate
-        pos = Coordinate.from_melfa_response(response, len(self.joints))
+        pos = MelfaCoordinateService.from_melfa_response(response, len(self.joints))
         return pos
 
     def _check_speed_threshold(self, speed_threshold):
@@ -353,3 +382,7 @@ class MelfaRobot(PrinterComponent):
         self.tcp.wait_send(MelfaCmd.OVERWRITE_CMD)
         speed = self.tcp.receive()
         return float(speed)
+
+    def wait(self, time_ms):
+        # self.tcp.wait_send('DLY')
+        raise NotImplementedError
