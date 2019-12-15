@@ -2,14 +2,17 @@ class ApiException(Exception):
     pass
 
 
+# G-Code Errors
 class GCmdError(ApiException):
     pass
 
 
+# TCP Errors
 class TcpError(ApiException):
     pass
 
 
+# Pre-Check Errors
 class PreCheckError(ApiException):
     pass
 
@@ -18,6 +21,7 @@ class OutOfOperationalArea(PreCheckError):
     pass
 
 
+# Melfa-Errors
 class MelfaBaseException(ApiException):
     def __init__(self, status_code):
         self.status = status_code
@@ -36,6 +40,15 @@ class MelfaInvalidCommand(MelfaBaseException):
 class MelfaUnknownCommand(MelfaBaseException):
     def __str__(self):
         return "Unknown command (" + self.status + ")."
+
+
+# Enum Errors
+class UnknownEnumError(ApiException):
+    pass
+
+
+class UnknownPlaneError(ApiException):
+    pass
 
 
 # Status codes from robot controller

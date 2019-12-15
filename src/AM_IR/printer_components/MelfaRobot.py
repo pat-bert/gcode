@@ -6,7 +6,7 @@ from typing import Union, AnyStr
 from AM_IR import ApplicationExceptions
 from AM_IR.Coordinate import Coordinate
 from AM_IR.GRedirect import RedirectionTargets
-from AM_IR.circle_util import get_angle
+from AM_IR.circle_util import get_angle, get_intermediate_points
 from AM_IR.gcode.GCmd import GCmd
 from AM_IR.melfa import MelfaCmd
 from AM_IR.melfa.TcpClientR3 import TcpClientR3
@@ -316,7 +316,7 @@ class MelfaRobot(PrinterComponent):
         self.set_speed(speed, 'linear')
 
         # Determine the angle
-        angle = get_angle(start_pos, target_pos, center_pos)
+        angle = get_angle(start_pos, target_pos, center_pos, self.active_plane)
 
         # Adjust the angle according to the direction
         if is_clockwise:
@@ -330,7 +330,7 @@ class MelfaRobot(PrinterComponent):
 
         # Intermediate points for angles >= 180°
         if abs(angle) >= pi:
-            # TODO Calculate intermediate point to move in two arcs
+            intermediate_point = get_intermediate_points(angle, start_pos, target_pos, center_pos, self.active_plane)
             raise NotImplementedError("Angles >= 180 degrees are not yet supported.")
 
         # Global variables

@@ -139,7 +139,7 @@ class Coordinate:
         values = (self.coordinate[axis] // other for axis in self.coordinate.keys())
         return Coordinate(values, self.coordinate.keys(), self.digits)
 
-    def scalar_multiply(self, other: 'Coordinate') -> float:
+    def dot(self, other: 'Coordinate') -> float:
         """
         Scalar product of two coordinates that are handled as vectors
         :param other:
@@ -152,6 +152,25 @@ class Coordinate:
         else:
             raise TypeError('Incompatible axis.')
 
+    def cross(self, other: 'Coordinate') -> 'Coordinate':
+        axis_list = self.coordinate.keys()
+        if axis_list == other.coordinate.keys():
+            digits = min(self.digits, other.digits)
+            values = []
+
+            axis_list = list(axis_list)
+
+            indices_a = [i for i in range(1, len(axis_list))] + [0]
+            indices_b = [len(axis_list) - 1] + [i for i in range(0, len(axis_list) - 1)]
+
+            for idx_a, idx_b in zip(indices_a, indices_b):
+                cross_1 = self.coordinate[axis_list[idx_a]] * other.coordinate[axis_list[idx_b]]
+                cross_2 = self.coordinate[axis_list[idx_b]] * other.coordinate[axis_list[idx_a]]
+                values.append(cross_1 - cross_2)
+            return Coordinate(values, axis_list, digits)
+        else:
+            raise TypeError('Incompatible axis.')
+
     def vector_len(self):
         root_sum = 0
         for axis in self.coordinate.keys():
@@ -159,5 +178,24 @@ class Coordinate:
         return sqrt(root_sum)
 
     def vector_angle_rad(self, other: 'Coordinate') -> float:
-        phi = acos(self.scalar_multiply(other) / (self.vector_len() * other.vector_len()))
+        phi = acos(self.dot(other) / (self.vector_len() * other.vector_len()))
         return phi
+
+
+if __name__ == '__main__':
+    axes = 'XYZ'
+    a = Coordinate([1, 0, 0], axes)
+    b = Coordinate([0, 1, 0], axes)
+    print(a.cross(b))
+
+    a = Coordinate([0, 1, 0], axes)
+    b = Coordinate([0, 0, 1], axes)
+    print(a.cross(b))
+
+    a = Coordinate([0, 0, 1], axes)
+    b = Coordinate([1, 0, 0], axes)
+    print(a.cross(b))
+
+    a = Coordinate([0, 0, 1], axes)
+    b = Coordinate([1, 0, 0], axes)
+    print(b.cross(a))

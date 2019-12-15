@@ -9,6 +9,7 @@ class Plane(Enum):
     XY = 1
     XZ = 2
     YZ = 3
+    FREE = 4
 
 
 class MelfaCoordinateService:
