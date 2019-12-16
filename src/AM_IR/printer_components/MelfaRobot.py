@@ -1,18 +1,17 @@
 from math import pi
 from time import sleep
 from typing import *
-from typing import Union, AnyStr
 
 from AM_IR import ApplicationExceptions
 from AM_IR.Coordinate import Coordinate
 from AM_IR.GRedirect import RedirectionTargets
+from AM_IR.MelfaCoordinateService import MelfaCoordinateService, Plane
 from AM_IR.circle_util import get_angle, get_intermediate_points
 from AM_IR.gcode.GCmd import GCmd
 from AM_IR.melfa import MelfaCmd
 from AM_IR.melfa.TcpClientR3 import TcpClientR3
 from AM_IR.printer_components.PrinterComponent import PrinterComponent
 from AM_IR.refactor import cmp_response
-from AM_IR.MelfaCoordinateService import MelfaCoordinateService, Plane
 
 
 class MelfaRobot(PrinterComponent):
@@ -44,6 +43,7 @@ class MelfaRobot(PrinterComponent):
         self.safe_return = safe_return
         self.active_plane = Plane.XY
         self.inch_active = False
+        self.absolute_coordinates = True
 
     # Administration functions
     def boot(self, *args, **kwargs) -> None:
@@ -80,6 +80,7 @@ class MelfaRobot(PrinterComponent):
                 self.tcp.receive(silence_errors=True)
                 sleep(1)
                 self.go_safe_pos()
+                sleep(1)
             # Reset speed
             self.reset_speed_factors()
         finally:
@@ -129,11 +130,17 @@ class MelfaRobot(PrinterComponent):
                 raise NotImplementedError("Units are not yet fully supported.")
             elif gcode.id == 'G21':
                 self.inch_active = False
-                raise NotImplementedError("Units are not yet fully supported.")
 
             # Homing
             elif gcode.id == 'G28':
                 raise NotImplementedError("Homing is not supported yet.")
+
+            # Absolute/Relative mode
+            elif gcode.id == 'G90':
+                self.absolute_coordinates = True
+            elif gcode.id == 'G91':
+                self.absolute_coordinates = False
+                raise NotImplementedError("Relative coordinates not implemented yet.")
 
             # Unsupported G-code
             else:
@@ -205,12 +212,15 @@ class MelfaRobot(PrinterComponent):
         if activate:
             self.tcp.send(MelfaCmd.SRV_ON)
             self.tcp.receive()
+            cmp_response(MelfaCmd.VAR_READ + MelfaCmd.SRV_STATE_VAR, MelfaCmd.SRV_STATE_VAR + '=+1', self.tcp,
+                         timeout_s=MelfaCmd.SERVO_INIT_SEC)
+            sleep(1)
         else:
             self.tcp.send(MelfaCmd.SRV_OFF)
             self.tcp.receive()
+            cmp_response(MelfaCmd.VAR_READ + MelfaCmd.SRV_STATE_VAR, MelfaCmd.SRV_STATE_VAR + '=+0', self.tcp,
+                         timeout_s=MelfaCmd.SERVO_INIT_SEC)
 
-        # Wait for servos to finish
-        sleep(MelfaCmd.SERVO_INIT_SEC)
         self.servo = activate
 
     def read_parameter(self, parameter: AnyStr) -> str:
@@ -273,11 +283,12 @@ class MelfaRobot(PrinterComponent):
         # Wait until position is reached
         cmp_response(MelfaCmd.CURRENT_JOINT, safe_pos.to_melfa_response(), self.tcp)
 
-    def linear_move_poll(self, target_pos: Coordinate, speed: float) -> None:
+    def linear_move_poll(self, target_pos: Coordinate, speed: float = None, track_speed=False):
         """
         Moves the robot linearly to a coordinate.
         :param target_pos: Coordinate for the target position.
         :param speed: Movement speed for tool.
+        :param track_speed:
         :return:
         """
         if speed is not None:
@@ -286,16 +297,18 @@ class MelfaRobot(PrinterComponent):
 
         # Only send command if any coordinates are passed, otherwise just set the speed
         if len(target_pos.coordinate.values()) > 0 and any(a is not None for a in target_pos.coordinate.values()):
-            # Send move command
-            self.tcp.send(MelfaCmd.LINEAR_INTRP + target_pos.to_melfa_point())
-            self.tcp.receive()
-
             # Fill None values with current position to predict correct response
             current_pos = self.get_pos()
             target_pos.update_empty(current_pos)
 
+            # Send move command
+            self.tcp.send(MelfaCmd.LINEAR_INTRP + target_pos.to_melfa_point())
+            self.tcp.receive()
+
             # Wait until position is reached
-            cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
+            t, v = cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp,
+                                track_speed=track_speed)
+            return t, v
 
     def circular_move_poll(self, target_pos: Coordinate, center_pos: Coordinate, is_clockwise: bool,
                            speed: float, start_pos=None) -> None:

@@ -35,9 +35,19 @@ Options:
 
 __version__ = '1.0'
 
+import os
 # Built-in libraries
 import sys
-import os
+
+from AM_IR.ApplicationExceptions import ApiException
+# Own libraries
+from AM_IR.GRedirect import GRedirect
+from AM_IR.cli_commands.demo import demo_mode
+from AM_IR.cli_commands.execute_r3 import execute_r3
+from AM_IR.cli_commands.interactive_gcode import interactive_gcode
+from AM_IR.cli_commands.interactive_melfa import interactive_melfa
+from AM_IR.cli_commands.interpret_gcode import interpret_gcode
+from AM_IR.exit_codes import *
 
 # Third-party libraries
 try:
@@ -45,17 +55,8 @@ try:
     from schema import Schema, And, Or, Use, SchemaError
     from schema import Optional as Opt
 except ImportError:
-    print('This application requires that "schema" data-validation library and "docopt" is installed.')
-    sys.exit(-10)
-
-# Own libraries
-from AM_IR.GRedirect import GRedirect
-from AM_IR.ApplicationExceptions import ApiException
-from AM_IR.cli_commands.demo import demo_mode
-from AM_IR.cli_commands.interpret_gcode import interpret_gcode
-from AM_IR.cli_commands.execute_r3 import execute_r3
-from AM_IR.cli_commands.interactive_melfa import interactive_melfa
-from AM_IR.cli_commands.interactive_gcode import interactive_gcode
+    print('This application requires some modules that you can install using the requirements.txt file.')
+    sys.exit(EXIT_PACKAGE_ERROR)
 
 if __name__ == '__main__':
     # Gather command line arguments
@@ -108,22 +109,25 @@ if __name__ == '__main__':
                     raise ApiException("Unknown option passed. Type --help for more info.")
     except SchemaError as e:
         # Input validation error
-        exit(e)
+        sys.exit(EXIT_BAD_INPUT)
     except ApiException as e:
         # Intentionally thrown exception by functions of this module
         print("Application crashed due to '{}'".format(e))
-        sys.exit(-2)
+        sys.exit(EXIT_INTERNAL_ERROR)
     except KeyError as e:
         # Accessing the arg dictionary with different keys as specified in docstring
         print(e)
         print("This might have happened due to different versions of CLI documentation and parsing.")
+        sys.exit(EXIT_UNEXPECTED_ERROR)
     except NotImplementedError:
         # This might be used in some functions
         print("Encountered not implemented feature.")
+        sys.exit(EXIT_UNEXPECTED_ERROR)
     except Exception as e:
         # Exception that has not been caught and rethrown as a proper ApiException (= Bug)
+        print(e)
         print("External or unexpected exception!")
-        raise e
+        sys.exit(EXIT_UNEXPECTED_ERROR)
     else:
         # Everything okay, no exception occurred
-        sys.exit(0)
+        sys.exit(EXIT_SUCCESS)
