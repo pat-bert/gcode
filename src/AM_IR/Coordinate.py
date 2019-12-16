@@ -45,6 +45,9 @@ class Coordinate:
                 except KeyError:
                     raise TypeError('Incompatible axis.')
 
+    def reduce_to_axes(self, axes_to_keep):
+        self.coordinate = {key: val for key, val in self.coordinate.items() if key in axes_to_keep}
+
     def __str__(self):
         """
         Converts coordinates into space-separated string if coordinate value exists.

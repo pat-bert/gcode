@@ -18,7 +18,7 @@ class MelfaCoordinateService:
         pass
 
     @staticmethod
-    def from_melfa_response(melfa_str: str, number_axes: int):
+    def from_melfa_response(melfa_str: str, number_axes: int) -> Coordinate:
         segments = melfa_str.split(';')
         values = [float(i) for i in segments[1:2 * number_axes:2]]
         axes = segments[0:2 * number_axes:2]

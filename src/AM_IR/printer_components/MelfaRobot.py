@@ -104,16 +104,31 @@ class MelfaRobot(PrinterComponent):
             # G-Code is executed directly
 
             # Movement G-code
-            if gcode.id in ['G00', 'G0']:
-                self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
-            elif gcode.id in ['G01', 'G1']:
-                self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
+            if gcode.id in ['G00', 'G0', 'G01', 'G1']:
+                if not self.absolute_coordinates:
+                    current_pos = self.get_pos()
+                    current_pos.reduce_to_axes('XYZ')
+                    self.linear_move_poll(gcode.cartesian_abs + current_pos, gcode.speed)
+                else:
+                    self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
             elif gcode.id in ['G02', 'G2']:
-                self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, True,
-                                        gcode.speed)
+                if not self.absolute_coordinates:
+                    current_pos = self.get_pos()
+                    current_pos.reduce_to_axes('XYZ')
+                    self.circular_move_poll(gcode.cartesian_abs + current_pos,
+                                            gcode.cartesian_abs + current_pos + gcode.cartesian_rel, True, gcode.speed)
+                else:
+                    self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, True,
+                                            gcode.speed)
             elif gcode.id in ['G03', 'G3']:
-                self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, False,
-                                        gcode.speed)
+                if not self.absolute_coordinates:
+                    current_pos = self.get_pos()
+                    current_pos.reduce_to_axes('XYZ')
+                    self.circular_move_poll(gcode.cartesian_abs + current_pos,
+                                            gcode.cartesian_abs + current_pos + gcode.cartesian_rel, False, gcode.speed)
+                else:
+                    self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, False,
+                                            gcode.speed)
             elif gcode.id in ['G04', 'G4']:
                 self.wait(gcode.time_ms)
             # Plane selection
@@ -140,7 +155,6 @@ class MelfaRobot(PrinterComponent):
                 self.absolute_coordinates = True
             elif gcode.id == 'G91':
                 self.absolute_coordinates = False
-                raise NotImplementedError("Relative coordinates not implemented yet.")
 
             # Unsupported G-code
             else:
@@ -363,7 +377,7 @@ class MelfaRobot(PrinterComponent):
         self.tcp.receive()
         cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
 
-    def get_pos(self):
+    def get_pos(self) -> Coordinate:
         # Current position
         self.tcp.send(MelfaCmd.CURRENT_XYZABC)
         response = self.tcp.receive()
