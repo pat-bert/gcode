@@ -32,8 +32,9 @@ Options:
     --ghelp         List supported G-code commands.
 
 """
+import logging
 
-__version__ = '1.0'
+__version__ = '0.1.0'
 
 import os
 # Built-in libraries
@@ -125,8 +126,8 @@ if __name__ == '__main__':
         sys.exit(EXIT_UNEXPECTED_ERROR)
     except Exception as e:
         # Exception that has not been caught and rethrown as a proper ApiException (= Bug)
-        print(e)
-        print("External or unexpected exception!")
+        # print(e)
+        logging.exception("External or unexpected exception!")
         sys.exit(EXIT_UNEXPECTED_ERROR)
     else:
         # Everything okay, no exception occurred

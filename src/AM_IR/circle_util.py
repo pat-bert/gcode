@@ -59,17 +59,17 @@ def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
     return x_axis, y_axis, z_axis
 
 
-def get_np_vectors(start, target, center, normal_vec):
+def get_np_vectors(start: Coordinate, target: Coordinate, center: Coordinate, normal_vec: Coordinate):
     # Get vectors from center
     cs = start - center
     ct = target - center
 
     # Convert to numpy arrays
-    veca = numpy.array([cs.coordinate['X'], cs.coordinate['Y'], cs.coordinate['Z']])
-    vecb = numpy.array([ct.coordinate['X'], ct.coordinate['Y'], ct.coordinate['Z']])
+    veca = numpy.array(list(cs.coordinate.values()))
+    vecb = numpy.array(list(ct.coordinate.values()))
 
     if normal_vec is not None:
-        normal_vec = numpy.array([normal_vec.coordinate['X'], normal_vec.coordinate['Y'], normal_vec.coordinate['Z']])
+        normal_vec = numpy.array(normal_vec.coordinate.values())
 
     return normal_vec, veca, vecb
 
@@ -83,6 +83,12 @@ def project_vector(vec, *axes):
 
 def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, plane: Plane,
               normal_vec: Union[Coordinate, None] = None) -> float:
+    if normal_vec is not None:
+        normal_vec.reduce_to_axes('XYZ')
+    start.reduce_to_axes('XYZ')
+    target.reduce_to_axes('XYZ')
+    center.reduce_to_axes('XYZ')
+
     normal_vec, veca, vecb = get_np_vectors(start, target, center, normal_vec)
 
     # Get the new coordinate system

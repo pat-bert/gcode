@@ -102,33 +102,27 @@ class MelfaRobot(PrinterComponent):
         """
         if interactive:
             # G-Code is executed directly
+            current_pos = self.get_pos()
+            current_pos.reduce_to_axes('XYZ')
 
             # Movement G-code
             if gcode.id in ['G00', 'G0', 'G01', 'G1']:
                 if not self.absolute_coordinates:
-                    current_pos = self.get_pos()
-                    current_pos.reduce_to_axes('XYZ')
                     self.linear_move_poll(gcode.cartesian_abs + current_pos, gcode.speed)
                 else:
                     self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
             elif gcode.id in ['G02', 'G2']:
                 if not self.absolute_coordinates:
-                    current_pos = self.get_pos()
-                    current_pos.reduce_to_axes('XYZ')
-                    self.circular_move_poll(gcode.cartesian_abs + current_pos,
-                                            gcode.cartesian_abs + current_pos + gcode.cartesian_rel, True, gcode.speed)
-                else:
-                    self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, True,
+                    self.circular_move_poll(gcode.cartesian_abs + current_pos, current_pos + gcode.cartesian_rel, True,
                                             gcode.speed)
+                else:
+                    self.circular_move_poll(gcode.cartesian_abs, current_pos + gcode.cartesian_rel, True, gcode.speed)
             elif gcode.id in ['G03', 'G3']:
                 if not self.absolute_coordinates:
-                    current_pos = self.get_pos()
-                    current_pos.reduce_to_axes('XYZ')
-                    self.circular_move_poll(gcode.cartesian_abs + current_pos,
-                                            gcode.cartesian_abs + current_pos + gcode.cartesian_rel, False, gcode.speed)
-                else:
-                    self.circular_move_poll(gcode.cartesian_abs, gcode.cartesian_abs + gcode.cartesian_rel, False,
+                    self.circular_move_poll(gcode.cartesian_abs + current_pos, current_pos + gcode.cartesian_rel, False,
                                             gcode.speed)
+                else:
+                    self.circular_move_poll(gcode.cartesian_abs, current_pos + gcode.cartesian_rel, False, gcode.speed)
             elif gcode.id in ['G04', 'G4']:
                 self.wait(gcode.time_ms)
             # Plane selection
@@ -316,7 +310,7 @@ class MelfaRobot(PrinterComponent):
             target_pos.update_empty(current_pos)
 
             # Send move command
-            self.tcp.send(MelfaCmd.LINEAR_INTRP + target_pos.to_melfa_point())
+            self.tcp.send(MelfaCmd.LINEAR_INTRP + MelfaCoordinateService.to_melfa_point(target_pos, self.active_plane))
             self.tcp.receive()
 
             # Wait until position is reached
@@ -325,7 +319,7 @@ class MelfaRobot(PrinterComponent):
             return t, v
 
     def circular_move_poll(self, target_pos: Coordinate, center_pos: Coordinate, is_clockwise: bool,
-                           speed: float, start_pos=None) -> None:
+                           speed: float = None, start_pos=None) -> None:
         """
         Moves the robot on a (counter-)clockwise arc around a center position to a target position.
         :param start_pos:
@@ -339,43 +333,51 @@ class MelfaRobot(PrinterComponent):
         if start_pos is None:
             start_pos = self.get_pos()
 
-        # Set speed
-        self.set_speed(speed, 'linear')
+        if speed is not None:
+            # Set speed
+            self.set_speed(speed, 'linear')
 
-        # Determine the angle
-        angle = get_angle(start_pos, target_pos, center_pos, self.active_plane)
+        # Only send command if any coordinates are passed, otherwise just set the speed
+        if len(target_pos.coordinate.values()) > 0 and any(a is not None for a in target_pos.coordinate.values()):
+            # Update positions to be complete
+            target_pos.update_empty(start_pos)
+            center_pos.update_empty(start_pos)
 
-        # Adjust the angle according to the direction
-        if is_clockwise:
-            # Angle needs to be positive
-            if angle < 0:
-                angle += 2 * pi
-        else:
-            # Angle needs to be negative
-            if angle > 0:
-                angle -= 2 * pi
+            # Determine the angle
+            angle = get_angle(start_pos, target_pos, center_pos, self.active_plane)
 
-        # Intermediate points for angles >= 180°
-        if abs(angle) >= pi:
-            intermediate_point = get_intermediate_points(angle, start_pos, target_pos, center_pos, self.active_plane)
-            raise NotImplementedError("Angles >= 180 degrees are not yet supported.")
+            # Adjust the angle according to the direction
+            if not is_clockwise:
+                # Angle needs to be positive
+                if angle < 0:
+                    angle += 2 * pi
+            else:
+                # Angle needs to be negative
+                if angle > 0:
+                    angle -= 2 * pi
 
-        # Global variables
-        sleep(0.01)
-        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P1=' + start_pos.to_melfa_point())
-        self.tcp.receive()
-        sleep(0.01)
-        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P2=' + target_pos.to_melfa_point())
-        self.tcp.receive()
-        sleep(0.01)
-        self.tcp.send(MelfaCmd.DIRECT_CMD + ' P3=' + center_pos.to_melfa_point())
-        self.tcp.receive()
-        sleep(0.01)
+            # Intermediate points for angles >= 180°
+            if abs(angle) >= pi:
+                intermediate_point = get_intermediate_points(angle, start_pos, target_pos, center_pos,
+                                                             self.active_plane)
+                raise NotImplementedError("Angles >= 180 degrees are not yet supported.")
 
-        # Wait until position is reached
-        self.tcp.send(MelfaCmd.CIRCULAR_INTRP + 'P1,P2,P3')
-        self.tcp.receive()
-        cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
+            # Global variables
+            sleep(0.01)
+            self.tcp.send(MelfaCmd.DIRECT_CMD + ' P1=' + start_pos.to_melfa_point())
+            self.tcp.receive()
+            sleep(0.01)
+            self.tcp.send(MelfaCmd.DIRECT_CMD + ' P2=' + target_pos.to_melfa_point())
+            self.tcp.receive()
+            sleep(0.01)
+            self.tcp.send(MelfaCmd.DIRECT_CMD + ' P3=' + center_pos.to_melfa_point())
+            self.tcp.receive()
+            sleep(0.01)
+
+            # Wait until position is reached
+            self.tcp.send(MelfaCmd.CIRCULAR_INTRP + 'P1,P2,P3')
+            self.tcp.receive()
+            cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
 
     def get_pos(self) -> Coordinate:
         # Current position

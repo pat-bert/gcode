@@ -29,7 +29,7 @@ class Coordinate:
         return ';'.join(txt)
 
     def to_melfa_point(self):
-        angles = {'A': 180, 'B': 0, 'C': 0}
+        angles = {'A': -180, 'B': 0, 'C': 0}
         for angle, val in angles.items():
             if angle not in self.coordinate.keys():
                 self.coordinate[angle] = val
