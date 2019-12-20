@@ -28,18 +28,20 @@ class MelfaCoordinateService:
     def to_melfa_point(c: Coordinate, plane: Plane):
         angles = 'ABC'
         values = MelfaCoordinateService.melfa_orientation_plane(plane)
+        existing_values = [val for val in c.coordinate.values()]
+
         for angle, val in zip(angles, values):
             if angle not in c.coordinate.keys():
-                c.coordinate[angle] = val
+                existing_values.append(val)
 
-        txt = ['{:.{d}f}'.format(i, d=c.digits) if i is not None else '' for i in c.coordinate.values()]
+        txt = ['{:.{d}f}'.format(i, d=c.digits) if i is not None else '' for i in existing_values]
         return '(' + ','.join(txt) + ')' + '(7,0)'
 
     @staticmethod
     def melfa_orientation_plane(plane: Plane) -> Tuple[float]:
         # TODO Determine reliable ABC angles
         if plane is Plane.XY:
-            return tuple([-180.0, 0.0, 0.0])
+            return tuple([180.0, 0.0, 0.0])
         elif plane is Plane.XZ:
             raise NotImplementedError
         elif plane is Plane.YZ:

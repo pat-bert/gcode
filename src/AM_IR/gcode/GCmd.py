@@ -113,8 +113,6 @@ class GCmd(BaseCmd):
         # Split space-separated parts of the command
         segments = command_str.split(' ')
 
-        # TODO Allow explicit positive sign for values
-
         if command_str.startswith(cls.COMMENT):
             # Passed string is a comment so you cannot return a command/maybe an empty one in the future
             return None

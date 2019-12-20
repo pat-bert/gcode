@@ -37,13 +37,18 @@ class MelfaRobot(PrinterComponent):
 
         self.tcp: TcpClientR3 = tcp_client
         self.joints: Sized[AnyStr] = list(['J' + str(i) for i in range(1, number_axes + 1)])
+        self.speed_threshold = speed_threshold
+
+        # Operation Flags
+        self.safe_return = safe_return
         self.servo: bool = False
         self.com_ctrl: bool = False
-        self.speed_threshold = speed_threshold
-        self.safe_return = safe_return
-        self.active_plane = Plane.XY
+        self.work_coordinate_active = False
+
+        # G-Code Flags
         self.inch_active = False
         self.absolute_coordinates = True
+        self.active_plane = Plane.XY
 
     # Administration functions
     def boot(self, *args, **kwargs) -> None:
@@ -57,11 +62,19 @@ class MelfaRobot(PrinterComponent):
         self._check_speed_threshold(self.speed_threshold)
         # Servos on
         self._change_servo_state(True)
+
+        # Deactivate work coordinates
+        self.activate_work_coordinate(False)
+
         # Safe position
         if self.safe_return:
             self.go_safe_pos()
+
         # Variables allocated
         self._prepare_circle()
+
+        # Activate work coordinates
+        self.activate_work_coordinate(True)
 
     def shutdown(self, safe_return: bool = False, *args, **kwargs) -> None:
         """
@@ -72,6 +85,9 @@ class MelfaRobot(PrinterComponent):
         # Finish robot communication
         print("Finishing control...")
         try:
+            # Deactivate work coordinates
+            self.activate_work_coordinate(False)
+
             # Safe position
             if self.safe_return:
                 # Error reset to ensure safe return
@@ -91,6 +107,18 @@ class MelfaRobot(PrinterComponent):
             # Shutdown TCP in ANY CASE
             self.tcp.close()
 
+    def activate_work_coordinate(self, active: bool) -> None:
+        # TODO Clean this up (is not considered in demo mode yet), implement homing
+        # if active:
+        #     # Activate coordinate system
+        #     self.tcp.send(MelfaCmd.DIRECT_CMD + 'BASE (-500,0,-200,0,0,0)')
+        #     self.tcp.receive()
+        # else:
+        #     self.tcp.send(MelfaCmd.DIRECT_CMD + 'BASE P_NBASE')
+        #     self.tcp.receive()
+
+        self.work_coordinate_active = active
+
     def handle_gcode(self, gcode: GCmd, interactive=True, gcode_prev: Union[GCmd, None] = None, *args, **kwargs) -> \
             Union[AnyStr, None]:
         """
@@ -104,6 +132,19 @@ class MelfaRobot(PrinterComponent):
             # G-Code is executed directly
             current_pos = self.get_pos()
             current_pos.reduce_to_axes('XYZ')
+
+            # Inch conversion
+            if self.inch_active:
+                if gcode.cartesian_abs is not None and len(gcode.cartesian_abs.coordinate) > 0:
+                    gcode.cartesian_abs *= self.INCH_IN_MM
+                if gcode.cartesian_rel is not None and len(gcode.cartesian_rel.coordinate) > 0:
+                    gcode.cartesian_rel *= self.INCH_IN_MM
+                if gcode.speed is not None:
+                    gcode.speed *= self.INCH_IN_MM
+
+            # Speed conversion mm/min to mm/s
+            if gcode.speed is not None:
+                gcode.speed /= 60
 
             # Movement G-code
             if gcode.id in ['G00', 'G0', 'G01', 'G1']:
@@ -136,7 +177,6 @@ class MelfaRobot(PrinterComponent):
             # Units
             elif gcode.id == 'G20':
                 self.inch_active = True
-                raise NotImplementedError("Units are not yet fully supported.")
             elif gcode.id == 'G21':
                 self.inch_active = False
 

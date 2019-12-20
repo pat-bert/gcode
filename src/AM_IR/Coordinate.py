@@ -24,11 +24,11 @@ class Coordinate:
         else:
             self.print_axes = print_axes
 
-    def to_melfa_response(self):
+    def to_melfa_response(self) -> str:
         txt = ['{};{:.{d}f}'.format(key, v, d=self.digits) for (key, v) in self.coordinate.items()]
         return ';'.join(txt)
 
-    def to_melfa_point(self):
+    def to_melfa_point(self) -> str:
         angles = {'A': -180, 'B': 0, 'C': 0}
         for angle, val in angles.items():
             if angle not in self.coordinate.keys():
@@ -98,7 +98,7 @@ class Coordinate:
     def __sub__(self, other: 'Coordinate') -> 'Coordinate':
         axis_list = self.coordinate.keys()
         if axis_list == other.coordinate.keys():
-            values = (self.coordinate[axis] - other.coordinate[axis] for axis in axis_list)
+            values = [self.coordinate[axis] - other.coordinate[axis] for axis in axis_list]
             digits = min(self.digits, other.digits)
             return Coordinate(values, axis_list, digits)
         else:
@@ -118,8 +118,8 @@ class Coordinate:
         :param other: Constant, float or int
         :return: New set of coordinates
         """
-        values = (self.coordinate[axis] * other for axis in self.coordinate.keys())
-        return Coordinate(values, self.coordinate.keys(), self.digits)
+        values = [val * other if val is not None else None for axis, val in self.coordinate.items()]
+        return Coordinate(values, list(self.coordinate.keys()), self.digits)
 
     def __rmul__(self, other: Union[float, int]) -> 'Coordinate':
         """
@@ -150,7 +150,7 @@ class Coordinate:
         """
         axis_list = self.coordinate.keys()
         if axis_list == other.coordinate.keys():
-            values = (self.coordinate[axis] * other.coordinate[axis] for axis in axis_list)
+            values = [self.coordinate[axis] * other.coordinate[axis] for axis in axis_list]
             return sum(values)
         else:
             raise TypeError('Incompatible axis.')

@@ -32,16 +32,15 @@ Options:
     --ghelp         List supported G-code commands.
 
 """
-import logging
-
 __version__ = '0.1.0'
 
-import os
 # Built-in libraries
+import logging
+import os
 import sys
 
-from AM_IR.ApplicationExceptions import ApiException
 # Own libraries
+from AM_IR.ApplicationExceptions import ApiException
 from AM_IR.GRedirect import GRedirect
 from AM_IR.cli_commands.demo import demo_mode
 from AM_IR.cli_commands.execute_r3 import execute_r3
@@ -80,6 +79,7 @@ if __name__ == '__main__':
     """
     Dispatch sub-functions - new sub-commands are called here
     """
+    # noinspection PyBroadException
     try:
         if args['--ghelp']:
             print("Supported G-Codes:")
@@ -122,11 +122,10 @@ if __name__ == '__main__':
         sys.exit(EXIT_UNEXPECTED_ERROR)
     except NotImplementedError:
         # This might be used in some functions
-        print("Encountered not implemented feature.")
+        logging.exception("Encountered not implemented feature.")
         sys.exit(EXIT_UNEXPECTED_ERROR)
-    except Exception as e:
+    except Exception:
         # Exception that has not been caught and rethrown as a proper ApiException (= Bug)
-        # print(e)
         logging.exception("External or unexpected exception!")
         sys.exit(EXIT_UNEXPECTED_ERROR)
     else:
