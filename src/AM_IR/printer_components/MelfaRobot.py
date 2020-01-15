@@ -109,13 +109,13 @@ class MelfaRobot(PrinterComponent):
 
     def activate_work_coordinate(self, active: bool) -> None:
         # TODO Clean this up (is not considered in demo mode yet), implement homing
-        # if active:
-        #     # Activate coordinate system
-        #     self.tcp.send(MelfaCmd.DIRECT_CMD + 'BASE (-500,0,-200,0,0,0)')
-        #     self.tcp.receive()
-        # else:
-        #     self.tcp.send(MelfaCmd.DIRECT_CMD + 'BASE P_NBASE')
-        #     self.tcp.receive()
+        if active:
+            # Activate coordinate system
+            self.tcp.send(MelfaCmd.DIRECT_CMD + 'BASE (-500,0,-200,0,0,0)')
+            self.tcp.receive()
+        else:
+            self.tcp.send(MelfaCmd.DIRECT_CMD + 'BASE P_NBASE')
+            self.tcp.receive()
 
         self.work_coordinate_active = active
 
@@ -398,26 +398,30 @@ class MelfaRobot(PrinterComponent):
 
             # Intermediate points for angles >= 180°
             if abs(angle) >= pi:
-                intermediate_point = get_intermediate_points(angle, start_pos, target_pos, center_pos,
-                                                             self.active_plane)
-                raise NotImplementedError("Angles >= 180 degrees are not yet supported.")
+                im_pos = get_intermediate_points(angle, start_pos, target_pos, center_pos, self.active_plane)
 
-            # Global variables
-            sleep(0.01)
-            self.tcp.send(MelfaCmd.DIRECT_CMD + ' P1=' + start_pos.to_melfa_point())
-            self.tcp.receive()
-            sleep(0.01)
-            self.tcp.send(MelfaCmd.DIRECT_CMD + ' P2=' + target_pos.to_melfa_point())
-            self.tcp.receive()
-            sleep(0.01)
-            self.tcp.send(MelfaCmd.DIRECT_CMD + ' P3=' + center_pos.to_melfa_point())
-            self.tcp.receive()
-            sleep(0.01)
+                # Global variables
+                self.set_global_positions(['P1', 'P2', 'P3'], [start_pos, im_pos, target_pos])
+
+                # Send move command
+                self.tcp.send(MelfaCmd.CIRCULAR_INTERPOLATION_IM + 'P1,P2,P3')
+                self.tcp.receive()
+            else:
+                # Global variables
+                self.set_global_positions(['P1', 'P2', 'P3'], [start_pos, target_pos, center_pos])
+
+                # Send move command
+                self.tcp.send(MelfaCmd.CIRCULAR_INTERPOLATION_CENTRE + 'P1,P2,P3')
+                self.tcp.receive()
 
             # Wait until position is reached
-            self.tcp.send(MelfaCmd.CIRCULAR_INTRP + 'P1,P2,P3')
-            self.tcp.receive()
             cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
+
+    def set_global_positions(self, var_names: Iterable[AnyStr], coordinates: Iterable[Coordinate]) -> None:
+        for var, coordinate in zip(var_names, coordinates):
+            self.tcp.send(MelfaCmd.DIRECT_CMD + str(var) + '=' + coordinate.to_melfa_point())
+            self.tcp.receive()
+            sleep(0.01)
 
     def get_pos(self) -> Coordinate:
         # Current position
