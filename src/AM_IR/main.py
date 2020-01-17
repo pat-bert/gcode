@@ -2,7 +2,7 @@
 """
 RobotPrint3D:
 Control your robot remotely using the Mitsubishi R3 protocol.
-Translate G-Code to Mitsubishi commands!
+Translate G-Code to Mitsubishi commands.
 
 Usage:
     main.py (-I | --interpret) IN_FILE [-o OUTPUT_FILE] [-l LOG_FILE] [--quiet | --verbose]
