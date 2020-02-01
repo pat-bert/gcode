@@ -16,6 +16,11 @@ def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
     """
     Calculates the coordinate system fitting into a given circle. All axes may be tilted so that the z-axis is
     perpendicular to the plane of the circle. However, the system will not be twisted around the z-axis.
+    :param veca:
+    :param vecb:
+    :param plane:
+    :param normal_vec:
+    :return:
     """
     # Z-axis
     if plane is Plane.XY:
@@ -27,7 +32,7 @@ def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
         z_axis = numpy.cross(veca, vecb)
         z_axis[2] = abs(z_axis[2])
         z_len = numpy.sqrt(numpy.sum(z_axis ** 2))
-    elif plane is Plane.FREE:
+    elif plane is Plane.ANY:
         # Get z-axis perpendicular to plane of circle (can be any)
         z_axis = numpy.cross(veca, vecb)
         z_axis[2] = abs(z_axis[2])
@@ -84,6 +89,17 @@ def project_vector(vec, *axes):
 
 def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, plane: Plane,
               normal_vec: Union[Coordinate, None] = None) -> float:
+    """
+    Calculates the angle between three points in R^3
+    :param start:   Starting point for arc
+    :param target:  End point for arc
+    :param center:  Center point for arc
+    :param plane:   Plane for the arc, if it is standard (XY, YZ, XZ)
+    :param normal_vec:  Normal vector for the plane of the arc
+    :return:    Angle between the three points in rad, [-2 pi, +2 pi]
+    """
+
+    # Remove any robot specific coordinates
     if normal_vec is not None:
         normal_vec.reduce_to_axes('XYZ')
     start.reduce_to_axes('XYZ')
@@ -105,25 +121,23 @@ def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, plane: 
 
 def get_intermediate_points(angle: float, start: Coordinate, target: Coordinate, center: Coordinate,
                             plane: Plane, normal_vec: Union[Coordinate, None] = None) -> Coordinate:
+    """
+    Calculates intermediate points on a given arc
+    :param angle: Total angle described by the arc
+    :param start: Starting point
+    :param target: Target point
+    :param center: Center point
+    :param plane: Preferred plane as fallback
+    :param normal_vec: Normal vector for unusual plane
+    :return: coordinates of an intermediate point (half the angle)
+    """
     # Point in the middle of start and target on a direct line
     middle = 0.5 * (target - start) + start
     cm = middle - center
 
-    # todo Full circle
+    # Full circle (just take opposite point)
     if abs(angle) == 2 * pi:
-        # Get second intermediate point
-        sc = center - start
-        i2 = sc + center
-
-        # Recursive call
-        # i1 = get_intermediate_points(angle / 2, start, i2, center, plane, normal_vec)[0]
-        # i3 = get_intermediate_points(angle / 2, i2, target, center, plane, normal_vec)[0]
-
-        # Compose all intermediate points
-        # intermediate = [i1, i2, i3]
-        if angle < 0:
-            pass
-            # intermediate.reverse()
+        intermediate = center - cm
     # Half circle
     elif abs(angle) == pi:
         # TODO Consider planes

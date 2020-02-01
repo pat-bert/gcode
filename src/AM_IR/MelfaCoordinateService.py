@@ -6,10 +6,13 @@ from AM_IR.Coordinate import Coordinate
 
 @unique
 class Plane(Enum):
+    """
+    Define enums for each available plane.
+    """
     XY = 1
     XZ = 2
     YZ = 3
-    FREE = 4
+    ANY = 4
 
 
 class MelfaCoordinateService:
@@ -26,6 +29,12 @@ class MelfaCoordinateService:
 
     @staticmethod
     def to_melfa_point(c: Coordinate, plane: Plane):
+        """
+        Convert a coordinate to the point format used in R3 protocol
+        :param c:
+        :param plane:
+        :return:
+        """
         angles = 'ABC'
         values = MelfaCoordinateService.melfa_orientation_plane(plane)
         existing_values = [val for val in c.coordinate.values()]
@@ -39,6 +48,11 @@ class MelfaCoordinateService:
 
     @staticmethod
     def melfa_orientation_plane(plane: Plane) -> Tuple[float]:
+        """
+        Calculates the angles for the standard planes
+        :param plane: Standard planes (XY, XZ, YZ)
+        :return:
+        """
         # TODO Determine reliable ABC angles
         if plane is Plane.XY:
             return tuple([180.0, 0.0, 0.0])

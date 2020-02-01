@@ -38,7 +38,7 @@ def test_get_angle():
         s, t, c, angle = test_set
         actual_angle = None
         try:
-            actual_angle = get_angle(Coordinate(s, axes), Coordinate(t, axes), Coordinate(c, axes), plane=Plane.FREE)
+            actual_angle = get_angle(Coordinate(s, axes), Coordinate(t, axes), Coordinate(c, axes), plane=Plane.ANY)
             assert abs(actual_angle - angle) < tol
         except NotImplementedError:
             print("Failed: " + str(actual_angle))
