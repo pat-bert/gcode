@@ -64,7 +64,7 @@ def speed_test(robot: MelfaRobot, speed: float) -> None:
     finish = start + vector
 
     # Back to start
-    robot.reset_speed_factors()
+    robot.reset_linear_speed_factor()
     robot.linear_move_poll(start)
 
     # Test distance

@@ -3,6 +3,7 @@ from typing import *
 
 import numpy
 
+from AM_IR import ApplicationExceptions
 from AM_IR.ApplicationExceptions import UnknownPlaneError
 from AM_IR.Coordinate import Coordinate
 from AM_IR.MelfaCoordinateService import Plane
@@ -46,9 +47,10 @@ def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
             try:
                 assert numpy.dot(normal_vec, veca) == 0 and numpy.dot(normal_vec, vecb)
             except TypeError:
-                raise ValueError("Normal vector must be supplied if vectors are collinear.")
+                raise ApplicationExceptions.MelfaBaseException(
+                    "Normal vector must be supplied if vectors are collinear.")
             except AssertionError:
-                raise ValueError("Normal vector supplied is not normal to circle.")
+                raise ApplicationExceptions.MelfaBaseException("Normal vector supplied is not normal to circle.")
             else:
                 z_axis = normal_vec
     else:
@@ -140,8 +142,16 @@ def get_intermediate_points(angle: float, start: Coordinate, target: Coordinate,
         intermediate = center - cm
     # Half circle
     elif abs(angle) == pi:
-        # TODO Consider planes
-        normal_r = (target - center).cross(normal_vec)
+        if plane is Plane.XY:
+            normal_r = _RIGHTHAND_CS[2]
+        elif plane is Plane.XZ:
+            normal_r = _RIGHTHAND_CS[1]
+        elif plane is Plane.YZ:
+            normal_r = _RIGHTHAND_CS[0]
+        elif plane is Plane.ANY:
+            normal_r = (target - center).cross(normal_vec)
+        else:
+            raise ApplicationExceptions.MelfaBaseException("Unknown plane supplied.")
         if angle < 0:
             normal_r *= -1
         intermediate = center + normal_r

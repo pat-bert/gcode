@@ -3,6 +3,7 @@ from time import sleep
 from typing import *
 
 from AM_IR import ApplicationExceptions
+from AM_IR.ApplicationExceptions import MelfaBaseException
 from AM_IR.Coordinate import Coordinate
 from AM_IR.GRedirect import RedirectionTargets
 from AM_IR.MelfaCoordinateService import MelfaCoordinateService, Plane
@@ -49,6 +50,7 @@ class MelfaRobot(PrinterComponent):
         self.inch_active = False
         self.absolute_coordinates = True
         self.active_plane = Plane.XY
+        self.zero = Coordinate([0, 0, 0, None, None, None], 'XYZABC')
 
     # Administration functions
     def boot(self, *args, **kwargs) -> None:
@@ -98,7 +100,7 @@ class MelfaRobot(PrinterComponent):
                 self.go_safe_pos()
                 sleep(1)
             # Reset speed
-            self.reset_speed_factors()
+            self.reset_linear_speed_factor()
         finally:
             # Servos off
             self._change_servo_state(False)
@@ -272,6 +274,11 @@ class MelfaRobot(PrinterComponent):
         self.servo = activate
 
     def read_parameter(self, parameter: AnyStr) -> str:
+        """
+        Attempts to read a given parameter from the robot.
+        :param parameter:
+        :return:
+        """
         self.tcp.send(MelfaCmd.PARAMETER_READ + str(parameter))
         response = self.tcp.receive()
         return response
@@ -300,18 +307,27 @@ class MelfaRobot(PrinterComponent):
             raise ValueError("Unknown speed type <" + str(mode) + ">")
         self.tcp.receive()
 
-    def reset_speed_factors(self):
+    def reset_linear_speed_factor(self):
         """
         Reset the speed modification factors to maximum speed.
         :return:
         """
         self.tcp.send(MelfaCmd.MVS_SPEED + MelfaCmd.MVS_MAX_SPEED)
         self.tcp.receive()
-        # TODO Reset MOV Speed
-        # tcp_client.send(MelfaCmd.MOV_SPEED + MelfaCmd.MOV_MAX_SPEED)
-        # tcp_client.receive()
 
     # Movement functions
+
+    def go_home(self) -> None:
+        """
+        Moves the robot to its current home point (current work coordinate origin or global safe position respectively)
+        :return:
+        """
+        if self.work_coordinate_active:
+            current_position = self.get_pos()
+            self.zero.update_empty(current_position)
+            self.linear_move_poll(self.zero)
+        else:
+            self.go_safe_pos()
 
     def go_safe_pos(self) -> None:
         """
@@ -417,24 +433,45 @@ class MelfaRobot(PrinterComponent):
             # Wait until position is reached
             cmp_response(MelfaCmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
 
-    def set_global_positions(self, var_names: Iterable[AnyStr], coordinates: Iterable[Coordinate]) -> None:
-        for var, coordinate in zip(var_names, coordinates):
-            self.tcp.send(MelfaCmd.DIRECT_CMD + str(var) + '=' + coordinate.to_melfa_point())
-            self.tcp.receive()
-            sleep(0.01)
+    def set_global_positions(self, var_names: List[AnyStr], coordinates: List[Coordinate]) -> None:
+        """
+        Write coordinates to a global variable name in the robot memory.
+        :param var_names: List of the variable names
+        :param coordinates:
+        :return:
+        """
+        if len(var_names) == len(coordinates):
+            for var, coordinate in zip(set(var_names), coordinates):
+                self.tcp.send(MelfaCmd.DIRECT_CMD + str(var) + '=' + coordinate.to_melfa_point())
+                self.tcp.receive()
+                sleep(0.01)
+        else:
+            raise MelfaBaseException("Variable names and coordinates must be of same length.")
 
     def get_pos(self) -> Coordinate:
+        """
+        Get the current position.
+        :return: Coordinate object containing the robot coordinates.
+        """
         # Current position
         self.tcp.send(MelfaCmd.CURRENT_XYZABC)
         response = self.tcp.receive()
-        # Reconstruct coordinate
+
+        # Convert response using coordinate factory
         pos = MelfaCoordinateService.from_melfa_response(response, len(self.joints))
         return pos
 
-    def _check_speed_threshold(self, speed_threshold):
-        self.reset_speed_factors()
+    def _check_speed_threshold(self, speed_threshold: float):
+        """
+        Verify that the speed setting meets the current threshold
+        :param speed_threshold:
+        :return:
+        """
+        # Reset the linear factor
+        self.reset_linear_speed_factor()
         # Check for low speed
         speed = self._get_ovrd_speed()
+        # Threshold violation
         if speed > speed_threshold:
             try:
                 self._set_ovrd(speed_threshold)
@@ -447,15 +484,33 @@ class MelfaRobot(PrinterComponent):
 
     # OVRD functions
 
-    def _set_ovrd(self, factor):
-        self.tcp.send(MelfaCmd.OVERWRITE_CMD + '=' + str(factor))
-        self.tcp.receive()
+    def _set_ovrd(self, factor: float):
+        """
+        Sets the current override speed value.
+        :param factor:
+        :return:
+        """
+        if 1 <= float(factor) <= 100:
+            self.tcp.send(MelfaCmd.OVERRIDE_CMD + '=' + str(factor))
+            self.tcp.receive()
+        else:
+            raise ApplicationExceptions.MelfaBaseException("Override factor must be [1,100].")
 
-    def _get_ovrd_speed(self):
-        self.tcp.wait_send(MelfaCmd.OVERWRITE_CMD)
+    def _get_ovrd_speed(self) -> float:
+        """
+        Reads the current override speed value.
+        :return:
+        """
+        self.tcp.wait_send(MelfaCmd.OVERRIDE_CMD)
         speed = self.tcp.receive()
         return float(speed)
 
     def wait(self, time_ms):
+        """
+        Waits for a specified time.
+        :param time_ms:
+        :return:
+        """
+        # TODO Implement waiting (G04)
         # self.tcp.wait_send('DLY')
         raise NotImplementedError
