@@ -183,22 +183,3 @@ class Coordinate:
     def vector_angle_rad(self, other: 'Coordinate') -> float:
         phi = acos(self.dot(other) / (self.vector_len() * other.vector_len()))
         return phi
-
-
-if __name__ == '__main__':
-    axes = 'XYZ'
-    a = Coordinate([1, 0, 0], axes)
-    b = Coordinate([0, 1, 0], axes)
-    print(a.cross(b))
-
-    a = Coordinate([0, 1, 0], axes)
-    b = Coordinate([0, 0, 1], axes)
-    print(a.cross(b))
-
-    a = Coordinate([0, 0, 1], axes)
-    b = Coordinate([1, 0, 0], axes)
-    print(a.cross(b))
-
-    a = Coordinate([0, 0, 1], axes)
-    b = Coordinate([1, 0, 0], axes)
-    print(b.cross(a))
