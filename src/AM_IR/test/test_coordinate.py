@@ -97,9 +97,6 @@ class TestCoordinate:
         with pytest.raises(TypeError):
             a.cross(b)
 
-    def test_vector_angle_rad(self):
-        assert 0
-
     @pytest.mark.parametrize("axes,values,expected", [('XYZ', [2, 5, 8], 9.64), ('XY', [3, 4], 5), ('XY', [0, -3], 3)])
     def test_vector_len(self, axes, values, expected):
         a = Coordinate(values, axes)

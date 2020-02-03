@@ -1,4 +1,4 @@
-from math import sqrt, acos
+from math import sqrt
 from typing import *
 
 
@@ -179,7 +179,3 @@ class Coordinate:
         for axis in self.coordinate.keys():
             root_sum += self.coordinate[axis] ** 2
         return sqrt(root_sum)
-
-    def vector_angle_rad(self, other: 'Coordinate') -> float:
-        phi = acos(self.dot(other) / (self.vector_len() * other.vector_len()))
-        return phi

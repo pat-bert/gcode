@@ -20,6 +20,10 @@ class TestGCmd:
         assert out_act == test_input
 
     def test_str_remove_lead_zero(self):
+        """
+        Test that lead zeroes in the command can be removed
+        :return:
+        """
         GCmd.DIGITS = 1
         GCmd.CMD_REMOVE_LEAD_ZERO = True
 
@@ -27,6 +31,10 @@ class TestGCmd:
         assert out_act == 'G1 X10.3 Z-10.3'
 
     def test_str_g28_remove_coordinates(self):
+        """
+        Test that for G28 (homing) only the axes are considered
+        :return:
+        """
         GCmd.DIGITS = 1
         GCmd.CMD_REMOVE_LEAD_ZERO = False
 
@@ -34,6 +42,10 @@ class TestGCmd:
         assert out_act == 'G28 Y Z'
 
     def test_str_convert_seconds(self):
+        """
+        Test that seconds are converted to milliseconds
+        :return:
+        """
         GCmd.DIGITS = 1
         GCmd.CMD_REMOVE_LEAD_ZERO = False
 
@@ -41,8 +53,12 @@ class TestGCmd:
         assert out_act == 'G01 X-50.0 Y30.0 F30.2 E17.1 P20300.0'
 
     def test_str_comment(self):
+        """
+        Test that a comment is turned to None
+        :return:
+        """
         GCmd.DIGITS = 1
         GCmd.CMD_REMOVE_LEAD_ZERO = False
 
-        out_act = str(GCmd.read_cmd_str('; I am a comment.'))
-        assert out_act == 'None'
+        out_act = GCmd.read_cmd_str('; I am a comment.')
+        assert out_act is None

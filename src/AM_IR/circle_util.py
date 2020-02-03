@@ -25,14 +25,11 @@ def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
     """
     # Z-axis
     if plane is Plane.XY:
-        z_axis = numpy.array([0, 0, 1])
-    elif plane is Plane.YZ:
-        z_axis = numpy.array([-1, 0, 0])
+        z_axis = _RIGHTHAND_CS[2]
     elif plane is Plane.XZ:
-        # Get z-axis perpendicular to plane of circle (can be any)
-        z_axis = numpy.cross(veca, vecb)
-        z_axis[2] = abs(z_axis[2])
-        z_len = numpy.sqrt(numpy.sum(z_axis ** 2))
+        z_axis = _RIGHTHAND_CS[1]
+    elif plane is Plane.YZ:
+        z_axis = _RIGHTHAND_CS[0]
     elif plane is Plane.ANY:
         # Get z-axis perpendicular to plane of circle (can be any)
         z_axis = numpy.cross(veca, vecb)
