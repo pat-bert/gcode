@@ -59,8 +59,8 @@ class PidCtrl:
         self.kp, self.ki, self.kd = args
 
     def update_input(self):
-        # TODO Update with measurement
         self.pv = 0
+        raise NotImplementedError
 
     def update_output(self):
         self.e = self.set_point - self.pv

@@ -4,13 +4,14 @@ from typing import *
 import numpy
 
 from AM_IR import ApplicationExceptions
-from AM_IR.ApplicationExceptions import UnknownPlaneError
+from AM_IR.ApplicationExceptions import UnknownPlaneError, IllegalAngleError
 from AM_IR.Coordinate import Coordinate
 from AM_IR.MelfaCoordinateService import Plane
 
 # Global coordinate system
 
 _RIGHTHAND_CS = [numpy.array([1, 0, 0]), numpy.array([0, 1, 0]), numpy.array([0, 0, 1])]
+_RIGHTHAND_AXES = 'XYZ'
 
 
 def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
@@ -118,10 +119,10 @@ def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, plane: 
     return atan2(y_b, x_b) - atan2(y_a, x_a)
 
 
-def get_intermediate_points(angle: float, start: Coordinate, target: Coordinate, center: Coordinate,
-                            plane: Plane, normal_vec: Union[Coordinate, None] = None) -> Coordinate:
+def get_intermediate_point(angle: float, start: Coordinate, target: Coordinate, center: Coordinate,
+                           plane: Plane, normal_vec: Union[Coordinate, None] = None) -> Coordinate:
     """
-    Calculates intermediate points on a given arc
+    Calculates intermediate point on a given arc
     :param angle: Total angle described by the arc
     :param start: Starting point
     :param target: Target point
@@ -130,6 +131,12 @@ def get_intermediate_points(angle: float, start: Coordinate, target: Coordinate,
     :param normal_vec: Normal vector for unusual plane
     :return: coordinates of an intermediate point (half the angle)
     """
+    if abs(angle) > 2 * pi:
+        raise IllegalAngleError("Angles with absolute value greater that 2 pi are not allowed.")
+
+    if abs((center - start).vector_len() - (center - target).vector_len()) > 0.0001:
+        raise ValueError("Start and end point are not equidistant from center.")
+
     # Point in the middle of start and target on a direct line
     middle = 0.5 * (target - start) + start
     cm = middle - center
@@ -140,24 +147,43 @@ def get_intermediate_points(angle: float, start: Coordinate, target: Coordinate,
     # Half circle
     elif abs(angle) == pi:
         if plane is Plane.XY:
-            normal_r = _RIGHTHAND_CS[2]
+            normal_vec = _RIGHTHAND_CS[2]
+            # Convert to coordinate
+            normal_vec = Coordinate(normal_vec, _RIGHTHAND_AXES)
         elif plane is Plane.XZ:
-            normal_r = _RIGHTHAND_CS[1]
+            normal_vec = _RIGHTHAND_CS[1]
+            # Convert to coordinate
+            normal_vec = Coordinate(normal_vec, _RIGHTHAND_AXES)
         elif plane is Plane.YZ:
-            normal_r = _RIGHTHAND_CS[0]
+            normal_vec = _RIGHTHAND_CS[0]
+            # Convert to coordinate
+            normal_vec = Coordinate(normal_vec, _RIGHTHAND_AXES)
         elif plane is Plane.ANY:
-            normal_r = (target - center).cross(normal_vec)
+            pass
         else:
             raise ApplicationExceptions.MelfaBaseException("Unknown plane supplied.")
+
+        # Calculate and resize radial normal vector
+        normal_r = (target - center).cross(normal_vec)
+        normal_r /= normal_r.vector_len()
+
+        # Orientation
         if angle < 0:
             normal_r *= -1
-        intermediate = center + normal_r
+
+        # Resize sc
+        # sc = (center - start)
+        # sc_r = sc / sc.vector_len()
+
+        # Calculate center-intermediate
+        # ci = normal_r * sc.vector_len()
+
+        # intermediate = center + ci
+        intermediate = center + normal_r * (center - start).vector_len()
     else:
         cm_rescaled = cm / (cm.vector_len()) * (center - start).vector_len()
         if pi > abs(angle) > 0:
             intermediate = center + cm_rescaled
-        elif pi < abs(angle) < 2 * pi:
-            intermediate = center - cm_rescaled
         else:
-            raise NotImplementedError
+            intermediate = center - cm_rescaled
     return intermediate

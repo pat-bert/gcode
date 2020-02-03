@@ -16,7 +16,7 @@ class TestCoordinate:
         a = Coordinate((0, 0, None), 'XYZ')
         b = Coordinate((1, 2, 3), 'XYZ')
         a.update_empty(b)
-        assert list(a.coordinate.values()) == [0, 0, 3] and list(a.coordinate.keys()) == ['X', 'Y', 'Z']
+        assert list(a.values) == [0, 0, 3] and list(a.axes) == ['X', 'Y', 'Z']
 
     def test_update_empty_exception(self):
         """
@@ -39,7 +39,7 @@ class TestCoordinate:
         """
         a = Coordinate((1, -3, None), test_input)
         a.reduce_to_axes(remaining)
-        assert ''.join(list(a.coordinate.keys())) == expected
+        assert ''.join(list(a.axes)) == expected
 
     @pytest.mark.parametrize("values_first,values_second,expected", [([10, 5], [-3, 4], -10), ([10, 0], [-3, 4], -30)])
     def test_dot_compatible_axes(self, values_first, values_second, expected):
@@ -76,12 +76,12 @@ class TestCoordinate:
         with pytest.raises(TypeError):
             a.dot(b)
 
-    @pytest.mark.parametrize("values_first,values_second,values_result", [([1, 0, 0], [0, 1, 0], [0, 0, 1])])
+    @pytest.mark.parametrize("values_first,values_second,values_result", [([1, 0, 0], [0, 1, 0], (0, 0, 1))])
     def test_cross(self, values_first, values_second, values_result):
         a = Coordinate(values_first, 'XYZ')
         b = Coordinate(values_second, 'XYZ')
         result = a.cross(b)
-        assert list(result.coordinate.values()) == values_result
+        assert list(result.values) == list(values_result)
 
     def test_cross_incompatible_axes(self):
         a = Coordinate((0, 0, None), 'XYZ')

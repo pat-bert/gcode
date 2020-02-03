@@ -64,3 +64,7 @@ ErrorDispatch = {
     COMMAND_OK_INVALID: MelfaInvalidCommand,
     COMMAND_NOK: MelfaUnknownCommand
 }
+
+
+class IllegalAngleError(ApiException):
+    pass

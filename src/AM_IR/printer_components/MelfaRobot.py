@@ -7,7 +7,7 @@ from AM_IR.ApplicationExceptions import MelfaBaseException
 from AM_IR.Coordinate import Coordinate
 from AM_IR.GRedirect import RedirectionTargets
 from AM_IR.MelfaCoordinateService import MelfaCoordinateService, Plane
-from AM_IR.circle_util import get_angle, get_intermediate_points
+from AM_IR.circle_util import get_angle, get_intermediate_point
 from AM_IR.gcode.GCmd import GCmd
 from AM_IR.melfa import MelfaCmd
 from AM_IR.melfa.TcpClientR3 import TcpClientR3
@@ -207,6 +207,7 @@ class MelfaRobot(PrinterComponent):
                 raise NotImplementedError
 
     def _prepare_circle(self) -> None:
+        # TODO Switch to using external variables available in robot
         try:
             self.tcp.send('EXECDEF POS P1')
             self.tcp.receive()
@@ -423,7 +424,7 @@ class MelfaRobot(PrinterComponent):
 
             # Intermediate points for angles >= 180°
             if abs(angle) >= pi:
-                im_pos = get_intermediate_points(angle, start_pos, target_pos, center_pos, self.active_plane)
+                im_pos = get_intermediate_point(angle, start_pos, target_pos, center_pos, self.active_plane)
 
                 # Global variables
                 self.set_global_positions(['P1', 'P2', 'P3'], [start_pos, im_pos, target_pos])

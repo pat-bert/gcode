@@ -47,7 +47,7 @@ class Coordinate:
 
     def reduce_to_axes(self, axes_to_keep, make_none=False):
         if make_none:
-            self.coordinate = {key: None for key in self.coordinate.keys() if key not in axes_to_keep}
+            self.coordinate = {key: None for key in self.axes if key not in axes_to_keep}
         else:
             self.coordinate = {key: val for key, val in self.coordinate.items() if key in axes_to_keep}
 
@@ -58,7 +58,7 @@ class Coordinate:
         """
         if self.print_axes is not None:
             txt = ['{}{:.{d}f}'.format(key, v, d=self.digits) for (key, v) in
-                   zip(self.print_axes, self.coordinate.values())
+                   zip(self.print_axes, self.values)
                    if v is not None]
         else:
             txt = ['{}{:.{d}f}'.format(key, v, d=self.digits) for (key, v) in self.coordinate.items() if v is not None]
@@ -70,8 +70,8 @@ class Coordinate:
         :param other: Set of coordinates to be added
         :return: New set of coordinates as sum of both inputs
         """
-        axis_list = self.coordinate.keys()
-        if axis_list == other.coordinate.keys():
+        if self._are_axes_compatible(other):
+            axis_list = self.axes
             values = []
             for axis in axis_list:
                 try:
@@ -99,8 +99,8 @@ class Coordinate:
             return self.__add__(other)
 
     def __sub__(self, other: 'Coordinate') -> 'Coordinate':
-        axis_list = self.coordinate.keys()
-        if axis_list == other.coordinate.keys():
+        if self._are_axes_compatible(other):
+            axis_list = self.axes
             values = [self.coordinate[axis] - other.coordinate[axis] for axis in axis_list]
             digits = min(self.digits, other.digits)
             return Coordinate(values, axis_list, digits)
@@ -122,7 +122,7 @@ class Coordinate:
         :return: New set of coordinates
         """
         values = [val * other if val is not None else None for axis, val in self.coordinate.items()]
-        return Coordinate(values, list(self.coordinate.keys()), self.digits)
+        return Coordinate(values, self.axes, self.digits)
 
     def __rmul__(self, other: Union[float, int]) -> 'Coordinate':
         """
@@ -151,20 +151,17 @@ class Coordinate:
         :param other:
         :return:
         """
-        axis_list = self.coordinate.keys()
-        if axis_list == other.coordinate.keys():
-            values = [self.coordinate[axis] * other.coordinate[axis] for axis in axis_list]
+        if self._are_axes_compatible(other):
+            values = [self.coordinate[axis] * other.coordinate[axis] for axis in self.axes]
             return sum(values)
         else:
             raise TypeError('Incompatible axis.')
 
     def cross(self, other: 'Coordinate') -> 'Coordinate':
-        axis_list = self.coordinate.keys()
-        if axis_list == other.coordinate.keys():
+        if self._are_axes_compatible(other):
+            axis_list = self.axes
             digits = min(self.digits, other.digits)
             values = []
-
-            axis_list = list(axis_list)
 
             indices_a = [i for i in range(1, len(axis_list))] + [0]
             indices_b = [len(axis_list) - 1] + [i for i in range(0, len(axis_list) - 1)]
@@ -179,6 +176,17 @@ class Coordinate:
 
     def vector_len(self):
         root_sum = 0
-        for axis in self.coordinate.keys():
+        for axis in self.axes:
             root_sum += self.coordinate[axis] ** 2
         return sqrt(root_sum)
+
+    @property
+    def axes(self) -> List:
+        return list(self.coordinate.keys())
+
+    @property
+    def values(self) -> List:
+        return list(self.coordinate.values())
+
+    def _are_axes_compatible(self, other: 'Coordinate') -> bool:
+        return sorted(self.axes) == sorted(other.axes)
