@@ -110,7 +110,7 @@ class MelfaRobot(PrinterComponent):
             self.tcp.close()
 
     def activate_work_coordinate(self, active: bool) -> None:
-        # TODO Clean this up (is not considered in demo mode yet), implement homing
+        # TODO Clean this up in demo mode
         if active:
             # Activate coordinate system
             self.tcp.send(MelfaCmd.DIRECT_CMD + 'BASE (-500,0,-200,0,0,0)')
@@ -184,7 +184,7 @@ class MelfaRobot(PrinterComponent):
 
             # Homing
             elif gcode.id == 'G28':
-                raise NotImplementedError("Homing is not supported yet.")
+                self.go_home(option=gcode.home_opt)
 
             # Absolute/Relative mode
             elif gcode.id == 'G90':
@@ -317,14 +317,23 @@ class MelfaRobot(PrinterComponent):
 
     # Movement functions
 
-    def go_home(self) -> None:
+    def go_home(self, option=None) -> None:
         """
         Moves the robot to its current home point (current work coordinate origin or global safe position respectively)
         :return:
         """
         if self.work_coordinate_active:
+            # Acquire new zero coordinate
+            zero = self._zero()
+
+            if option is not None:
+                zero.reduce_to_axes(option, make_none=True)
+
+            # Acquire current position to determine robot orientation
             current_position = self.get_pos()
-            self.zero.update_empty(current_position)
+            zero.update_empty(current_position)
+
+            # Move to zero
             self.linear_move_poll(self.zero)
         else:
             self.go_safe_pos()
@@ -514,3 +523,6 @@ class MelfaRobot(PrinterComponent):
         # TODO Implement waiting (G04)
         # self.tcp.wait_send('DLY')
         raise NotImplementedError
+
+    def _zero(self):
+        return Coordinate(self.zero.coordinate.values(), self.zero.coordinate.keys())
