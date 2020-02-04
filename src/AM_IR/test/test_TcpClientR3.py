@@ -17,11 +17,7 @@ class TestTcpClientR3:
         assert False
 
     def test_send_message_too_long(self):
-        tcp = TcpClientR3()
-        tcp.connect()
-
-        with pytest.raises(ValueError):
-            tcp.send("T" * 128)
+        assert False
 
     def test_wait_send(self):
         assert False
