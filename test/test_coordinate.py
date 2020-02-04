@@ -1,6 +1,6 @@
 import pytest
 
-from AM_IR.Coordinate import Coordinate
+from src.Coordinate import Coordinate
 
 
 class TestCoordinate:

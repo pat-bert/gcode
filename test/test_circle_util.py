@@ -2,10 +2,10 @@ from math import pi, sqrt
 
 import pytest
 
-from AM_IR.ApplicationExceptions import UnknownPlaneError, IllegalAngleError
-from AM_IR.Coordinate import Coordinate
-from AM_IR.MelfaCoordinateService import Plane
-from AM_IR.circle_util import get_angle, get_intermediate_point
+from src.ApplicationExceptions import UnknownPlaneError, IllegalAngleError
+from src.Coordinate import Coordinate
+from src.MelfaCoordinateService import Plane
+from src.circle_util import get_angle, get_intermediate_point
 
 
 @pytest.mark.parametrize("plane,normal_v", [(Plane.XY, None)])

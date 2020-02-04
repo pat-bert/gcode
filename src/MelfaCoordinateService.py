@@ -1,7 +1,7 @@
 from enum import unique, Enum
 from typing import *
 
-from AM_IR.Coordinate import Coordinate
+from src.Coordinate import Coordinate
 
 
 @unique

@@ -1,9 +1,9 @@
 import time
 from time import sleep
 
-from AM_IR.ApplicationExceptions import TcpError
-from AM_IR.melfa import MelfaCmd
-from AM_IR.melfa.TcpClientR3 import TcpClientR3
+from src.ApplicationExceptions import TcpError
+from src.melfa import MelfaCmd
+from src.melfa.TcpClientR3 import TcpClientR3
 
 
 def cmd_coordinate_response(tcp_client, command):

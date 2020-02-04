@@ -1,4 +1,4 @@
-from AM_IR.BaseCmd import BaseCmd
+from src.BaseCmd import BaseCmd
 
 
 class GResponse(BaseCmd):

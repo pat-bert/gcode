@@ -40,14 +40,14 @@ import os
 import sys
 
 # Own libraries
-from AM_IR.ApplicationExceptions import ApiException
-from AM_IR.GRedirect import GRedirect
-from AM_IR.cli_commands.demo import demo_mode
-from AM_IR.cli_commands.execute_r3 import execute_r3
-from AM_IR.cli_commands.interactive_gcode import interactive_gcode
-from AM_IR.cli_commands.interactive_melfa import interactive_melfa
-from AM_IR.cli_commands.interpret_gcode import interpret_gcode
-from AM_IR.exit_codes import *
+from src.ApplicationExceptions import ApiException
+from src.GRedirect import GRedirect
+from src.cli_commands.demo import demo_mode
+from src.cli_commands.execute_r3 import execute_r3
+from src.cli_commands.interactive_gcode import interactive_gcode
+from src.cli_commands.interactive_melfa import interactive_melfa
+from src.cli_commands.interpret_gcode import interpret_gcode
+from src.exit_codes import *
 
 # Third-party libraries
 try:

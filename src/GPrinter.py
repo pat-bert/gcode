@@ -1,13 +1,13 @@
 from typing import *
 
-from AM_IR.printer_components.Extruder import Extruder
-from AM_IR.gcode.GCmd import GCmd
-from AM_IR.GRedirect import RedirectionTargets, GRedirect
-from AM_IR.printer_components.Heater import Heater
-from AM_IR.printer_components.MelfaRobot import MelfaRobot
-from AM_IR.printer_components.PrinterComponent import PrinterComponent
-from AM_IR.melfa.TcpClientR3 import TcpClientR3
-from AM_IR.printer_components.UxHandler import UxHandler
+from src.printer_components.Extruder import Extruder
+from src.gcode.GCmd import GCmd
+from src.GRedirect import RedirectionTargets, GRedirect
+from src.printer_components.Heater import Heater
+from src.printer_components.MelfaRobot import MelfaRobot
+from src.printer_components.PrinterComponent import PrinterComponent
+from src.melfa.TcpClientR3 import TcpClientR3
+from src.printer_components.UxHandler import UxHandler
 
 
 class GPrinter(object):

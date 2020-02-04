@@ -2,17 +2,17 @@ from math import pi
 from time import sleep
 from typing import *
 
-from AM_IR import ApplicationExceptions
-from AM_IR.ApplicationExceptions import MelfaBaseException
-from AM_IR.Coordinate import Coordinate
-from AM_IR.GRedirect import RedirectionTargets
-from AM_IR.MelfaCoordinateService import MelfaCoordinateService, Plane
-from AM_IR.circle_util import get_angle, get_intermediate_point
-from AM_IR.gcode.GCmd import GCmd
-from AM_IR.melfa import MelfaCmd
-from AM_IR.melfa.TcpClientR3 import TcpClientR3
-from AM_IR.printer_components.PrinterComponent import PrinterComponent
-from AM_IR.refactor import cmp_response
+from src import ApplicationExceptions
+from src.ApplicationExceptions import MelfaBaseException
+from src.Coordinate import Coordinate
+from src.GRedirect import RedirectionTargets
+from src.MelfaCoordinateService import MelfaCoordinateService, Plane
+from src.circle_util import get_angle, get_intermediate_point
+from src.gcode.GCmd import GCmd
+from src.melfa import MelfaCmd
+from src.melfa.TcpClientR3 import TcpClientR3
+from src.printer_components.PrinterComponent import PrinterComponent
+from src.refactor import cmp_response
 
 
 class MelfaRobot(PrinterComponent):

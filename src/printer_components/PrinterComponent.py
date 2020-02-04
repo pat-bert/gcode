@@ -1,5 +1,5 @@
 import abc
-from AM_IR.GRedirect import RedirectionTargets
+from src.GRedirect import RedirectionTargets
 from typing import *
 
 

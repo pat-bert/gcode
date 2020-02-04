@@ -1,6 +1,6 @@
 from typing import *
 
-from AM_IR.BaseCmd import BaseCmd
+from src.BaseCmd import BaseCmd
 
 # Basic commands for R3 protocol
 DELIMITER = ';'

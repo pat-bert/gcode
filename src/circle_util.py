@@ -3,10 +3,10 @@ from typing import *
 
 import numpy
 
-from AM_IR import ApplicationExceptions
-from AM_IR.ApplicationExceptions import UnknownPlaneError, IllegalAngleError
-from AM_IR.Coordinate import Coordinate
-from AM_IR.MelfaCoordinateService import Plane
+from src import ApplicationExceptions
+from src.ApplicationExceptions import UnknownPlaneError, IllegalAngleError
+from src.Coordinate import Coordinate
+from src.MelfaCoordinateService import Plane
 
 # Global coordinate system
 

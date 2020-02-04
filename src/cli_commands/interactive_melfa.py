@@ -1,9 +1,9 @@
 from time import sleep
 
-from AM_IR import ApplicationExceptions
-from AM_IR.melfa import MelfaCmd
-from AM_IR.printer_components.MelfaRobot import MelfaRobot
-from AM_IR.melfa.TcpClientR3 import TcpClientR3
+from src import ApplicationExceptions
+from src.melfa import MelfaCmd
+from src.printer_components.MelfaRobot import MelfaRobot
+from src.melfa.TcpClientR3 import TcpClientR3
 
 
 def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:

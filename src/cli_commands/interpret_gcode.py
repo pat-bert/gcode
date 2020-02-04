@@ -1,7 +1,7 @@
-from AM_IR.ApplicationExceptions import GCmdError, MelfaBaseException
-from AM_IR.gcode.GCmd import GCmd
-from AM_IR.printer_components.MelfaRobot import MelfaRobot
-from AM_IR.melfa.TcpClientR3 import AbstractTcp
+from src.ApplicationExceptions import GCmdError, MelfaBaseException
+from src.gcode.GCmd import GCmd
+from src.printer_components.MelfaRobot import MelfaRobot
+from src.melfa.TcpClientR3 import AbstractTcp
 
 
 def interpret_gcode(f_input: str, f_output: str = 'out.txt') -> None:

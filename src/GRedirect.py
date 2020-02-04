@@ -1,6 +1,6 @@
 from enum import unique, Enum
 
-from AM_IR.gcode.GCmd import GCmd
+from src.gcode.GCmd import GCmd
 
 
 @unique

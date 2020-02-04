@@ -1,5 +1,5 @@
-from AM_IR.GRedirect import RedirectionTargets
-from AM_IR.printer_components.PrinterComponent import PrinterComponent
+from src.GRedirect import RedirectionTargets
+from src.printer_components.PrinterComponent import PrinterComponent
 
 
 class Heater(PrinterComponent):

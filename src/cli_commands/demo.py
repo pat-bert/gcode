@@ -1,10 +1,10 @@
 import time
 
-from AM_IR import ApplicationExceptions
-from AM_IR.Coordinate import Coordinate
-from AM_IR.printer_components.MelfaRobot import MelfaRobot
-from AM_IR.melfa.TcpClientR3 import TcpClientR3
-from AM_IR.speed_profile import draw_speed
+from src import ApplicationExceptions
+from src.Coordinate import Coordinate
+from src.printer_components.MelfaRobot import MelfaRobot
+from src.melfa.TcpClientR3 import TcpClientR3
+from src.speed_profile import draw_speed
 
 
 def cube(robot: MelfaRobot, speed: float) -> None:

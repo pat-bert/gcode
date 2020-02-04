@@ -1,6 +1,6 @@
-from AM_IR import ApplicationExceptions
-from AM_IR.gcode.GCmd import GCmd
-from AM_IR.GPrinter import GPrinter
+from src import ApplicationExceptions
+from src.gcode.GCmd import GCmd
+from src.GPrinter import GPrinter
 
 
 def interactive_gcode(ip, port, log_file=None, safe_return=False) -> None:

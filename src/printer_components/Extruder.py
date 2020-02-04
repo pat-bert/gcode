@@ -1,6 +1,6 @@
-from AM_IR.GRedirect import RedirectionTargets
-from AM_IR.gcode.GCmd import GCmd
-from AM_IR.printer_components.PrinterComponent import PrinterComponent
+from src.GRedirect import RedirectionTargets
+from src.gcode.GCmd import GCmd
+from src.printer_components.PrinterComponent import PrinterComponent
 
 
 class Extruder(PrinterComponent):
