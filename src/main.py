@@ -32,7 +32,7 @@ Options:
     --ghelp         List supported G-code commands.
 
 """
-__version__ = '0.1.0'
+__version__ = '0.1.0'  # pragma: no mutate
 
 # Built-in libraries
 import logging
