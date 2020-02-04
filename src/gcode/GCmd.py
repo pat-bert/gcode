@@ -8,38 +8,48 @@ class GCmd(BaseCmd):
     """
     This class implements a base G-code command.
     """
+
     # Define number of relevant post-comma digits
     DIGITS = 2
     # Code standard
     CMD_REMOVE_LEAD_ZERO = True
     # Define axis descriptors for absolute coordinates
-    ABS_AXES = 'XYZ'
+    ABS_AXES = "XYZ"
     # Define axis descriptors for relative coordinates
-    REL_AXES = 'IJK'
+    REL_AXES = "IJK"
     # Define speed descriptor
-    SPEED_DESCRIPTOR = 'F'
+    SPEED_DESCRIPTOR = "F"
     # Define feeder descriptor
-    FEED_DESCRIPTOR = 'E'
+    FEED_DESCRIPTOR = "E"
     # Time descriptors
-    TIME_MS_DESCRIPTOR = 'P'
-    TIME_S_DESCRIPTOR = 'S'
+    TIME_MS_DESCRIPTOR = "P"
+    TIME_S_DESCRIPTOR = "S"
     # M-command descriptor
-    M_DESCRIPTOR = 'S'
+    M_DESCRIPTOR = "S"
     # Homing command
-    HOME_CMD = 'G28'
+    HOME_CMD = "G28"
     # Command types that allow misc arguments
-    MISC_CMD_IDS = 'M'
+    MISC_CMD_IDS = "M"
     # Comment descriptor
-    COMMENT = ';'
+    COMMENT = ";"
     # Supported commands
     SUPPORTED_G_CODES = {
-        'G': [0, 1, 2, 3, 4, 17, 18, 19, 20, 21, 28, 90, 91],
-        'M': [104, 106, 109, 140],
+        "G": [0, 1, 2, 3, 4, 17, 18, 19, 20, 21, 28, 90, 91],
+        "M": [104, 106, 109, 140],
     }
 
-    def __init__(self, code_id: str, abs_cr: Tuple[float] = None, rel_cr: Tuple[float] = None, speed: float = None,
-                 f_speed: float = None, time_ms: int = None, misc_cmd: Union[float, str] = None, home: str = '',
-                 line_number: int = None) -> None:
+    def __init__(
+            self,
+            code_id: str,
+            abs_cr: Tuple[float] = None,
+            rel_cr: Tuple[float] = None,
+            speed: float = None,
+            f_speed: float = None,
+            time_ms: int = None,
+            misc_cmd: Union[float, str] = None,
+            home: str = "",
+            line_number: int = None,
+    ) -> None:
         """
         Initialise an object.
         :param code_id: G-Code identifier
@@ -54,7 +64,9 @@ class GCmd(BaseCmd):
         """
         self.id = code_id
         self.cartesian_abs: Coordinate = Coordinate(abs_cr, self.ABS_AXES, self.DIGITS)
-        self.cartesian_rel: Coordinate = Coordinate(rel_cr, self.ABS_AXES, self.DIGITS, print_axes=self.REL_AXES)
+        self.cartesian_rel: Coordinate = Coordinate(
+            rel_cr, self.ABS_AXES, self.DIGITS, print_axes=self.REL_AXES
+        )
         self.speed = speed
         self.feeder_speed = f_speed
         self.time_ms = time_ms
@@ -63,7 +75,7 @@ class GCmd(BaseCmd):
         self.line_number = line_number
 
         if not self._is_valid():
-            raise ValueError('Unsupported or unknown command passed: ' + self.id)
+            raise ValueError("Unsupported or unknown command passed: " + self.id)
 
     def _is_valid(self) -> bool:
         """
@@ -72,7 +84,10 @@ class GCmd(BaseCmd):
         """
         cmd_char = self.id[0]
         cmd_cnt = int(self.id[1:])
-        return cmd_char in self.SUPPORTED_G_CODES.keys() and cmd_cnt in self.SUPPORTED_G_CODES[cmd_char]
+        return (
+                cmd_char in self.SUPPORTED_G_CODES.keys()
+                and cmd_cnt in self.SUPPORTED_G_CODES[cmd_char]
+        )
 
     def __str__(self):
         """
@@ -81,37 +96,47 @@ class GCmd(BaseCmd):
         if self.cartesian_abs is not None:
             abs_str = str(self.cartesian_abs)
             if len(abs_str) > 0:
-                abs_str += ' '
+                abs_str += " "
         else:
-            abs_str = ''
+            abs_str = ""
 
         if self.cartesian_rel is not None:
             rel_str = str(self.cartesian_rel)
             for abs_axis, rel_axis in zip(self.ABS_AXES, self.REL_AXES):
                 rel_str = rel_str.replace(abs_axis, rel_axis)
             if len(rel_str) > 0:
-                rel_str += ' '
+                rel_str += " "
         else:
-            rel_str = ''
+            rel_str = ""
 
         speed_str = self.combine(self.SPEED_DESCRIPTOR, self.speed)
         feeder_speed_str = self.combine(self.FEED_DESCRIPTOR, self.feeder_speed)
         time_str = self.combine(self.TIME_MS_DESCRIPTOR, self.time_ms)
         m_str = self.combine(self.M_DESCRIPTOR, self.machine_option)
-        home_str = ' '.join(self.home_opt)
+        home_str = " ".join(self.home_opt)
 
-        total_str = str(self.id) + ' ' + abs_str + rel_str + speed_str + feeder_speed_str + time_str + m_str + home_str
+        total_str = (
+                str(self.id)
+                + " "
+                + abs_str
+                + rel_str
+                + speed_str
+                + feeder_speed_str
+                + time_str
+                + m_str
+                + home_str
+        )
         return total_str.strip()
 
     @classmethod
-    def read_cmd_str(cls, command_str: str) -> Union['GCmd', None]:
+    def read_cmd_str(cls, command_str: str) -> Union["GCmd", None]:
         """
         Converts a command string into an object.
         :param command_str: Input string
         :return:
         """
         # Split space-separated parts of the command
-        segments = command_str.split(' ')
+        segments = command_str.split(" ")
 
         if command_str.startswith(cls.COMMENT):
             # Passed string is a comment so you cannot return a command/maybe an empty one in the future
@@ -164,18 +189,28 @@ class GCmd(BaseCmd):
                 # Get absolute coordinates or home axis respectively
                 if cmd_id == cls.HOME_CMD:
                     abs_cr = None
-                    home = ''.join([axis for axis in cls.ABS_AXES if axis in args])
+                    home = "".join([axis for axis in cls.ABS_AXES if axis in args])
                 else:
-                    home = ''
+                    home = ""
                     abs_cr = list(args.get(axis, None) for axis in cls.ABS_AXES)
                     abs_cr = cls.expand_coordinates(abs_cr)
 
                 # Initialise command
-                return cls(cmd_id, abs_cr=abs_cr, rel_cr=rel_cr, speed=speed, f_speed=f_speed, time_ms=time_ms,
-                           misc_cmd=misc_cmd, home=home)
+                return cls(
+                    cmd_id,
+                    abs_cr=abs_cr,
+                    rel_cr=rel_cr,
+                    speed=speed,
+                    f_speed=f_speed,
+                    time_ms=time_ms,
+                    misc_cmd=misc_cmd,
+                    home=home,
+                )
 
     @classmethod
-    def expand_coordinates(cls, coordinates: List[Union[str, None]]) -> Union[Tuple[float], None]:
+    def expand_coordinates(
+            cls, coordinates: List[Union[str, None]]
+    ) -> Union[Tuple[float], None]:
         """
 
         :param coordinates:

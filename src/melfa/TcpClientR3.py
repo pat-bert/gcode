@@ -36,20 +36,23 @@ class TcpClientR3(AbstractTcp):
     """
     Implements the PC-side of the TCP/IP connection.
     """
+
     # Network parameters
-    HOST = '192.168.0.1'
+    HOST = "192.168.0.1"
     PORT = 10002
     BUFSIZE = 1024
 
     # Delimiter
     DELIMITER = MelfaCmd.DELIMITER
-    ENCODING = 'utf-8'
+    ENCODING = "utf-8"
 
     # Parameters for R3 protocol
     ROBOT_NO = 1
     PROGRAM_NO = 1
 
-    def __init__(self, host: str = HOST, port: int = PORT, bufsize: int = BUFSIZE) -> None:
+    def __init__(
+            self, host: str = HOST, port: int = PORT, bufsize: int = BUFSIZE
+    ) -> None:
         """
         Initialises the objects for the TCP communication
         :param host: Host IP-Address
@@ -113,7 +116,9 @@ class TcpClientR3(AbstractTcp):
         self.s.close()
         print("Done.")
 
-    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False) -> None:
+    def send(
+            self, msg: str, silent_send: bool = False, silent_recv: bool = False
+    ) -> None:
         """
         Sends a message via the worker thread for the protocol communication.
         :param msg:
@@ -127,7 +132,7 @@ class TcpClientR3(AbstractTcp):
                 msg = Msg(msg, silent_send, silent_recv)
                 self.send_q.put(msg)
             else:
-                raise ValueError('The message cannot be longer than 127 characters.')
+                raise ValueError("The message cannot be longer than 127 characters.")
 
     def wait_send(self, msg: str) -> None:
         """
@@ -168,7 +173,13 @@ class TcpClientR3(AbstractTcp):
             msg, silent_send, silent_recv = msg.unpack()
 
             # Robot message
-            msg_str = str(self.ROBOT_NO) + self.DELIMITER + str(self.PROGRAM_NO) + self.DELIMITER + str(msg)
+            msg_str = (
+                    str(self.ROBOT_NO)
+                    + self.DELIMITER
+                    + str(self.PROGRAM_NO)
+                    + self.DELIMITER
+                    + str(msg)
+            )
             if not silent_send:
                 print("Sending:\t " + msg_str)
             msg_b = bytes(msg_str, encoding=self.ENCODING)

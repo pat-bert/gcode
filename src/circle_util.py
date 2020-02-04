@@ -11,7 +11,7 @@ from src.MelfaCoordinateService import Plane
 # Global coordinate system
 
 _RIGHTHAND_CS = [numpy.array([1, 0, 0]), numpy.array([0, 1, 0]), numpy.array([0, 0, 1])]
-_RIGHTHAND_AXES = 'XYZ'
+_RIGHTHAND_AXES = "XYZ"
 
 
 def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
@@ -46,9 +46,12 @@ def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
                 assert numpy.dot(normal_vec, veca) == 0 and numpy.dot(normal_vec, vecb)
             except TypeError:
                 raise ApplicationExceptions.MelfaBaseException(
-                    "Normal vector must be supplied if vectors are collinear.")
+                    "Normal vector must be supplied if vectors are collinear."
+                )
             except AssertionError:
-                raise ApplicationExceptions.MelfaBaseException("Normal vector supplied is not normal to circle.")
+                raise ApplicationExceptions.MelfaBaseException(
+                    "Normal vector supplied is not normal to circle."
+                )
             else:
                 z_axis = normal_vec
     else:
@@ -65,7 +68,9 @@ def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
     return x_axis, y_axis, z_axis
 
 
-def get_np_vectors(start: Coordinate, target: Coordinate, center: Coordinate, normal_vec: Coordinate):
+def get_np_vectors(
+        start: Coordinate, target: Coordinate, center: Coordinate, normal_vec: Coordinate
+):
     # Get vectors from center
     cs = start - center
     ct = target - center
@@ -87,8 +92,13 @@ def project_vector(vec, *axes):
     return proj
 
 
-def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, plane: Plane,
-              normal_vec: Union[Coordinate, None] = None) -> float:
+def get_angle(
+        start: Coordinate,
+        target: Coordinate,
+        center: Coordinate,
+        plane: Plane,
+        normal_vec: Union[Coordinate, None] = None,
+) -> float:
     """
     Calculates the angle between three points in R^3
     :param start:   Starting point for arc
@@ -101,10 +111,10 @@ def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, plane: 
 
     # Remove any robot specific coordinates
     if normal_vec is not None:
-        normal_vec.reduce_to_axes('XYZ')
-    start.reduce_to_axes('XYZ')
-    target.reduce_to_axes('XYZ')
-    center.reduce_to_axes('XYZ')
+        normal_vec.reduce_to_axes("XYZ")
+    start.reduce_to_axes("XYZ")
+    target.reduce_to_axes("XYZ")
+    center.reduce_to_axes("XYZ")
 
     normal_vec, veca, vecb = get_np_vectors(start, target, center, normal_vec)
 
@@ -119,8 +129,14 @@ def get_angle(start: Coordinate, target: Coordinate, center: Coordinate, plane: 
     return atan2(y_b, x_b) - atan2(y_a, x_a)
 
 
-def get_intermediate_point(angle: float, start: Coordinate, target: Coordinate, center: Coordinate,
-                           plane: Plane, normal_vec: Union[Coordinate, None] = None) -> Coordinate:
+def get_intermediate_point(
+        angle: float,
+        start: Coordinate,
+        target: Coordinate,
+        center: Coordinate,
+        plane: Plane,
+        normal_vec: Union[Coordinate, None] = None,
+) -> Coordinate:
     """
     Calculates intermediate point on a given arc
     :param angle: Total angle described by the arc
@@ -132,7 +148,9 @@ def get_intermediate_point(angle: float, start: Coordinate, target: Coordinate, 
     :return: coordinates of an intermediate point (half the angle)
     """
     if abs(angle) > 2 * pi:
-        raise IllegalAngleError("Angles with absolute value greater that 2 pi are not allowed.")
+        raise IllegalAngleError(
+            "Angles with absolute value greater that 2 pi are not allowed."
+        )
 
     if abs((center - start).vector_len() - (center - target).vector_len()) > 0.0001:
         raise ValueError("Start and end point are not equidistant from center.")

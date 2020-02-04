@@ -4,7 +4,7 @@ from src.printer_components.MelfaRobot import MelfaRobot
 from src.melfa.TcpClientR3 import AbstractTcp
 
 
-def interpret_gcode(f_input: str, f_output: str = 'out.txt') -> None:
+def interpret_gcode(f_input: str, f_output: str = "out.txt") -> None:
     """
     Interpret a G-code file and translate it to R3 protocol commands.
     :param f_input: Input file path
@@ -15,7 +15,7 @@ def interpret_gcode(f_input: str, f_output: str = 'out.txt') -> None:
     # Read input file and translate commands
     print("Parsing G-Code...")
     try:
-        with open(f_input, 'r') as f:
+        with open(f_input, "r") as f:
             gcode_list = [GCmd.read_cmd_str(line) for line in f.readlines()]
     except OSError:
         print("Error reading file.")
@@ -31,7 +31,9 @@ def interpret_gcode(f_input: str, f_output: str = 'out.txt') -> None:
     robot = MelfaRobot(tcp_client=AbstractTcp)
     print("Translating commands to R3 protocol commands...")
     try:
-        r3_code_list = [robot.handle_gcode(gcode, interactive=False) for gcode in gcode_list]
+        r3_code_list = [
+            robot.handle_gcode(gcode, interactive=False) for gcode in gcode_list
+        ]
     except MelfaBaseException:
         print("Error translating G-code.")
         raise
@@ -41,7 +43,7 @@ def interpret_gcode(f_input: str, f_output: str = 'out.txt') -> None:
     # Write R3 commands to output file
     print("Writing R3 commands...")
     try:
-        with open(f_output, 'w') as f:
+        with open(f_output, "w") as f:
             f.writelines([str(r3_code) for r3_code in r3_code_list])
     except OSError:
         print("Error writing file.")

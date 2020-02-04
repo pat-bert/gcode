@@ -62,7 +62,7 @@ ErrorDispatch = {
     COMMAND_OK_EXECUTED: None,
     COMMAND_OK_MINOR_ISSUE: MelfaMinorIssue,
     COMMAND_OK_INVALID: MelfaInvalidCommand,
-    COMMAND_NOK: MelfaUnknownCommand
+    COMMAND_NOK: MelfaUnknownCommand,
 }
 
 

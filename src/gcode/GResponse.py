@@ -5,15 +5,16 @@ class GResponse(BaseCmd):
     """
     Implements possible return messages from a 3D-printer in response to a G-code.
     """
-    STATE_OK = 'ok'
-    STATE_RESEND = 'rs'
-    STATE_HW_FAILURE = '!!'
-    DELIMITER = ':'
-    COORDINATE_ID = 'C:'
-    EXTRUDER_TEMP = 'T'
-    BED_TEMP = 'B'
+
+    STATE_OK = "ok"
+    STATE_RESEND = "rs"
+    STATE_HW_FAILURE = "!!"
+    DELIMITER = ":"
+    COORDINATE_ID = "C:"
+    EXTRUDER_TEMP = "T"
+    BED_TEMP = "B"
     DEFAULT_T = -273
-    AXIS_LIST = 'XYZ'
+    AXIS_LIST = "XYZ"
 
     def __init__(self, state, line_number=None, **kwargs):
         self.state = state
@@ -34,7 +35,9 @@ class GResponse(BaseCmd):
 
     def _validate(self):
         if self.state == self.STATE_RESEND and self.resend_line is None:
-            raise ValueError('For state resend command a corresponding command line must be provided.')
+            raise ValueError(
+                "For state resend command a corresponding command line must be provided."
+            )
 
     @classmethod
     def read_response_str(cls, response_str):
@@ -43,7 +46,7 @@ class GResponse(BaseCmd):
         :param response_str:
         :return:
         """
-        segments = response_str.split(' ')
+        segments = response_str.split(" ")
         state = segments[0]
 
         if state == cls.STATE_RESEND:
@@ -68,9 +71,11 @@ class GResponse(BaseCmd):
         if self.state == self.STATE_RESEND:
             line_str = str(self.resend_line)
         else:
-            line_str = ''
+            line_str = ""
 
         bed_t_str = self.combine(self.BED_TEMP, self.bed_t, delimiter=self.DELIMITER)
-        extr_t_str = self.combine(self.EXTRUDER_TEMP, self.extr_t, delimiter=self.DELIMITER)
+        extr_t_str = self.combine(
+            self.EXTRUDER_TEMP, self.extr_t, delimiter=self.DELIMITER
+        )
 
         return self.state + line_str + bed_t_str + extr_t_str

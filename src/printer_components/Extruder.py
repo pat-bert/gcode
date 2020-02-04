@@ -17,9 +17,9 @@ class Extruder(PrinterComponent):
         pass
 
     def handle_gcode(self, gcode: GCmd, *args, **kwargs):
-        if gcode.id == 'G20':
+        if gcode.id == "G20":
             self.inch_active = True
             # raise NotImplementedError
-        elif gcode.id == 'G21':
+        elif gcode.id == "G21":
             self.inch_active = False
             # raise NotImplementedError

@@ -3,7 +3,7 @@ from src.printer_components.MelfaRobot import MelfaRobot
 from src.melfa.TcpClientR3 import TcpClientR3
 
 
-def execute_r3(f_input: str, ip, port, f_log: str = 'run.log') -> None:
+def execute_r3(f_input: str, ip, port, f_log: str = "run.log") -> None:
     """
     Execute a R3 protocol command text file.
     :param ip:
@@ -15,7 +15,7 @@ def execute_r3(f_input: str, ip, port, f_log: str = 'run.log') -> None:
     # Read commands from file
     print("Reading command file.")
     try:
-        with open(f_input, 'r') as f:
+        with open(f_input, "r") as f:
             r3_commands = f.readlines()
     except OSError:
         print("Error reading command file.")
@@ -41,7 +41,7 @@ def execute_r3(f_input: str, ip, port, f_log: str = 'run.log') -> None:
     # Execute commands
     print("Executing commands...")
     try:
-        with open(f_log, 'w') as fid_log:
+        with open(f_log, "w") as fid_log:
             for r3_cmd in r3_commands:
                 # TODO Send command
                 pass

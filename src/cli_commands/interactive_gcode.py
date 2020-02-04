@@ -25,7 +25,7 @@ def interactive_gcode(ip, port, log_file=None, safe_return=False) -> None:
     try:
         while True:
             usr_msg = input("G-Code>")
-            if usr_msg.lower() in ['quit']:
+            if usr_msg.lower() in ["quit"]:
                 raise KeyboardInterrupt
             elif len(usr_msg) > 0:
                 # Parse G-code

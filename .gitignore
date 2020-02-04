@@ -1,3 +1,8 @@
 /venv/
 /.mutmut-cache
 /.tox/
+/test/.pytest_cache/
+/.coverage
+/src/gcode.egg-info/
+/src/.pytest_cache/
+/src/.mutmut-cache

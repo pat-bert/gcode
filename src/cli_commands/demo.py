@@ -20,7 +20,7 @@ def cube(robot: MelfaRobot, speed: float) -> None:
         Coordinate([500, 50, 200, 180, 0, 0], robot.AXES),
         Coordinate([500, -50, 200, 180, 0, 0], robot.AXES),
         Coordinate([600, -50, 200, 180, 0, 0], robot.AXES),
-        Coordinate([600, 50, 200, 180, 0, 0], robot.AXES)
+        Coordinate([600, 50, 200, 180, 0, 0], robot.AXES),
     ]
 
     # Go to points
@@ -90,21 +90,24 @@ def demo_mode(ip=None, port=None, safe_return=False) -> None:
     tcp_client.connect()
 
     # Executing communication
-    robot = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return)
+    robot = MelfaRobot(
+        tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return
+    )
     robot.boot()
     try:
         while True:
-            selection = input("Please choose a mode (1=cube, 2=cylinder, 3=speed test): ")
+            selection = input(
+                "Please choose a mode (1=cube, 2=cylinder, 3=speed test): "
+            )
             try:
-                if selection == '1':
+                if selection in ["1", "2", "3"]:
                     speed = float(input("Please enter the speed (linear: mm/s): "))
-                    cube(robot, speed)
-                elif selection == '2':
-                    speed = float(input("Please enter the speed (linear: mm/s): "))
-                    cylinder(robot, speed)
-                elif selection == '3':
-                    speed = float(input("Please enter the speed (linear: mm/s): "))
-                    speed_test(robot, speed)
+                    if selection == "1":
+                        cube(robot, speed)
+                    elif selection == "2":
+                        cylinder(robot, speed)
+                    elif selection == "3":
+                        speed_test(robot, speed)
                 else:
                     break
             except ValueError:

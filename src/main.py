@@ -32,7 +32,7 @@ Options:
     --ghelp         List supported G-code commands.
 
 """
-__version__ = '0.1.0'  # pragma: no mutate
+__version__ = "0.1.0"  # pragma: no mutate
 
 # Built-in libraries
 import logging
@@ -55,59 +55,89 @@ try:
     from schema import Schema, And, Or, Use, SchemaError
     from schema import Optional as Opt
 except ImportError:
-    print('This application requires some modules that you can install using the requirements.txt file.')
+    print(
+        "This application requires some modules that you can install using the requirements.txt file."
+    )
     sys.exit(EXIT_PACKAGE_ERROR)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Gather command line arguments
-    args = docopt(__doc__, argv=None, help=True, version=__version__, options_first=False)
+    args = docopt(
+        __doc__, argv=None, help=True, version=__version__, options_first=False
+    )
 
     """
     Create input schemata - Options accepting user input as value are checked for plausibility
     """
-    log_schema = Schema({Opt('-l'): Or(str, None, error='Log file should be possible to open')},
-                        ignore_extra_keys=True)
-    input_schema = Schema({'IN_FILE': And(os.path.exists, error='IN_FILE should exist')}, ignore_extra_keys=True)
-    output_schema = Schema({'-o': And(os.path.exists, error='Output file should exist')}, ignore_extra_keys=True)
-    connection_schema = Schema({
-        '--ip': And(lambda n: (all([(int(i) in range(0, 256)) for i in n.split('.')]) and len(n.split('.')) == 4),
-                    error='IPv4 needs to be in format "[0-255].[0-255].[0-255].[0-255]"'),
-        '--port': And(Use(int), lambda u: u in range(0, 65536),
-                      error='Port needs to be unsigned short (16 bits): 0..65535)')
-    }, ignore_extra_keys=True)
+    log_schema = Schema(
+        {Opt("-l"): Or(str, None, error="Log file should be possible to open")},
+        ignore_extra_keys=True,
+    )
+    input_schema = Schema(
+        {"IN_FILE": And(os.path.exists, error="IN_FILE should exist")},
+        ignore_extra_keys=True,
+    )
+    output_schema = Schema(
+        {"-o": And(os.path.exists, error="Output file should exist")},
+        ignore_extra_keys=True,
+    )
+    connection_schema = Schema(
+        {
+            "--ip": And(
+                lambda n: (
+                        all([(int(i) in range(0, 256)) for i in n.split(".")])
+                        and len(n.split(".")) == 4
+                ),
+                error='IPv4 needs to be in format "[0-255].[0-255].[0-255].[0-255]"',
+            ),
+            "--port": And(
+                Use(int),
+                lambda u: u in range(0, 65536),
+                error="Port needs to be unsigned short (16 bits): 0..65535)",
+            ),
+        },
+        ignore_extra_keys=True,
+    )
 
     """
     Dispatch sub-functions - new sub-commands are called here
     """
     # noinspection PyBroadException
     try:
-        if args['--ghelp']:
+        if args["--ghelp"]:
             print("Supported G-Codes:")
             print(GRedirect.supported_gcodes())
         else:
             # Options usable in all commands
             log_schema.validate(args)
-            if args['--interpret']:
+            if args["--interpret"]:
                 # Functions without TCP/IP-connection
                 input_schema.validate(args)
                 output_schema.validate(args)
-                interpret_gcode(args['IN_FILE'], args['-o'])
+                interpret_gcode(args["IN_FILE"], args["-o"])
             else:
                 # Functions using TCP/IP-connection
                 args.update(connection_schema.validate(args))
-                ip, port, log, safe = args['--ip'], args['--port'], args['-l'], args['--safe']
+                ip, port, log, safe = (
+                    args["--ip"],
+                    args["--port"],
+                    args["-l"],
+                    args["--safe"],
+                )
 
-                if args['--execute']:
+                if args["--execute"]:
                     input_schema.validate(args)
-                    execute_r3(args['IN_FILE'], ip, port, f_log=log)
-                elif args['--gi']:
+                    execute_r3(args["IN_FILE"], ip, port, f_log=log)
+                elif args["--gi"]:
                     interactive_gcode(ip, port, log_file=log, safe_return=safe)
-                elif args['--mi']:
+                elif args["--mi"]:
                     interactive_melfa(ip, port, log_file=log, safe_return=safe)
-                elif args['--demo']:
+                elif args["--demo"]:
                     demo_mode(ip, port, safe_return=safe)
                 else:
-                    raise ApiException("Unknown option passed. Type --help for more info.")
+                    raise ApiException(
+                        "Unknown option passed. Type --help for more info."
+                    )
     except SchemaError as e:
         # Input validation error
         sys.exit(EXIT_BAD_INPUT)
@@ -118,7 +148,9 @@ if __name__ == '__main__':
     except KeyError as e:
         # Accessing the arg dictionary with different keys as specified in docstring
         print(e)
-        print("This might have happened due to different versions of CLI documentation and parsing.")
+        print(
+            "This might have happened due to different versions of CLI documentation and parsing."
+        )
         sys.exit(EXIT_UNEXPECTED_ERROR)
     except NotImplementedError:
         # This might be used in some functions

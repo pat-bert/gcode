@@ -2,7 +2,9 @@ import time
 
 
 class PidCtrl:
-    def __init__(self, kp, ki, kd, setpoint=None, sampling_ms=0.01, output_limit=(None, None)):
+    def __init__(
+            self, kp, ki, kd, setpoint=None, sampling_ms=0.01, output_limit=(None, None)
+    ):
         """
         Initialize the PID controller
         :param kp: Proportional gain

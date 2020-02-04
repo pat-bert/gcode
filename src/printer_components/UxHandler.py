@@ -13,9 +13,9 @@ class UxHandler(PrinterComponent):
         pass
 
     def handle_gcode(self, gcode: GCmd, *args, **kwargs):
-        if gcode.id == 'M117':
+        if gcode.id == "M117":
             self._display_msg()
-        elif gcode.id == 'M300':
+        elif gcode.id == "M300":
             self._beep()
 
     def _display_msg(self):

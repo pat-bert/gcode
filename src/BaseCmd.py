@@ -10,14 +10,15 @@ class BaseCmd:
     """
     Base class for machine commands.
     """
-    id = ''
+
+    id = ""
 
     @staticmethod
-    def combine(descriptor: Any, value: Any, delimiter: str = '') -> str:
+    def combine(descriptor: Any, value: Any, delimiter: str = "") -> str:
         if value is not None:
-            return '{}{}{} '.format(descriptor, delimiter, value)
+            return "{}{}{} ".format(descriptor, delimiter, value)
         else:
-            return ''
+            return ""
 
     def _is_valid(self) -> bool:
         return True

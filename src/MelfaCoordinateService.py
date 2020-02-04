@@ -9,6 +9,7 @@ class Plane(Enum):
     """
     Define enums for each available plane.
     """
+
     XY = 1
     XZ = 2
     YZ = 3
@@ -22,9 +23,9 @@ class MelfaCoordinateService:
 
     @staticmethod
     def from_melfa_response(melfa_str: str, number_axes: int) -> Coordinate:
-        segments = melfa_str.split(';')
-        values = [float(i) for i in segments[1:2 * number_axes:2]]
-        axes = segments[0:2 * number_axes:2]
+        segments = melfa_str.split(";")
+        values = [float(i) for i in segments[1: 2 * number_axes: 2]]
+        axes = segments[0: 2 * number_axes: 2]
         return Coordinate(values, axes)
 
     @staticmethod
@@ -35,7 +36,7 @@ class MelfaCoordinateService:
         :param plane:
         :return:
         """
-        angles = 'ABC'
+        angles = "ABC"
         values = MelfaCoordinateService.melfa_orientation_plane(plane)
         existing_values = [val for val in c.coordinate.values()]
 
@@ -43,8 +44,11 @@ class MelfaCoordinateService:
             if angle not in c.coordinate.keys():
                 existing_values.append(val)
 
-        txt = ['{:.{d}f}'.format(i, d=c.digits) if i is not None else '' for i in existing_values]
-        return '(' + ','.join(txt) + ')' + '(7,0)'
+        txt = [
+            "{:.{d}f}".format(i, d=c.digits) if i is not None else ""
+            for i in existing_values
+        ]
+        return "(" + ",".join(txt) + ")" + "(7,0)"
 
     @staticmethod
     def melfa_orientation_plane(plane: Plane) -> Tuple[float]:
