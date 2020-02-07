@@ -2,8 +2,8 @@ import time
 
 from src import ApplicationExceptions
 from src.Coordinate import Coordinate
-from src.printer_components.MelfaRobot import MelfaRobot
 from src.melfa.TcpClientR3 import TcpClientR3
+from src.printer_components.MelfaRobot import MelfaRobot
 from src.speed_profile import draw_speed
 
 
@@ -15,12 +15,17 @@ def cube(robot: MelfaRobot, speed: float) -> None:
     :return:
     """
     # Base coordinates
+    start = Coordinate([0, 0, 0, 180, 0, 0], robot.AXES)
+
+    x_vec = Coordinate([100, 0, 0, 0, 0, 0], robot.AXES)
+    y_vec = Coordinate([0, -100, 0, 0, 0, 0], robot.AXES)
     z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.AXES)
+
     square_corners = [
-        Coordinate([500, 50, 200, 180, 0, 0], robot.AXES),
-        Coordinate([500, -50, 200, 180, 0, 0], robot.AXES),
-        Coordinate([600, -50, 200, 180, 0, 0], robot.AXES),
-        Coordinate([600, 50, 200, 180, 0, 0], robot.AXES),
+        start,
+        start + y_vec,
+        start + x_vec + y_vec,
+        start + x_vec
     ]
 
     # Go to points
@@ -42,10 +47,12 @@ def cylinder(robot: MelfaRobot, speed: float) -> None:
     :return:
     """
     # Base coordinates
+    start = Coordinate([0, 0, 0, 180, 0, 0], robot.AXES)
     z_vector = Coordinate([0, 0, 15, 0, 0, 0], robot.AXES)
-    start = Coordinate([500, 0, 200, 180, 0, 0], robot.AXES)
-    target = Coordinate([550, 50, 200, 180, 0, 0], robot.AXES)
-    center = Coordinate([550, 0, 200, 180, 0, 0], robot.AXES)
+    target_vec = Coordinate([50, 50, 0, 0, 0, 0], robot.AXES)
+    target = start + target_vec
+    center_vec = Coordinate([50, 0, 0, 0, 0, 0], robot.AXES)
+    center = start + center_vec
     clockwise = False
 
     for _ in range(10):
@@ -59,7 +66,7 @@ def cylinder(robot: MelfaRobot, speed: float) -> None:
 
 
 def speed_test(robot: MelfaRobot, speed: float) -> None:
-    start = Coordinate([350, -200, 600, 180, 0, 0], robot.AXES)
+    start = Coordinate([-150, -200, 400, 180, 0, 0], robot.AXES)
     vector = Coordinate([200, 400, -300, 0, 0, 0], robot.AXES)
     finish = start + vector
 

@@ -114,7 +114,6 @@ class MelfaRobot(PrinterComponent):
             self.tcp.close()
 
     def activate_work_coordinate(self, active: bool) -> None:
-        # TODO Clean this up in demo mode
         if active:
             # Activate coordinate system
             self.tcp.send(MelfaCmd.DIRECT_CMD + "BASE (-500,0,-200,0,0,0)")
