@@ -1,6 +1,6 @@
 import pytest
 
-from BaseCmd import BaseCmd
+from src.BaseCmd import BaseCmd
 
 
 class TestBaseCmd:

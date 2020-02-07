@@ -13,14 +13,20 @@ class Coordinate:
         :param digits: Represented number of digits
         :param print_axes: Allow renaming for string representation
         """
-        self.digits = digits
+        if digits < 0:
+            raise ValueError("Digits must be positive.")
+        else:
+            self.digits = digits
+
         # Create dictionary of coordinates
         try:
             self.coordinate = {i[0]: i[1] for i in zip(axes, values)}
         except TypeError:
             self.coordinate = {}
+
+        # Print representation
         if print_axes is not None and len(print_axes) != len(axes):
-            raise TypeError("Axes and print representation need to be of same length.")
+            raise ValueError("Axes and print representation need to be of same length.")
         else:
             self.print_axes = print_axes
 
@@ -53,9 +59,9 @@ class Coordinate:
 
     def reduce_to_axes(self, axes_to_keep, make_none=False):
         if make_none:
-            self.coordinate = {
+            self.coordinate.update({
                 key: None for key in self.axes if key not in axes_to_keep
-            }
+            })
         else:
             self.coordinate = {
                 key: val for key, val in self.coordinate.items() if key in axes_to_keep
@@ -80,28 +86,31 @@ class Coordinate:
             ]
         return " ".join(txt)
 
-    def __add__(self, other: "Coordinate") -> "Coordinate":
+    def __add__(self, other: Union["Coordinate", int]) -> "Coordinate":
         """
         Adds the coordinates for the individual AXES.
         :param other: Set of coordinates to be added
         :return: New set of coordinates as sum of both inputs
         """
-        if self._are_axes_compatible(other):
-            axis_list = self.axes
-            values = []
-            for axis in axis_list:
-                try:
-                    val = self.coordinate[axis] + other.coordinate[axis]
-                except TypeError:
-                    val = None
-                    values.append(val)
-                else:
-                    values.append(val)
-            values = tuple(values)
-            digits = min(self.digits, other.digits)
-            return Coordinate(values, axis_list, digits)
+        if other == 0:
+            return self
         else:
-            raise TypeError("Incompatible axis.")
+            if self._are_axes_compatible(other):
+                axis_list = self.axes
+                values = []
+                for axis in axis_list:
+                    try:
+                        val = self.coordinate[axis] + other.coordinate[axis]
+                    except TypeError:
+                        val = None
+                        values.append(val)
+                    else:
+                        values.append(val)
+                values = tuple(values)
+                digits = min(self.digits, other.digits)
+                return Coordinate(values, axis_list, digits)
+            else:
+                raise TypeError("Incompatible axis.")
 
     def __radd__(self, other: Union["Coordinate", int]) -> "Coordinate":
         """
@@ -162,8 +171,8 @@ class Coordinate:
         return Coordinate(values, self.coordinate.keys(), self.digits)
 
     def __floordiv__(self, other: float) -> "Coordinate":
-        values = (self.coordinate[axis] // other for axis in self.coordinate.keys())
-        return Coordinate(values, self.coordinate.keys(), self.digits)
+        values = (self.coordinate[axis] // other if self.coordinate[axis] is not None else None for axis in self.axes)
+        return Coordinate(values, self.axes, self.digits)
 
     def dot(self, other: "Coordinate") -> float:
         """
