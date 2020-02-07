@@ -1,5 +1,6 @@
 import time
 
+from gcode.GCmd import GCmd
 from src import ApplicationExceptions
 from src.Coordinate import Coordinate
 from src.melfa.TcpClientR3 import TcpClientR3
@@ -83,6 +84,27 @@ def speed_test(robot: MelfaRobot, speed: float) -> None:
     print("Velocity is: " + str(velocity))
 
 
+def gcode_santa(robot: MelfaRobot):
+    gcode = '''G1 X30 F100
+G1 Y30
+G1 X0
+G1 Y0
+G1 X30 Y30
+G1 X15 Y45
+G1 X0 Y30
+G1 X30 Y0
+G1 X0 Y0
+G02 X0 Y30 J15
+G02 X30 Y30 I15 J15
+G91 
+G02 Y-30 J-15
+G90'''
+
+    for command in gcode.split('\n'):
+        cmd = GCmd.read_cmd_str(command)
+        robot.handle_gcode(cmd)
+
+
 def demo_mode(ip=None, port=None, safe_return=False) -> None:
     # Create TCP client
     if ip is not None and port is not None:
@@ -96,10 +118,11 @@ def demo_mode(ip=None, port=None, safe_return=False) -> None:
         tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return
     )
     robot.boot()
+
     try:
         while True:
             selection = input(
-                "Please choose a mode (1=cube, 2=cylinder, 3=speed test): "
+                "Please choose a mode (1=cube, 2=cylinder, 3=speed test, 4=G-Code Santa): "
             )
             try:
                 if selection in ["1", "2", "3"]:
@@ -110,6 +133,8 @@ def demo_mode(ip=None, port=None, safe_return=False) -> None:
                         cylinder(robot, speed)
                     elif selection == "3":
                         speed_test(robot, speed)
+                elif selection == "4":
+                    gcode_santa(robot)
                 else:
                     break
             except ValueError:
