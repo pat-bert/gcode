@@ -21,12 +21,7 @@ def cube(robot: MelfaRobot, speed: float) -> None:
     y_vec = Coordinate([0, -100, 0, 0, 0, 0], robot.AXES)
     z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.AXES)
 
-    square_corners = [
-        start,
-        start + y_vec,
-        start + x_vec + y_vec,
-        start + x_vec
-    ]
+    square_corners = [start, start + y_vec, start + x_vec + y_vec, start + x_vec]
 
     # Go to points
     for _ in range(10):

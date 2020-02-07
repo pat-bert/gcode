@@ -116,10 +116,10 @@ class MelfaRobot(PrinterComponent):
     def activate_work_coordinate(self, active: bool) -> None:
         if active:
             # Activate coordinate system
-            self.tcp.send(MelfaCmd.DIRECT_CMD + "BASE (-500,0,-200,0,0,0)")
+            self.tcp.send(MelfaCmd.SET_BASE_COORDINATES + "(-500,0,-200,0,0,0)")
             self.tcp.receive()
         else:
-            self.tcp.send(MelfaCmd.DIRECT_CMD + "BASE P_NBASE")
+            self.tcp.send(MelfaCmd.RESET_BASE_COORDINATES)
             self.tcp.receive()
 
         self.work_coordinate_active = active
@@ -298,6 +298,8 @@ class MelfaRobot(PrinterComponent):
         if activate:
             self.tcp.send(MelfaCmd.SRV_ON)
             self.tcp.receive()
+
+            # Poll for active state
             cmp_response(
                 MelfaCmd.VAR_READ + MelfaCmd.SRV_STATE_VAR,
                 MelfaCmd.SRV_STATE_VAR + "=+1",
@@ -308,6 +310,8 @@ class MelfaRobot(PrinterComponent):
         else:
             self.tcp.send(MelfaCmd.SRV_OFF)
             self.tcp.receive()
+
+            # Poll for inactive state
             cmp_response(
                 MelfaCmd.VAR_READ + MelfaCmd.SRV_STATE_VAR,
                 MelfaCmd.SRV_STATE_VAR + "=+0",

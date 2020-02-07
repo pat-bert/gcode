@@ -8,22 +8,35 @@ class TestCoordinate:
     Bundle tests for the Coordinate class.
     """
 
-    @pytest.mark.parametrize("values,axes,digits,print_axes,ex, ex_info",
-                             [
-                                 # Normal
-                                 (3, "X", 2, None, None, None),
-                                 # Too many print axes
-                                 (3, "X", 2, "XY", ValueError,
-                                  "Axes and print representation need to be of same length."),
-                                 # Too few print axes
-                                 ([3, 4], "XY", 2, "Y", ValueError,
-                                  "Axes and print representation need to be of same length."),
-                                 # Too few digits
-                                 (3, "X", -1, None, ValueError, "Digits must be positive."),
-                                 # Not enough values
-                                 ([3], "XY", 2, "ZY", None, None),
-                             ]
-                             )
+    @pytest.mark.parametrize(
+        "values,axes,digits,print_axes,ex, ex_info",
+        [
+            # Normal
+            (3, "X", 2, None, None, None),
+            # Too many print axes
+            (
+                    3,
+                    "X",
+                    2,
+                    "XY",
+                    ValueError,
+                    "Axes and print representation need to be of same length.",
+            ),
+            # Too few print axes
+            (
+                    [3, 4],
+                    "XY",
+                    2,
+                    "Y",
+                    ValueError,
+                    "Axes and print representation need to be of same length.",
+            ),
+            # Too few digits
+            (3, "X", -1, None, ValueError, "Digits must be positive."),
+            # Not enough values
+            ([3], "XY", 2, "ZY", None, None),
+        ],
+    )
     def test_init_exception(self, values, axes, digits, print_axes, ex, ex_info):
         if ex is not None:
             with pytest.raises(ex) as excinfo:
@@ -33,13 +46,15 @@ class TestCoordinate:
             Coordinate(values, axes, digits, print_axes)
             assert True
 
-    @pytest.mark.parametrize("values,axes,digits,print_axes,expected",
-                             [
-                                 ([3.141, 0.02, -4.3], "XYZ", 2, None, "X3.14 Y0.02 Z-4.30"),
-                                 ([3.141, 0.02, -4.3], "XYZ", None, None, "X3.14 Y0.02 Z-4.30"),
-                                 ([3.141, 0.02, None], "CBA", 2, "YZA", "Y3.14 Z0.02"),
-                                 ([3.141, 0.02, -4.3], "XYZ", 0, None, "X3 Y0 Z-4"),
-                             ])
+    @pytest.mark.parametrize(
+        "values,axes,digits,print_axes,expected",
+        [
+            ([3.141, 0.02, -4.3], "XYZ", 2, None, "X3.14 Y0.02 Z-4.30"),
+            ([3.141, 0.02, -4.3], "XYZ", None, None, "X3.14 Y0.02 Z-4.30"),
+            ([3.141, 0.02, None], "CBA", 2, "YZA", "Y3.14 Z0.02"),
+            ([3.141, 0.02, -4.3], "XYZ", 0, None, "X3 Y0 Z-4"),
+        ],
+    )
     def test_str(self, values, axes, digits, print_axes, expected):
         if digits is not None:
             a = Coordinate(values, axes, digits=digits, print_axes=print_axes)
@@ -48,7 +63,10 @@ class TestCoordinate:
 
         assert str(a) == expected
 
-    @pytest.mark.parametrize("axes1,axes2,result", [("XYZ", "XYZ", True), ("ABC", "CAB", True), ("AC", "AY", False)])
+    @pytest.mark.parametrize(
+        "axes1,axes2,result",
+        [("XYZ", "XYZ", True), ("ABC", "CAB", True), ("AC", "AY", False)],
+    )
     def test_are_axes_compatible(self, axes1, axes2, result):
         a = Coordinate((None, None, None), axes1)
         b = Coordinate((None, None, None), axes2)
@@ -56,12 +74,14 @@ class TestCoordinate:
         actual_result = a._are_axes_compatible(b)
         assert actual_result == result
 
-    @pytest.mark.parametrize("values,factor,expected",
-                             [
-                                 ([1, -3, 0], 3, [3, -9, 0]),
-                                 ([1, None, 0], 0, [0, None, 0]),
-                                 ([1, None, 0], -2, [-2, None, 0])
-                             ])
+    @pytest.mark.parametrize(
+        "values,factor,expected",
+        [
+            ([1, -3, 0], 3, [3, -9, 0]),
+            ([1, None, 0], 0, [0, None, 0]),
+            ([1, None, 0], -2, [-2, None, 0]),
+        ],
+    )
     def test_mul(self, values, factor, expected):
         a = Coordinate(values, "XYZ")
         right_result = a * factor
@@ -69,22 +89,23 @@ class TestCoordinate:
 
         assert list(right_result.values) == list(left_result.values) == expected
 
-    @pytest.mark.parametrize("values,factor,expected",
-                             [
-                                 ([1, -4, 0], 3, [0, -2, 0]),
-                                 ([1, None, 0], -2, [-1, None, 0])
-                             ])
+    @pytest.mark.parametrize(
+        "values,factor,expected",
+        [([1, -4, 0], 3, [0, -2, 0]), ([1, None, 0], -2, [-1, None, 0])],
+    )
     def test_floordiv(self, values, factor, expected):
         a = Coordinate(values, "XYZ")
         right_result = a // factor
 
         assert list(right_result.values) == expected
 
-    @pytest.mark.parametrize("a,b,expected",
-                             [
-                                 ([1, -3, 0], [-4, None, 2], [-3, None, 2]),
-                                 ([1, None, 0], [-4, None, 2], [-3, None, 2])
-                             ])
+    @pytest.mark.parametrize(
+        "a,b,expected",
+        [
+            ([1, -3, 0], [-4, None, 2], [-3, None, 2]),
+            ([1, None, 0], [-4, None, 2], [-3, None, 2]),
+        ],
+    )
     def test_add(self, a, b, expected):
         """
         Individual coordinates of correct axes should be added. Result of None + x is defined as None.
@@ -99,7 +120,11 @@ class TestCoordinate:
         left_sum_coordinate = add1 + add2
         right_sum_coordinate = add2 + add1
 
-        assert list(left_sum_coordinate.values) == list(right_sum_coordinate.values) == expected
+        assert (
+                list(left_sum_coordinate.values)
+                == list(right_sum_coordinate.values)
+                == expected
+        )
 
     def test_add_zero(self):
         a = Coordinate([1, None, 0], "XYZ")
@@ -162,8 +187,8 @@ class TestCoordinate:
             ([1, -3, None], "XYZ", "Y", [None, -3, None]),
             ([1, -3, 2], "XYZ", "A", [None, None, None]),
             ([1, -3, 2], "XYZ", "XYZ", [1, -3, 2]),
-            ([1, -3, 0], "XYZ", "XYZB", [1, -3, 0])
-        ]
+            ([1, -3, 0], "XYZ", "XYZB", [1, -3, 0]),
+        ],
     )
     def test_reduce_to_axes_make_none(self, values, axes, reduced, expected_values):
         a = Coordinate(values, axes)

@@ -59,9 +59,9 @@ class Coordinate:
 
     def reduce_to_axes(self, axes_to_keep, make_none=False):
         if make_none:
-            self.coordinate.update({
-                key: None for key in self.axes if key not in axes_to_keep
-            })
+            self.coordinate.update(
+                {key: None for key in self.axes if key not in axes_to_keep}
+            )
         else:
             self.coordinate = {
                 key: val for key, val in self.coordinate.items() if key in axes_to_keep
@@ -171,7 +171,12 @@ class Coordinate:
         return Coordinate(values, self.coordinate.keys(), self.digits)
 
     def __floordiv__(self, other: float) -> "Coordinate":
-        values = (self.coordinate[axis] // other if self.coordinate[axis] is not None else None for axis in self.axes)
+        values = (
+            self.coordinate[axis] // other
+            if self.coordinate[axis] is not None
+            else None
+            for axis in self.axes
+        )
         return Coordinate(values, self.axes, self.digits)
 
     def dot(self, other: "Coordinate") -> float:
