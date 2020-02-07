@@ -116,12 +116,11 @@ class Coordinate:
 
     def __sub__(self, other: "Coordinate") -> "Coordinate":
         if self._are_axes_compatible(other):
-            axis_list = self.axes
             values = [
-                self.coordinate[axis] - other.coordinate[axis] for axis in axis_list
+                self.coordinate[axis] - other.coordinate[axis] for axis in self.axes
             ]
             digits = min(self.digits, other.digits)
-            return Coordinate(values, axis_list, digits)
+            return Coordinate(values, self.axes, digits)
         else:
             raise TypeError("Incompatible axis.")
 
