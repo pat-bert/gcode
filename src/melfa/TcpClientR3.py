@@ -9,9 +9,9 @@ from queue import Queue
 from time import sleep
 
 from src import ApplicationExceptions
-from src.melfa import MelfaCmd
 from src.ApplicationExceptions import TcpError
 from src.Coordinate import *
+from src.melfa import MelfaCmd
 
 
 class Msg(object):
@@ -30,6 +30,14 @@ class AbstractTcp(object):
 
     def receive(self, *args, **kwargs):
         pass
+
+
+def validate_ip(ip: AnyStr) -> bool:
+    return all([(int(i) in range(0, 256)) for i in ip.split(".")]) and len(ip.split(".")) == 4
+
+
+def validate_port(port: int) -> bool:
+    return port in range(0, 65536)
 
 
 class TcpClientR3(AbstractTcp):

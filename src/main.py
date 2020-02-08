@@ -48,6 +48,7 @@ from src.cli_commands.interactive_gcode import interactive_gcode
 from src.cli_commands.interactive_melfa import interactive_melfa
 from src.cli_commands.interpret_gcode import interpret_gcode
 from src.exit_codes import *
+from src.melfa.TcpClientR3 import validate_ip, validate_port
 
 # Third-party libraries
 try:
@@ -60,10 +61,11 @@ except ImportError:
     )
     sys.exit(EXIT_PACKAGE_ERROR)
 
-if __name__ == "__main__":
+
+def main(*argv):
     # Gather command line arguments
     args = docopt(
-        __doc__, argv=None, help=True, version=__version__, options_first=False
+        __doc__, argv=list(argv), help=True, version=__version__, options_first=False
     )
 
     """
@@ -84,15 +86,12 @@ if __name__ == "__main__":
     connection_schema = Schema(
         {
             "--ip": And(
-                lambda n: (
-                        all([(int(i) in range(0, 256)) for i in n.split(".")])
-                        and len(n.split(".")) == 4
-                ),
+                validate_ip,
                 error='IPv4 needs to be in format "[0-255].[0-255].[0-255].[0-255]"',
             ),
             "--port": And(
                 Use(int),
-                lambda u: u in range(0, 65536),
+                validate_port,
                 error="Port needs to be unsigned short (16 bits): 0..65535)",
             ),
         },
@@ -163,3 +162,7 @@ if __name__ == "__main__":
     else:
         # Everything okay, no exception occurred
         sys.exit(EXIT_SUCCESS)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
