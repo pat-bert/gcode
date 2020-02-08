@@ -1,8 +1,8 @@
 import time
 
-from gcode.GCmd import GCmd
 from src import ApplicationExceptions
 from src.Coordinate import Coordinate
+from src.gcode.GCmd import GCmd
 from src.melfa.TcpClientR3 import TcpClientR3
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.speed_profile import draw_speed
@@ -16,13 +16,13 @@ def cube(robot: MelfaRobot, speed: float) -> None:
     :return:
     """
     # Base coordinates
-    start = Coordinate([0, 0, 0, 180, 0, 0], robot.AXES)
+    start = Coordinate([0, 0, 0, 180, 0, 0], robot.AXES)  # pragma: no mutate
 
-    x_vec = Coordinate([100, 0, 0, 0, 0, 0], robot.AXES)
-    y_vec = Coordinate([0, -100, 0, 0, 0, 0], robot.AXES)
-    z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.AXES)
+    x_vec = Coordinate([100, 0, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    y_vec = Coordinate([0, -100, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.AXES)  # pragma: no mutate
 
-    square_corners = [start, start + y_vec, start + x_vec + y_vec, start + x_vec]
+    square_corners = [start, start + y_vec, start + x_vec + y_vec, start + x_vec]  # pragma: no mutate
 
     # Go to points
     for _ in range(10):
@@ -43,12 +43,12 @@ def cylinder(robot: MelfaRobot, speed: float) -> None:
     :return:
     """
     # Base coordinates
-    start = Coordinate([0, 0, 0, 180, 0, 0], robot.AXES)
-    z_vector = Coordinate([0, 0, 15, 0, 0, 0], robot.AXES)
-    target_vec = Coordinate([50, 50, 0, 0, 0, 0], robot.AXES)
-    target = start + target_vec
-    center_vec = Coordinate([50, 0, 0, 0, 0, 0], robot.AXES)
-    center = start + center_vec
+    start = Coordinate([0, 0, 0, 180, 0, 0], robot.AXES)  # pragma: no mutate
+    z_vector = Coordinate([0, 0, 15, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    target_vec = Coordinate([50, 50, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    target = start + target_vec  # pragma: no mutate
+    center_vec = Coordinate([50, 0, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    center = start + center_vec  # pragma: no mutate
     clockwise = False
 
     for _ in range(10):
@@ -62,9 +62,9 @@ def cylinder(robot: MelfaRobot, speed: float) -> None:
 
 
 def speed_test(robot: MelfaRobot, speed: float) -> None:
-    start = Coordinate([-150, -200, 400, 180, 0, 0], robot.AXES)
-    vector = Coordinate([200, 400, -300, 0, 0, 0], robot.AXES)
-    finish = start + vector
+    start = Coordinate([-150, -200, 400, 180, 0, 0], robot.AXES)  # pragma: no mutate
+    vector = Coordinate([200, 400, -300, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    finish = start + vector  # pragma: no mutate
 
     # Back to start
     robot.reset_linear_speed_factor()
