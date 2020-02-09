@@ -3,6 +3,7 @@ import unittest.mock as mock
 import pytest
 
 from src.exit_codes import *
+from src.main import __doc__ as cli_doc
 from src.main import main
 
 
@@ -40,3 +41,17 @@ class TestMain:
             main(['--demo'])
         assert mock_func.called
         assert cm.value.code == EXIT_SUCCESS
+
+    @pytest.mark.parametrize("cmd", ['--help', '-h'])
+    def test_help(self, capsys, cmd):
+        """
+        Test that the different help options print the doc string of main
+        :param capsys:
+        :param cmd:
+        :return:
+        """
+        with pytest.raises(SystemExit):
+            main([cmd])
+        captured = capsys.readouterr().out.strip('\n')
+        stripped_doc = cli_doc.strip('\n')
+        assert stripped_doc in captured
