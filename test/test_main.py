@@ -13,14 +13,14 @@ class TestMain:
     @mock.patch('src.main.interactive_gcode')
     def test_gcode_interactive(self, mock_func):
         with pytest.raises(SystemExit) as cm:
-            main('--gi')
+            main(['--gi'])
         assert mock_func.called
         assert cm.value.code == EXIT_SUCCESS
 
     @mock.patch('src.main.interactive_melfa')
     def test_melfa_interactive(self, mock_func):
         with pytest.raises(SystemExit) as cm:
-            main('--mi')
+            main(['--mi'])
         assert mock_func.called
         assert cm.value.code == EXIT_SUCCESS
 
@@ -29,7 +29,7 @@ class TestMain:
     def test_interpret_gcode(self, mock_func, cmd, tmpdir):
         path = tmpdir.join("In_File")
         with pytest.raises(SystemExit) as cm:
-            main(cmd, str(path))
+            main([cmd, str(path)])
         assert True
         # assert mock_func.called
         # assert cm.value.code == EXIT_SUCCESS
@@ -37,6 +37,6 @@ class TestMain:
     @mock.patch('src.main.demo_mode')
     def test_demo_mode(self, mock_func):
         with pytest.raises(SystemExit) as cm:
-            main('--demo')
+            main(['--demo'])
         assert mock_func.called
         assert cm.value.code == EXIT_SUCCESS

@@ -64,8 +64,9 @@ except ImportError:
 
 def main(*argv):
     # Gather command line arguments
+    argv = list(*argv) if len(argv) == 1 else list(i for i in argv)
     args = docopt(
-        __doc__, argv=list(argv), help=True, version=__version__, options_first=False
+        __doc__, argv=argv, help=True, version=__version__, options_first=False
     )
 
     """
