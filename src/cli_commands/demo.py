@@ -22,7 +22,12 @@ def cube(robot: MelfaRobot, speed: float) -> None:
     y_vec = Coordinate([0, -100, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
     z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.AXES)  # pragma: no mutate
 
-    square_corners = [start, start + y_vec, start + x_vec + y_vec, start + x_vec]  # pragma: no mutate
+    square_corners = [
+        start,
+        start + y_vec,
+        start + x_vec + y_vec,
+        start + x_vec,
+    ]  # pragma: no mutate
 
     # Go to points
     for _ in range(10):
@@ -85,7 +90,7 @@ def speed_test(robot: MelfaRobot, speed: float) -> None:
 
 
 def gcode_santa(robot: MelfaRobot):
-    gcode = '''G1 X30 F100
+    gcode = """G1 X30 F100
 G1 Y30
 G1 X0
 G1 Y0
@@ -98,9 +103,9 @@ G02 X0 Y30 J15
 G02 X30 Y30 I15 J15
 G91 
 G02 Y-30 J-15
-G90'''
+G90"""
 
-    for command in gcode.split('\n'):
+    for command in gcode.split("\n"):
         cmd = GCmd.read_cmd_str(command)
         robot.handle_gcode(cmd)
 
