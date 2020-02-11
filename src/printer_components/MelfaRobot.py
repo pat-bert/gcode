@@ -3,7 +3,7 @@ from time import sleep
 from typing import *
 
 from src import ApplicationExceptions
-from src.ApplicationExceptions import MelfaBaseException
+from src.ApplicationExceptions import MelfaBaseException, ApiException
 from src.Coordinate import Coordinate
 from src.GRedirect import RedirectionTargets
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
@@ -13,6 +13,10 @@ from src.melfa import MelfaCmd
 from src.melfa.TcpClientR3 import TcpClientR3
 from src.printer_components.PrinterComponent import PrinterComponent
 from src.refactor import cmp_response
+
+
+class IllegalAxesCount(ApiException):
+    pass
 
 
 class MelfaRobot(PrinterComponent):
@@ -36,7 +40,7 @@ class MelfaRobot(PrinterComponent):
         if not hasattr(tcp_client, "send") or not hasattr(tcp_client, "receive"):
             raise TypeError("TCP-client does not implement required methods.")
         if not number_axes > 0:
-            raise TypeError("Illegal number of AXES.")
+            raise IllegalAxesCount
 
         self.tcp: TcpClientR3 = tcp_client
         self.joints: Sized[AnyStr] = list(
@@ -609,4 +613,4 @@ class MelfaRobot(PrinterComponent):
         raise NotImplementedError
 
     def _zero(self):
-        return Coordinate(self.zero.coordinate.values(), self.zero.coordinate.keys())
+        return Coordinate(self.zero.values, self.zero.axes)
