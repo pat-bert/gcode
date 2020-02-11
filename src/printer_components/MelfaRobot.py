@@ -19,6 +19,10 @@ class IllegalAxesCount(ApiException):
     pass
 
 
+class SpeedBelowMinimum(ApiException):
+    pass
+
+
 class MelfaRobot(PrinterComponent):
     """
     Class representing the physical robots with its unique routines, properties and actions.
@@ -128,14 +132,8 @@ class MelfaRobot(PrinterComponent):
 
         self.work_coordinate_active = active
 
-    def handle_gcode(
-            self,
-            gcode: GCmd,
-            interactive=True,
-            gcode_prev: Union[GCmd, None] = None,
-            *args,
-            **kwargs
-    ) -> Union[AnyStr, None]:
+    def handle_gcode(self, gcode: GCmd, interactive=True, gcode_prev: Union[GCmd, None] = None, *args, **kwargs) -> \
+            Union[AnyStr, None]:
         """
         Translates a G-Code to a Mitsubishi Melfa R3 command.
         :param gcode: G-Code object
@@ -345,7 +343,7 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         if speed <= 0:
-            raise ValueError("Speed needs to be larger than zero.")
+            raise SpeedBelowMinimum("Speed needs to be larger than zero.")
         elif mode == "joint" and speed > 100:
             raise ValueError("Speed needs to be smaller than 100%.")
 
@@ -589,7 +587,7 @@ class MelfaRobot(PrinterComponent):
             self.tcp.send(MelfaCmd.OVERRIDE_CMD + "=" + str(factor))
             self.tcp.receive()
         else:
-            raise ApplicationExceptions.MelfaBaseException(
+            raise MelfaBaseException(
                 "Override factor must be [1,100]."
             )
 
