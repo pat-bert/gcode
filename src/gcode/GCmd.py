@@ -147,6 +147,7 @@ class GCmd(BaseCmd):
                 try:
                     cmd_id = segments[0][0] + str(int(segments[0][1:]))
                 except ValueError:
+                    # TODO Do something else
                     raise
             else:
                 cmd_id = segments[0]

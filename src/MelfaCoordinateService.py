@@ -59,7 +59,7 @@ class MelfaCoordinateService:
         """
         # TODO Determine reliable ABC angles
         if plane is Plane.XY:
-            return tuple([180.0, 0.0, 0.0])
+            return tuple([-180.0, 0.0, 0.0])
         elif plane is Plane.XZ:
             raise NotImplementedError
         elif plane is Plane.YZ:

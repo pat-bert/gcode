@@ -80,15 +80,15 @@ class MelfaRobot(PrinterComponent):
         # Deactivate work coordinates
         self.activate_work_coordinate(False)
 
-        # Safe position
-        if self.safe_return:
-            self.go_safe_pos()
-
         # Variables allocated
         self._prepare_circle()
 
         # Activate work coordinates
         self.activate_work_coordinate(True)
+
+        # Safe position
+        if self.safe_return:
+            self.go_safe_pos()
 
     def shutdown(self, safe_return: bool = False, *args, **kwargs) -> None:
         """
@@ -99,9 +99,6 @@ class MelfaRobot(PrinterComponent):
         # Finish robot communication
         print("Finishing control...")
         try:
-            # Deactivate work coordinates
-            self.activate_work_coordinate(False)
-
             # Safe position
             if self.safe_return:
                 # Error reset to ensure safe return
@@ -113,6 +110,9 @@ class MelfaRobot(PrinterComponent):
                 sleep(1)
             # Reset speed
             self.reset_linear_speed_factor()
+
+            # Deactivate work coordinates
+            self.activate_work_coordinate(False)
         finally:
             # Servos off
             self._change_servo_state(False)
@@ -367,7 +367,7 @@ class MelfaRobot(PrinterComponent):
 
     # Movement functions
 
-    def go_home(self, option=None) -> None:
+    def go_home(self, option='') -> None:
         """
         Moves the robot to its current home point (current work coordinate origin or global safe position respectively)
         :return:
@@ -376,7 +376,7 @@ class MelfaRobot(PrinterComponent):
             # Acquire new zero coordinate
             zero = self._zero()
 
-            if option is not None:
+            if option is not '':
                 zero.reduce_to_axes(option, make_none=True)
 
             # Acquire current position to determine robot orientation
@@ -421,8 +421,8 @@ class MelfaRobot(PrinterComponent):
             self.set_speed(speed, "linear")
 
         # Only send command if any coordinates are passed, otherwise just set the speed
-        if len(target_pos.coordinate.values()) > 0 and any(
-                a is not None for a in target_pos.coordinate.values()
+        if len(target_pos.values) > 0 and any(
+                a is not None for a in target_pos.values
         ):
             # Fill None values with current position to predict correct response
             current_pos = self.get_pos()
@@ -483,19 +483,22 @@ class MelfaRobot(PrinterComponent):
             # Adjust the angle according to the direction
             if not is_clockwise:
                 # Angle needs to be positive
-                if angle < 0:
+                if angle <= 0:
                     angle += 2 * pi
             else:
                 # Angle needs to be negative
-                if angle > 0:
+                if angle >= 0:
                     angle -= 2 * pi
 
-            # Intermediate points for angles >= 180°
-            if abs(angle) >= pi:
+            if abs(angle) == 2 * pi:
+                # TODO Full circle cannot be done with intermediate point
+                raise NotImplementedError
+            elif abs(angle) >= pi:
+                # Intermediate points for angles >= 180°
                 im_pos = get_intermediate_point(
                     angle, start_pos, target_pos, center_pos, self.active_plane
                 )
-
+                im_pos.update_empty(start_pos)
                 # Global variables
                 self.set_global_positions(
                     ["P1", "P2", "P3"], [start_pos, im_pos, target_pos]
@@ -529,7 +532,7 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         if len(var_names) == len(coordinates):
-            for var, coordinate in zip(set(var_names), coordinates):
+            for var, coordinate in zip(var_names, coordinates):
                 self.tcp.send(
                     MelfaCmd.DIRECT_CMD + str(var) + "=" + coordinate.to_melfa_point()
                 )
