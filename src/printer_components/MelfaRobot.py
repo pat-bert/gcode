@@ -169,11 +169,9 @@ class MelfaRobot(PrinterComponent):
             # Movement G-code
             if gcode.id in ["G00", "G0", "G01", "G1"]:
                 if not self.absolute_coordinates:
-                    self.linear_move_poll(
-                        gcode.cartesian_abs + current_pos, gcode.speed
-                    )
+                    self.linear_move_poll(gcode.cartesian_abs + current_pos, gcode.speed, current_pos=current_pos)
                 else:
-                    self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
+                    self.linear_move_poll(gcode.cartesian_abs, gcode.speed, current_pos=current_pos)
             elif gcode.id in ["G02", "G2"]:
                 if not self.absolute_coordinates:
                     self.circular_move_poll(
@@ -352,7 +350,7 @@ class MelfaRobot(PrinterComponent):
         elif mode == "joint":
             self.tcp.send(MelfaCmd.MOV_SPEED + "{:.{d}f}".format(speed_val, d=2))
         else:
-            raise ValueError("Unknown speed type <" + str(mode) + ">")
+            raise ValueError("Unknown speed type <{}>".format(mode))
         self.tcp.receive()
 
     def reset_linear_speed_factor(self):
@@ -405,13 +403,14 @@ class MelfaRobot(PrinterComponent):
         cmp_response(MelfaCmd.CURRENT_JOINT, safe_pos.to_melfa_response(), self.tcp)
 
     def linear_move_poll(
-            self, target_pos: Coordinate, speed: float = None, track_speed=False
+            self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None
     ):
         """
         Moves the robot linearly to a coordinate.
         :param target_pos: Coordinate for the target position.
         :param speed: Movement speed for tool.
         :param track_speed:
+        :param current_pos:
         :return:
         """
         if speed is not None:
@@ -423,7 +422,8 @@ class MelfaRobot(PrinterComponent):
                 a is not None for a in target_pos.values
         ):
             # Fill None values with current position to predict correct response
-            current_pos = self.get_pos()
+            if current_pos is None:
+                current_pos = self.get_pos()
             target_pos.update_empty(current_pos)
 
             # Send move command
@@ -538,7 +538,7 @@ class MelfaRobot(PrinterComponent):
         if len(var_names) == len(coordinates):
             for var, coordinate in zip(var_names, coordinates):
                 self.tcp.send(
-                    MelfaCmd.DIRECT_CMD + str(var) + "=" + coordinate.to_melfa_point()
+                    MelfaCmd.DIRECT_CMD + "{}={}".format(var, coordinate.to_melfa_point())
                 )
                 self.tcp.receive()
                 sleep(0.01)
@@ -574,13 +574,13 @@ class MelfaRobot(PrinterComponent):
         if speed > speed_threshold:
             try:
                 self._set_ovrd(speed_threshold)
-                print("Reduced speed to threshold value: " + str(speed_threshold))
+                print("Reduced speed to threshold value: {}".format(speed_threshold))
             except ApplicationExceptions.MelfaBaseException:
                 raise ApplicationExceptions.MelfaBaseException(
                     "Please ensure a speed lower or equal 10% in interactive mode!"
                 )
         else:
-            print("Speed of " + str(speed) + "%. Okay!")
+            print("Speed of {}%. Okay!".format(speed))
 
     # OVRD functions
 
@@ -591,7 +591,7 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         if 1 <= float(factor) <= 100:
-            self.tcp.send(MelfaCmd.OVERRIDE_CMD + "=" + str(factor))
+            self.tcp.send(MelfaCmd.OVERRIDE_CMD + "={}".format(factor))
             self.tcp.receive()
         else:
             raise MelfaBaseException(
