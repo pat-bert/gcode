@@ -101,7 +101,8 @@ class TestMelfaRobot:
         with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
             no_safe_robot.activate_work_coordinate(True)
         assert no_safe_robot.work_coordinate_active
-        mock_func.assert_any_call(MelfaCmd.SET_BASE_COORDINATES + "(-500,0,-200,0,0,0)")
+        # TODO Decouple this test from the implementation of zero
+        mock_func.assert_any_call(MelfaCmd.SET_BASE_COORDINATES + "(-500,0,-250,0,0,0)")
 
         # Deactivate
         with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:

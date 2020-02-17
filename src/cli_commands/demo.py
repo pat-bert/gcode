@@ -15,11 +15,13 @@ def cube(robot: MelfaRobot, speed: float) -> None:
     :param speed:
     :return:
     """
-    # Base coordinates
-    start = Coordinate([0, 0, 0, 180, 0, 0], robot.AXES)  # pragma: no mutate
+    square_size = 240
 
-    x_vec = Coordinate([100, 0, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
-    y_vec = Coordinate([0, -100, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    # Base coordinates
+    start = Coordinate([-square_size / 2, square_size / 2, 0, 180, 0, 0], robot.AXES)  # pragma: no mutate
+
+    x_vec = Coordinate([square_size, 0, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    y_vec = Coordinate([0, -square_size, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
     z_vector = Coordinate([0, 0, 5, 0, 0, 0], robot.AXES)  # pragma: no mutate
 
     square_corners = [
@@ -67,8 +69,8 @@ def cylinder(robot: MelfaRobot, speed: float) -> None:
 
 
 def speed_test(robot: MelfaRobot, speed: float) -> None:
-    start = Coordinate([-150, -200, 400, 180, 0, 0], robot.AXES)  # pragma: no mutate
-    vector = Coordinate([200, 400, -300, 0, 0, 0], robot.AXES)  # pragma: no mutate
+    start = Coordinate([-150, -150, 400, 180, 0, 0], robot.AXES)  # pragma: no mutate
+    vector = Coordinate([200, 300, -350, 0, 0, 0], robot.AXES)  # pragma: no mutate
     finish = start + vector  # pragma: no mutate
 
     # Back to start
@@ -77,7 +79,7 @@ def speed_test(robot: MelfaRobot, speed: float) -> None:
 
     # Test distance
     start_time = time.clock()
-    t, v = robot.linear_move_poll(finish, speed, track_speed=True)
+    t, v = robot.linear_move_poll(finish, speed * 60, track_speed=True)
     finish_time = time.clock()
 
     # Average velocity
@@ -90,20 +92,25 @@ def speed_test(robot: MelfaRobot, speed: float) -> None:
 
 
 def gcode_santa(robot: MelfaRobot):
-    gcode = """G1 X30 F100
-G1 Y30
-G1 X0
-G1 Y0
-G1 X30 Y30
-G1 X15 Y45
-G1 X0 Y30
-G1 X30 Y0
-G1 X0 Y0
-G02 X0 Y30 J15
-G02 X30 Y30 I15 J15
-G91 
-G02 Y-30 J-15
-G90"""
+    gcode = """G1 X-60 Y-60 Z100 F4500
+G91
+G1 Z-50
+G1 X120
+G1 Y120
+G1 X-120
+G1 Y-120
+G1 X120 Y120
+G1 X-60 Y60
+G1 X-60 Y-60
+G1 X120 Y-120
+G1 X-120 Y0
+G02 X0 Y120 J60
+G02 X120 I60
+G02 Y-120 J-60
+G03 X0 Y0 I-60 J60
+G1 Z50
+G90
+G1 X0 Y0"""
 
     for command in gcode.split("\n"):
         cmd = GCmd.read_cmd_str(command)

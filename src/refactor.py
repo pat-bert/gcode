@@ -48,6 +48,8 @@ def cmp_response(
     timeout_ms = timeout_s * 1000
     response_act = ""
 
+    response_t = response_t.split(';A')[0]
+
     time_samples = []
     speed_samples = []
     start_time = None

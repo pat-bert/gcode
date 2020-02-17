@@ -160,8 +160,9 @@ class TestCoordinate:
         :return:
         """
         a = Coordinate((1, -3, None), test_input)
-        a.reduce_to_axes(remaining)
-        assert "".join(list(a.axes)) == expected
+        b = a.reduce_to_axes(remaining)
+        assert "".join(list(b.axes)) == expected
+        assert str(a) == str(Coordinate((1, -3, None), test_input))
 
     @pytest.mark.parametrize(
         "values,axes,reduced,expected_values",
@@ -174,9 +175,10 @@ class TestCoordinate:
     )
     def test_reduce_to_axes_make_none(self, values, axes, reduced, expected_values):
         a = Coordinate(values, axes)
-        a.reduce_to_axes(reduced, make_none=True)
+        b = a.reduce_to_axes(reduced, make_none=True)
 
-        assert list(a.axes) == list(axes) and list(a.values) == expected_values
+        assert list(b.axes) == list(axes) and list(b.values) == expected_values
+        assert str(a) == str(Coordinate(values, axes))
 
     @pytest.mark.parametrize(
         "values_first,values_second,expected",

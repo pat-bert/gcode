@@ -111,10 +111,10 @@ def get_angle(
 
     # Remove any robot specific coordinates
     if normal_vec is not None:
-        normal_vec.reduce_to_axes("XYZ")
-    start.reduce_to_axes("XYZ")
-    target.reduce_to_axes("XYZ")
-    center.reduce_to_axes("XYZ")
+        normal_vec = normal_vec.reduce_to_axes("XYZ")
+    start = start.reduce_to_axes("XYZ")
+    target = target.reduce_to_axes("XYZ")
+    center = center.reduce_to_axes("XYZ")
 
     normal_vec, veca, vecb = get_np_vectors(start, target, center, normal_vec)
 

@@ -57,15 +57,15 @@ class Coordinate:
                 except KeyError:
                     raise TypeError("Incompatible axis.")
 
-    def reduce_to_axes(self, axes_to_keep, make_none=False):
+    def reduce_to_axes(self, axes_to_keep, make_none=False) -> 'Coordinate':
         if make_none:
-            self.coordinate.update(
-                {key: None for key in self.axes if key not in axes_to_keep}
-            )
+            coordinate = {key: None if key not in axes_to_keep else val for key, val in self.coordinate.items()}
+            return self.__class__(coordinate.values(), coordinate.keys(), digits=self.digits)
         else:
-            self.coordinate = {
+            coordinate = {
                 key: val for key, val in self.coordinate.items() if key in axes_to_keep
             }
+            return self.__class__(coordinate.values(), coordinate.keys(), digits=self.digits)
 
     def __str__(self):
         """

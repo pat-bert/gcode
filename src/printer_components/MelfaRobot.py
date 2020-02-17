@@ -83,12 +83,12 @@ class MelfaRobot(PrinterComponent):
         # Variables allocated
         self._prepare_circle()
 
-        # Activate work coordinates
-        self.activate_work_coordinate(True)
-
         # Safe position
         if self.safe_return:
             self.go_safe_pos()
+
+        # Activate work coordinates
+        self.activate_work_coordinate(True)
 
     def shutdown(self, safe_return: bool = False, *args, **kwargs) -> None:
         """
@@ -99,6 +99,9 @@ class MelfaRobot(PrinterComponent):
         # Finish robot communication
         print("Finishing control...")
         try:
+            # Deactivate work coordinates
+            self.activate_work_coordinate(False)
+
             # Safe position
             if self.safe_return:
                 # Error reset to ensure safe return
@@ -108,11 +111,9 @@ class MelfaRobot(PrinterComponent):
                 sleep(1)
                 self.go_safe_pos()
                 sleep(1)
+
             # Reset speed
             self.reset_linear_speed_factor()
-
-            # Deactivate work coordinates
-            self.activate_work_coordinate(False)
         finally:
             # Servos off
             self._change_servo_state(False)
@@ -124,7 +125,7 @@ class MelfaRobot(PrinterComponent):
     def activate_work_coordinate(self, active: bool) -> None:
         if active:
             # Activate coordinate system
-            self.tcp.send(MelfaCmd.SET_BASE_COORDINATES + "(-500,0,-200,0,0,0)")
+            self.tcp.send(MelfaCmd.SET_BASE_COORDINATES + "(-500,0,-250,0,0,0)")
             self.tcp.receive()
         else:
             self.tcp.send(MelfaCmd.RESET_BASE_COORDINATES)
@@ -144,7 +145,7 @@ class MelfaRobot(PrinterComponent):
         if interactive:
             # G-Code is executed directly
             current_pos = self.get_pos()
-            current_pos.reduce_to_axes("XYZ")
+            current_pos = current_pos.reduce_to_axes("XYZ")
 
             # Inch conversion
             if self.inch_active:
@@ -377,7 +378,7 @@ class MelfaRobot(PrinterComponent):
             zero = self._zero()
 
             if option is not '':
-                zero.reduce_to_axes(option, make_none=True)
+                zero = zero.reduce_to_axes(option, make_none=True)
 
             # Acquire current position to determine robot orientation
             current_position = self.get_pos()
