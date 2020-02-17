@@ -152,6 +152,10 @@ def get_intermediate_point(
             "Angles with absolute value greater that 2 pi are not allowed."
         )
 
+    start = start.reduce_to_axes('XYZ')
+    target = target.reduce_to_axes('XYZ')
+    center = center.reduce_to_axes('XYZ')
+
     if abs((center - start).vector_len() - (center - target).vector_len()) > 0.0001:
         raise ValueError("Start and end point are not equidistant from center.")
 
@@ -188,13 +192,6 @@ def get_intermediate_point(
         # Orientation
         if angle < 0:
             normal_r *= -1
-
-        # Resize sc
-        # sc = (center - start)
-        # sc_r = sc / sc.vector_len()
-
-        # Calculate center-intermediate
-        # ci = normal_r * sc.vector_len()
 
         # intermediate = center + ci
         intermediate = center + normal_r * (center - start).vector_len()

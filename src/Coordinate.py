@@ -186,10 +186,7 @@ class Coordinate:
         :return:
         """
         if self._are_axes_compatible(other):
-            values = [
-                self.coordinate[axis] * other.coordinate[axis] for axis in self.axes
-            ]
-            return sum(values)
+            return sum([self.coordinate[axis] * other.coordinate[axis] for axis in self.axes])
         else:
             raise TypeError("Incompatible axis.")
 
@@ -197,30 +194,21 @@ class Coordinate:
         if self._are_axes_compatible(other):
             axis_list = self.axes
             digits = min(self.digits, other.digits)
-            values = []
 
             indices_a = [i for i in range(1, len(axis_list))] + [0]
             indices_b = [len(axis_list) - 1] + [i for i in range(0, len(axis_list) - 1)]
 
-            for idx_a, idx_b in zip(indices_a, indices_b):
-                cross_1 = (
-                        self.coordinate[axis_list[idx_a]]
-                        * other.coordinate[axis_list[idx_b]]
-                )
-                cross_2 = (
-                        self.coordinate[axis_list[idx_b]]
-                        * other.coordinate[axis_list[idx_a]]
-                )
-                values.append(cross_1 - cross_2)
+            cross = lambda a, b: self.coordinate[axis_list[a]] * other.coordinate[axis_list[b]] - self.coordinate[
+                axis_list[b]] * other.coordinate[axis_list[a]]
+
+            values = [cross(idx_a, idx_b) for idx_a, idx_b in zip(indices_a, indices_b)]
+
             return Coordinate(values, axis_list, digits)
         else:
             raise TypeError("Incompatible axis.")
 
     def vector_len(self):
-        root_sum = 0
-        for axis in self.axes:
-            root_sum += self.coordinate[axis] ** 2
-        return sqrt(root_sum)
+        return sqrt(sum([i ** 2 for i in self.values]))
 
     @property
     def axes(self) -> List:
