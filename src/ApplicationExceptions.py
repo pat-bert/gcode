@@ -21,6 +21,10 @@ class OutOfOperationalArea(PreCheckError):
     pass
 
 
+NonExistentVariable = '4340'
+DuplicateVariableDeclaration = '4350'
+
+
 # Melfa-Errors
 class MelfaBaseException(ApiException):
     def __init__(self, status_code):

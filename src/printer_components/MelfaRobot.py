@@ -247,25 +247,20 @@ class MelfaRobot(PrinterComponent):
                 raise NotImplementedError
 
     def _prepare_circle(self) -> None:
-        # TODO Switch to using external variables available in robot
+        # TODO Can extern variables be used instead?
+        for i in range(1, 4):
+            self.declare_position('P{}'.format(i))
+
+    def declare_position(self, var_name):
         try:
-            self.tcp.send("EXECDEF POS P1")
+            self.tcp.send(MelfaCmd.DEF_POS + var_name)
             self.tcp.receive()
-        except ApplicationExceptions.MelfaBaseException:
-            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
-            self.tcp.receive()
-        try:
-            self.tcp.send("EXECDEF POS P2")
-            self.tcp.receive()
-        except ApplicationExceptions.MelfaBaseException:
-            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
-            self.tcp.receive()
-        try:
-            self.tcp.send("EXECDEF POS P3")
-            self.tcp.receive()
-        except ApplicationExceptions.MelfaBaseException:
-            self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
-            self.tcp.receive()
+        except ApplicationExceptions.MelfaBaseException as e:
+            if str(e.status).startswith(ApplicationExceptions.DuplicateVariableDeclaration):
+                self.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+                self.tcp.receive()
+            else:
+                raise
 
     def maintenance(self) -> None:
         # Communication & Control on
