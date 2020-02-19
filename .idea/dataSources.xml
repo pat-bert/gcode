@@ -7,5 +7,11 @@
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:D:\Nutzer\Documents\PycharmProjects\gcode\.testmondata</jdbc-url>
     </data-source>
+    <data-source source="LOCAL" name="[2]" uuid="02443d3e-62d8-43f0-94e1-ac535bf9afac">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:D:\Nutzer\Documents\PycharmProjects\gcode\.mutmut-cache</jdbc-url>
+    </data-source>
   </component>
 </project>

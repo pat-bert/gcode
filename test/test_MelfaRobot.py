@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from src.Coordinate import Coordinate
+from src.gcode.GCmd import GCmd
 from src.ApplicationExceptions import MelfaBaseException
 from src.melfa import MelfaCmd
 from src.melfa.TcpClientR3 import TcpClientR3
@@ -38,6 +40,11 @@ def no_safe_robot(tcp):
 
 class TestMelfaRobot:
     def test_axes_init(self, tcp):
+        """
+        Test that the initialisation for the number of axes is working.
+        :param tcp:
+        :return:
+        """
         with pytest.raises(IllegalAxesCount):
             MelfaRobot(tcp, number_axes=0)
 
@@ -112,6 +119,21 @@ class TestMelfaRobot:
 
     def test_handle_gcode(self):
         assert True
+
+    def test_handle_gcode_inch_switch(self, no_safe_robot):
+        """
+        Test that the inch mode switch works correctly.
+        :param no_safe_robot:
+        :return:
+        """
+        activate_inch = GCmd.read_cmd_str('G20')
+        deactivate_inch = GCmd.read_cmd_str('G21')
+
+        no_safe_robot.handle_gcode(activate_inch)
+        assert no_safe_robot.inch_active
+
+        no_safe_robot.handle_gcode(deactivate_inch)
+        assert not no_safe_robot.inch_active
 
     def test__prepare_circle(self):
         assert True
@@ -201,8 +223,26 @@ class TestMelfaRobot:
     def test_go_safe_pos(self):
         assert True
 
-    def test_linear_move_poll(self):
-        assert True
+    @pytest.mark.parametrize("speed,expected_speed", [(None, False), (100, True)])
+    @pytest.mark.parametrize("target,expected_move",
+                             [
+                                 (Coordinate((10, -20, 0), 'XYZ'), True),
+                                 (Coordinate((None, None, None), 'XYZ'), False)
+                             ])
+    def test_linear_move_poll(self, target, speed, expected_speed, expected_move, no_safe_robot):
+        with mock.patch.object(no_safe_robot, 'set_speed', spec=mock.Mock()) as mock_set_speed:
+            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_send:
+                no_safe_robot.linear_move_poll(target, speed, track_speed=False)
+
+        # Assert speed setting
+        if expected_speed:
+            mock_set_speed.assert_called_with(speed, 'linear')
+
+        # Assert movement
+        if expected_move:
+            mock_send.assert_called()
+        else:
+            mock_send.assert_not_called()
 
     def test_circular_move_poll(self):
         assert True
@@ -220,6 +260,11 @@ class TestMelfaRobot:
         assert True
 
     def test__set_ovrd_speed_false(self, no_safe_robot):
+        """
+        Test that invalid override values raise an exception.
+        :param no_safe_robot:
+        :return:
+        """
         with pytest.raises(MelfaBaseException):
             no_safe_robot._set_ovrd(101)
         with pytest.raises(MelfaBaseException):
@@ -227,6 +272,12 @@ class TestMelfaRobot:
 
     @pytest.mark.parametrize("factor", [1, 53, 100])
     def test__set_ovrd_speed_okay(self, factor, no_safe_robot):
+        """
+        Test that the override can be set to valid values.
+        :param factor:
+        :param no_safe_robot:
+        :return:
+        """
         with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
             no_safe_robot._set_ovrd(factor)
         mock_func.assert_called_with(MelfaCmd.OVERRIDE_CMD + "=" + str(factor))

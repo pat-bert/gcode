@@ -441,6 +441,8 @@ class MelfaRobot(PrinterComponent):
                 track_speed=track_speed,
             )
             return t, v
+        else:
+            return None, None
 
     def circular_move_poll(
             self,
