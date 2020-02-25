@@ -10,9 +10,7 @@ dependencies:
 
 jobs:
   build-and-test:
-    docker:
-      - image: python:3.6
-    # executor: python/default
+    executor: python/default
     steps:
       - checkout
       - restore_cache:
