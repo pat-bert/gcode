@@ -8,12 +8,23 @@ jobs:
     executor: python/default
     steps:
       - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
+      - restore_cache:
+            key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
-          command: pip install tox && tox
-          name: Test
+          name: Install Python deps in a venv
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+      - save_cache:
+          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          paths:
+            - "venv"
+      - run:
+            command: |
+              ls
+              . venv/bin/activate
+              python manage.py test
 
 workflows:
   main:
