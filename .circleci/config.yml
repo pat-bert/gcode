@@ -12,7 +12,7 @@ jobs:
       - python/install-deps
       - python/save-cache
       - run:
-          command: tox
+          command: pip install tox && tox
           name: Test
 
 workflows:
