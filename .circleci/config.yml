@@ -3,13 +3,14 @@ version: 2.1
 orbs:
   python: circleci/python@0.2.1
 
+dependencies:
+    override:
+      - pip install tox tox-pyenv
+      - pyenv local 2.6.8 2.7.10 3.3.3 3.4.3 3.5.0 3.6.0 3.7.0
+
 jobs:
   build-and-test:
     executor: python/default
-    dependencies:
-      override:
-        - pip install tox tox-pyenv
-        - pyenv local 2.6.8 2.7.10 3.3.3 3.4.3 3.5.0 3.6.0 3.7.0
     steps:
       - checkout
       - restore_cache:
