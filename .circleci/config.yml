@@ -10,7 +10,9 @@ dependencies:
 
 jobs:
   build-and-test:
-    executor: python/default
+    docker:
+      - image: python:3.6
+    # executor: python/default
     steps:
       - checkout
       - restore_cache:
@@ -26,6 +28,7 @@ jobs:
           paths:
             - "venv"
       - run:
+          name: Run tests with tox
             command: |
               . venv/bin/activate
               tox
