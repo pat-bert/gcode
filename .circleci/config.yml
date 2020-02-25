@@ -22,9 +22,8 @@ jobs:
             - "venv"
       - run:
             command: |
-              ls
               . venv/bin/activate
-              python manage.py test
+              tox
 
 workflows:
   main:
