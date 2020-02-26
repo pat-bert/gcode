@@ -3,10 +3,6 @@ version: 2.1
 orbs:
   python: circleci/python@0.2.1
 
-workflows:
-  main:
-    - test
-
 jobs:
   test:
     docker:
@@ -30,3 +26,9 @@ jobs:
           command: |
             . venv/bin/activate
             tox
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - test
