@@ -28,6 +28,8 @@ jobs:
             tox
       - store_test_results:
           path: ~/test-results/pytest/
+      - store_artifacts:
+          path: ~/test-results/pytest/
 workflows:
   version: 2
   main:
