@@ -1,6 +1,6 @@
 from math import pi
 from time import sleep
-from typing import *
+from typing import Sized, AnyStr, Union, List
 
 from src import ApplicationExceptions
 from src.ApplicationExceptions import MelfaBaseException, ApiException
@@ -43,7 +43,7 @@ class MelfaRobot(PrinterComponent):
         """
         if not hasattr(tcp_client, "send") or not hasattr(tcp_client, "receive"):
             raise TypeError("TCP-client does not implement required methods.")
-        if not number_axes > 0:
+        if number_axes <= 0:
             raise IllegalAxesCount
 
         self.tcp: TcpClientR3 = tcp_client

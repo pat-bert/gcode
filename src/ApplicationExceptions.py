@@ -28,6 +28,7 @@ DuplicateVariableDeclaration = '4350'
 # Melfa-Errors
 class MelfaBaseException(ApiException):
     def __init__(self, status_code):
+        super().__init__()
         self.status = status_code
 
 

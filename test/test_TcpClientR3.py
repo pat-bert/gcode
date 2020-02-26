@@ -27,6 +27,8 @@ from src.melfa.TcpClientR3 import validate_ip, validate_port
         ("-1.0.0.0", False),
         # simple int
         ("0", False),
+        # not convertable
+        ("Try.3.Not.4", False)
     ],
 )
 def test_validate_ip(ip, valid):

@@ -7,6 +7,7 @@ import socket
 import threading
 from queue import Queue
 from time import sleep
+from typing import AnyStr
 
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
@@ -14,7 +15,7 @@ from src.Coordinate import *
 from src.melfa import MelfaCmd
 
 
-class Msg(object):
+class Msg:
     def __init__(self, msg, silent_send, silent_recv):
         self.msg = msg
         self.ss = silent_send
@@ -24,7 +25,7 @@ class Msg(object):
         return self.msg, self.ss, self.sr
 
 
-class AbstractTcp(object):
+class AbstractTcp:
     def send(self, *args, **kwargs):
         pass
 
@@ -33,10 +34,13 @@ class AbstractTcp(object):
 
 
 def validate_ip(ip: AnyStr) -> bool:
-    return (
-            all([(int(i) in range(0, 256)) for i in ip.split(".")])
-            and len(ip.split(".")) == 4
-    )
+    try:
+        return (
+                all(((int(i) in range(0, 256)) for i in ip.split(".")))
+                and len(ip.split(".")) == 4
+        )
+    except ValueError:
+        return False
 
 
 def validate_port(port: int) -> bool:

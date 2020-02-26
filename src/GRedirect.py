@@ -12,7 +12,7 @@ class RedirectionTargets(Enum):
     UX = 5
 
 
-class GRedirect(object):
+class GRedirect:
     broadcast = [
         "G0",  # Rapid movement
         "G1",  # Move

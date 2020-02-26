@@ -1,5 +1,5 @@
 from math import atan2, pi
-from typing import *
+from typing import Union
 
 import numpy
 

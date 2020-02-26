@@ -1,5 +1,5 @@
 from math import sqrt
-from typing import *
+from typing import Union, List
 
 
 class Coordinate:
@@ -186,7 +186,7 @@ class Coordinate:
         :return:
         """
         if self._are_axes_compatible(other):
-            return sum([self.coordinate[axis] * other.coordinate[axis] for axis in self.axes])
+            return sum((self.coordinate[axis] * other.coordinate[axis] for axis in self.axes))
         else:
             raise TypeError("Incompatible axis.")
 
@@ -198,17 +198,19 @@ class Coordinate:
             indices_a = [i for i in range(1, len(axis_list))] + [0]
             indices_b = [len(axis_list) - 1] + [i for i in range(0, len(axis_list) - 1)]
 
-            cross = lambda a, b: self.coordinate[axis_list[a]] * other.coordinate[axis_list[b]] - self.coordinate[
-                axis_list[b]] * other.coordinate[axis_list[a]]
+            def cross_row_formula(a, b):
+                add1 = self.coordinate[axis_list[a]] * other.coordinate[axis_list[b]]
+                add2 = self.coordinate[axis_list[b]] * other.coordinate[axis_list[a]]
+                return add1 - add2
 
-            values = [cross(idx_a, idx_b) for idx_a, idx_b in zip(indices_a, indices_b)]
+            values = [cross_row_formula(idx_a, idx_b) for idx_a, idx_b in zip(indices_a, indices_b)]
 
             return Coordinate(values, axis_list, digits)
         else:
             raise TypeError("Incompatible axis.")
 
     def vector_len(self):
-        return sqrt(sum([i ** 2 for i in self.values]))
+        return sqrt(sum((i ** 2 for i in self.values)))
 
     @property
     def axes(self) -> List:

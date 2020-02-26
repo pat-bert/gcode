@@ -1,9 +1,9 @@
 import abc
 from src.GRedirect import RedirectionTargets
-from typing import *
+from typing import Iterable
 
 
-class PrinterComponent(object, metaclass=abc.ABCMeta):
+class PrinterComponent(metaclass=abc.ABCMeta):
     """
     Defines the interface that all printer component need to provide.
     """
