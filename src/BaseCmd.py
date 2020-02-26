@@ -3,7 +3,7 @@ File:       BaseCmd.py
 Author:     Patrick Bertsch
 Content:    Add common properties and methods for any machine commands here for inheriting.
 """
-from typing import *
+from typing import Any
 
 
 class BaseCmd:

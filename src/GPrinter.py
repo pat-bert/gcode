@@ -1,4 +1,4 @@
-from typing import *
+from typing import Dict, Union, Set
 
 from src.printer_components.Extruder import Extruder
 from src.gcode.GCmd import GCmd
@@ -10,7 +10,7 @@ from src.melfa.TcpClientR3 import TcpClientR3
 from src.printer_components.UxHandler import UxHandler
 
 
-class GPrinter(object):
+class GPrinter:
     """
     Bundles absolutely all components necessary to control the 3D printer.
     """

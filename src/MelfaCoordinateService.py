@@ -1,5 +1,5 @@
 from enum import unique, Enum
-from typing import *
+from typing import Tuple
 
 from src.Coordinate import Coordinate
 

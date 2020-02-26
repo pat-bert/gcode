@@ -1,5 +1,4 @@
-from typing import *
-
+from typing import Union, Tuple, List
 from src.BaseCmd import BaseCmd
 from src.Coordinate import Coordinate
 
@@ -184,7 +183,7 @@ class GCmd(BaseCmd):
                     misc_cmd = None
 
                 # Get relative arguments
-                rel_cr = list(args.get(axis, None) for axis in cls.REL_AXES)
+                rel_cr = [args.get(axis, None) for axis in cls.REL_AXES]
                 rel_cr = cls.expand_coordinates(rel_cr)
 
                 # Get absolute coordinates or home axis respectively
@@ -193,7 +192,7 @@ class GCmd(BaseCmd):
                     home = "".join((axis for axis in cls.ABS_AXES if axis in args))
                 else:
                     home = ""
-                    abs_cr = list(args.get(axis, None) for axis in cls.ABS_AXES)
+                    abs_cr = [args.get(axis, None) for axis in cls.ABS_AXES]
                     abs_cr = cls.expand_coordinates(abs_cr)
 
                 # Initialise command

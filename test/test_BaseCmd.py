@@ -35,8 +35,7 @@ class TestBaseCmd:
             base.read_cmd_str("Test")
 
     def test_validate(self, base):
-        result = base.validate()
-        assert result
+        assert base.validate()
 
     def test_string(self, base):
         with pytest.raises(NotImplementedError):

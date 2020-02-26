@@ -1,4 +1,4 @@
-from typing import *
+from typing import Union
 
 from src.BaseCmd import BaseCmd
 
