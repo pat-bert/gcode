@@ -372,7 +372,7 @@ class MelfaRobot(PrinterComponent):
             # Acquire new zero coordinate
             zero = self._zero()
 
-            if option is not '':
+            if option != '':
                 zero = zero.reduce_to_axes(option, make_none=True)
 
             # Acquire current position to determine robot orientation
