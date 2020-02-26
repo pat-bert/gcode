@@ -28,9 +28,9 @@ jobs:
             - "venv"
       - run:
           name: Run tests with tox
-            command: |
-              . venv/bin/activate
-              tox
+          command: |
+            . venv/bin/activate
+            tox
   test-3.7:
     <<: *test-template
     docker:
