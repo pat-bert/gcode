@@ -3,62 +3,28 @@ version: 2.1
 orbs:
   python: circleci/python@0.2.1
 
-#dependencies:
-#    override:
-#      - pip install tox tox-pyenv
-#      - pyenv local 2.6.8 2.7.10 3.3.3 3.4.3 3.5.0 3.6.0 3.7.0
-
-jobs:
-  test-3.8: &test-template
-    docker:
-      - image: circleci/python:3.8
-    steps:
-      - checkout
-      - restore_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
-      - run:
-          name: Install Python deps in a venv
-          command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install -r requirements.txt
-      - save_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
-          paths:
-            - "venv"
-      - run:
-          name: Run tests with tox
-          command: |
-            . venv/bin/activate
-            tox
-  test-3.7:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.7
-  test-3.6:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.6
-  test-3.5:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.5
-  test-3.4:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.4
-  test-2.7:
-    <<: *test-template
-    docker:
-      - image: circleci/python:2.7
-
 workflows:
   main:
     jobs:
-      - test-3.8
-      - test-3.7
-      - test-3.6
-      - test-3.5
-      - test-3.4
-      - test-2.7
-
+      test:
+        docker:
+          - image: themattrix/tox
+        steps:
+          - checkout
+          - restore_cache:
+              key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          - run:
+              name: Install Python deps in a venv
+              command: |
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install -r requirements.txt
+          - save_cache:
+              key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+              paths:
+                - "venv"
+          - run:
+              name: Run tests with tox
+              command: |
+                . venv/bin/activate
+                tox
