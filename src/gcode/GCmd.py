@@ -190,7 +190,7 @@ class GCmd(BaseCmd):
                 # Get absolute coordinates or home axis respectively
                 if cmd_id == cls.HOME_CMD:
                     abs_cr = None
-                    home = "".join([axis for axis in cls.ABS_AXES if axis in args])
+                    home = "".join((axis for axis in cls.ABS_AXES if axis in args))
                 else:
                     home = ""
                     abs_cr = list(args.get(axis, None) for axis in cls.ABS_AXES)
@@ -221,7 +221,7 @@ class GCmd(BaseCmd):
             coordinates = None
         else:
             try:
-                coordinates = tuple([float(i) for i in coordinates])
+                coordinates = tuple((float(i) for i in coordinates))
             except TypeError:
                 pass
         return coordinates

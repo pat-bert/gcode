@@ -33,10 +33,13 @@ class AbstractTcp(object):
 
 
 def validate_ip(ip: AnyStr) -> bool:
-    return (
-            all([(int(i) in range(0, 256)) for i in ip.split(".")])
-            and len(ip.split(".")) == 4
-    )
+    try:
+        return (
+                all(((int(i) in range(0, 256)) for i in ip.split(".")))
+                and len(ip.split(".")) == 4
+        )
+    except ValueError:
+        return False
 
 
 def validate_port(port: int) -> bool:

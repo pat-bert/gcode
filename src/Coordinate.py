@@ -186,7 +186,7 @@ class Coordinate:
         :return:
         """
         if self._are_axes_compatible(other):
-            return sum([self.coordinate[axis] * other.coordinate[axis] for axis in self.axes])
+            return sum((self.coordinate[axis] * other.coordinate[axis] for axis in self.axes))
         else:
             raise TypeError("Incompatible axis.")
 
@@ -208,7 +208,7 @@ class Coordinate:
             raise TypeError("Incompatible axis.")
 
     def vector_len(self):
-        return sqrt(sum([i ** 2 for i in self.values]))
+        return sqrt(sum((i ** 2 for i in self.values)))
 
     @property
     def axes(self) -> List:
