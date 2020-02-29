@@ -86,10 +86,7 @@ def get_np_vectors(
 
 
 def project_vector(vec, *axes):
-    proj = []
-    for axis in axes:
-        proj.append(numpy.dot(axis, vec))
-    return proj
+    return [numpy.dot(axis, vec) for axis in axes]
 
 
 def get_angle(

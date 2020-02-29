@@ -486,6 +486,7 @@ class MelfaRobot(PrinterComponent):
                 # Position assignments
                 if abs(angle) == 2 * pi:
                     # Calculate additional intermediate point
+                    # TODO Angle is half of previous angle
                     angle = self.get_directed_angle(start_pos, im_pos, center_pos, is_clockwise)
                     im_pos2 = get_intermediate_point(angle, start_pos, im_pos, center_pos, self.active_plane)
                     im_pos2.update_empty(start_pos)
