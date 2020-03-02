@@ -31,6 +31,10 @@ jobs:
           command: |
             . venv/bin/activate
             tox
+      - run:
+          name: Upload coverage reports to CodeCov
+          command: |
+          bash <(curl -s https://codecov.io/bash)
       - store_test_results:
           path: ~/test-results/pytest/
       - store_artifacts:
