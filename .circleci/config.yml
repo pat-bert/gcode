@@ -22,6 +22,10 @@ jobs:
           paths:
             - "venv"
       - run:
+          name: Dependency check
+          command: |
+            pipdeptree -w fail
+      - run:
           name: Run tests with tox
           command: |
             . venv/bin/activate
