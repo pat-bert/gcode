@@ -24,6 +24,7 @@ jobs:
       - run:
           name: Dependency check
           command: |
+            . venv/bin/activate
             pipdeptree -w fail
       - run:
           name: Run tests with tox
