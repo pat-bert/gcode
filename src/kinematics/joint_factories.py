@@ -1,6 +1,6 @@
 from math import cos, sin
 
-from kinematics.joints import BaseJoint, TranslationalJoint, BaseRotationalJoint, NoOffsetRotationalJoint, \
+from src.kinematics.joints import BaseJoint, TranslationalJoint, BaseRotationalJoint, NoOffsetRotationalJoint, \
     ParallelRotationalJoint, PerpendicularRotationalJoint, GeneralRotationalJoint, ParallelNoOffsetRotationalJoint, \
     PerpendicularNoOffsetRotationalJoint
 
