@@ -44,39 +44,62 @@ class BaseJoint(metaclass=abc.ABCMeta):
         :param kwargs: Denavit-Hartenberg parameters
         :return:
         """
-        pass
 
 
 class BaseRotationalJoint(BaseJoint, metaclass=abc.ABCMeta):
     """
-    Denavit-Hartenberg representation for any 1DOF rotational joint.
+    Interface: Denavit-Hartenberg representation for any 1DOF rotational joint.
     """
 
-    def __init__(self, a, alpha, d):
+    def __init__(self, *, a, alpha, d):
+        """
+        Common initialisation for all rotational joints.
+        :param a: link length
+        :param alpha: twist angle
+        :param d: Constant joint distance
+        """
         super().__init__(a=a, alpha=alpha, d=d)
         self.matrix[2][-1] = d
 
     @abc.abstractmethod
-    def mul(self, *, theta):
-        pass
+    def mul(self, *, theta, **kwargs):
+        """
+        Abstract method with more specific interface
+        :param theta: Current joint angle
+        :return:
+        """
 
 
 class GeneralRotationalJoint(BaseRotationalJoint):
-    def __init__(self, a, alpha, d):
+    """
+    Denavit-Hartenberg representation for 1DOF rotational joint without simplifications.
+    """
+
+    def __init__(self, *, a, alpha, d):
         super().__init__(a=a, alpha=alpha, d=d)
 
-    def mul(self, *, theta):
+    def mul(self, *, theta, **kwargs):
+        """
+        Sets the variable elements of the matrix.
+        :param theta: Current joint angle
+        :return:
+        """
         s_theta = sin(theta)
         c_theta = cos(theta)
 
-        self.matrix[2:][:] = [
+        # Override the first two rows
+        self.matrix[0:2][:] = [
             [cos(theta), -self.c_alpha * s_theta, self.s_alpha * s_theta, self.a * c_theta],
             [sin(theta), self.c_alpha * c_theta, -self.s_alpha * c_theta, self.a * s_theta]
         ]
 
 
 class NoOffsetRotationalJoint(BaseRotationalJoint):
-    def __init__(self, alpha, d):
+    """
+    Denavit-Hartenberg representation for 1DOF rotational joint with simplified link length
+    """
+
+    def __init__(self, *, alpha, d):
         """
         Creates a rotational joint with zero link length
         :param alpha: Joint twist
@@ -84,14 +107,19 @@ class NoOffsetRotationalJoint(BaseRotationalJoint):
         """
         super().__init__(alpha=alpha, d=d, a=0)
 
-    def mul(self, *, theta):
+    def mul(self, *, theta, **kwargs):
+        """
+        Sets the variable elements of the matrix.
+        :param theta: Current joint angle
+        :return:
+        """
         s_theta = sin(theta)
         c_theta = cos(theta)
 
         # Override the first three elements of the first two rows (last column = 0 due to a = 0)
-        self.matrix[0:2][0:3] = [
-            [cos(theta), -self.c_alpha * s_theta, self.s_alpha * s_theta],
-            [sin(theta), self.c_alpha * c_theta, -self.s_alpha * c_theta]
+        self.matrix[0:2][:] = [
+            [cos(theta), -self.c_alpha * s_theta, self.s_alpha * s_theta, 0],
+            [sin(theta), self.c_alpha * c_theta, -self.s_alpha * c_theta, 0]
         ]
 
 
@@ -100,15 +128,12 @@ class ParallelRotationalJoint(BaseRotationalJoint):
     alpha = 0 => sin(alpha) = 0
     """
 
-    def __init__(self, a, d):
+    def mul(self, *, theta, **kwargs):
         """
-        Creates a rotational joint with zero twist.
-        :param a: Link length
-        :param d: Joint distance
+        Sets the variable elements of the matrix.
+        :param theta: Current joint angle
+        :return:
         """
-        super().__init__(alpha=0, d=d, a=a)
-
-    def mul(self, *, theta):
         # Calculate common values
         s_theta = sin(theta)
         c_theta = cos(theta)
@@ -120,12 +145,35 @@ class ParallelRotationalJoint(BaseRotationalJoint):
         ]
 
 
+class ParallelNoOffsetRotationalJoint(NoOffsetRotationalJoint):
+    def mul(self, *, theta, **kwargs):
+        """
+        Sets the variable elements of the matrix.
+        :param theta: Current joint angle
+        :return:
+        """
+        # Calculate common values
+        s_theta = sin(theta)
+        c_theta = cos(theta)
+
+        # Override the first two rows (third column = 0 due to sin(alpha)=0)
+        self.matrix[0:2][:] = [
+            [c_theta, -self.c_alpha * s_theta, 0, 0],
+            [s_theta, self.c_alpha * c_theta, 0, 0]
+        ]
+
+
 class PerpendicularRotationalJoint(BaseRotationalJoint):
     """
     alpha = +- 90° => cos(alpha) = 0
     """
 
-    def mul(self, *, theta):
+    def mul(self, *, theta, **kwargs):
+        """
+        Sets the variable elements of the matrix.
+        :param theta: Current joint angle
+        :return:
+        """
         # Calculate common values
         s_theta = sin(theta)
         c_theta = cos(theta)
@@ -137,13 +185,30 @@ class PerpendicularRotationalJoint(BaseRotationalJoint):
         ]
 
 
+class PerpendicularNoOffsetRotationalJoint(NoOffsetRotationalJoint):
+    def mul(self, *, theta, **kwargs):
+        """
+        Sets the variable elements of the matrix.
+        :param theta: Current joint angle
+        :return:
+        """
+        s_theta = sin(theta)
+        c_theta = cos(theta)
+
+        # Override the first two rows (last column = 0 due to a = 0, second column = 0 due to cos(alpha)=0)
+        self.matrix[0:2][:] = [
+            [cos(theta), 0, self.s_alpha * s_theta, 0],
+            [sin(theta), 0, -self.s_alpha * c_theta, 0]
+        ]
+
+
 class TranslationalJoint(BaseJoint):
     def __init__(self, a, alpha, theta):
         """
         Creates a matrix with constant elements.
-        :param a:
-        :param alpha:
-        :param theta:
+        :param a: link length
+        :param alpha: twist angle
+        :param theta: joint angle
         """
         super().__init__(a=a, alpha=alpha, theta=theta)
 
@@ -157,10 +222,10 @@ class TranslationalJoint(BaseJoint):
             [s_theta, c_theta * self.c_alpha, -c_theta * self.s_alpha, a * s_theta]
         ]
 
-    def mul(self, *, d):
+    def mul(self, *, d, **kwargs):
         """
         Sets the variable elements of the matrix.
-        :param d:
+        :param d: Current joint distance
         :return:
         """
         # Override the 4th element of the third row
