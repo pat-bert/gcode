@@ -2,7 +2,7 @@ apipkg==1.5
 appdirs==1.4.3
 atomicwrites==1.3.0
 attrs==19.3.0
-Click==7.1
+Click==7.1.1
 colorama==0.4.3
 contextlib2==0.6.0.post1
 git+git://github.com/keleshev/schema/@0e7e6846e8e13280361d8f312e7336e6b0330339#egg=schema
