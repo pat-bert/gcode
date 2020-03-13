@@ -48,7 +48,7 @@ from src.cli_commands.interactive_gcode import interactive_gcode
 from src.cli_commands.interactive_melfa import interactive_melfa
 from src.cli_commands.interpret_gcode import interpret_gcode
 from src.exit_codes import *
-from src.melfa.TcpClientR3 import validate_ip, validate_port
+from src.clients.TcpClientR3 import validate_ip, validate_port
 
 # Third-party libraries
 try:

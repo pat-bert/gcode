@@ -1,9 +1,9 @@
 from time import sleep
 
+import protocols.R3Protocol
 from src import ApplicationExceptions
-from src.melfa import MelfaCmd
 from src.printer_components.MelfaRobot import MelfaRobot
-from src.melfa.TcpClientR3 import TcpClientR3
+from src.clients.TcpClientR3 import TcpClientR3
 
 
 def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:
@@ -44,7 +44,7 @@ def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:
                     # Reset alarm
                     sleep(1)
                     print("Error Reset")
-                    robot.tcp.send(MelfaCmd.ALARM_RESET_CMD)
+                    robot.tcp.send(protocols.R3Protocol.ALARM_RESET_CMD)
                     robot.tcp.receive(silence_errors=True)
     except KeyboardInterrupt:
         pass

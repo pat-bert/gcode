@@ -1,29 +1,9 @@
 import time
 from time import sleep
 
+import protocols.R3Protocol
 from src.ApplicationExceptions import TcpError
-from src.melfa import MelfaCmd
-from src.melfa.TcpClientR3 import TcpClientR3
-
-
-def cmd_coordinate_response(tcp_client, command):
-    tcp_client.send(command)
-    response = tcp_client.receive()
-    coordinate_str = response.split(MelfaCmd.DELIMITER)[1]
-    coordinates = coordinate_str.split(", ")
-    return [float(i) for i in coordinates]
-
-
-def joint_borders(tcp_client):
-    return cmd_coordinate_response(
-        tcp_client, MelfaCmd.PARAMETER_READ + MelfaCmd.JOINT_BORDERS
-    )
-
-
-def xyz_borders(tcp_client):
-    return cmd_coordinate_response(
-        tcp_client, MelfaCmd.PARAMETER_READ + MelfaCmd.XYZ_BORDERS
-    )
+from src.clients.TcpClientR3 import TcpClientR3
 
 
 def cmp_response(
@@ -35,7 +15,7 @@ def cmp_response(
         track_speed=False,
 ):
     """
-    Uses a given command to poll for a given response.
+    Uses a given cmd to poll for a given response.
     :param poll_cmd: Command used to execute the poll
     :param response_t: Target response string
     :param tcp_client:
@@ -61,7 +41,7 @@ def cmp_response(
         if track_speed:
             current_time = time.clock()
 
-            tcp_client.send(MelfaCmd.VAR_READ + MelfaCmd.CURRENT_SPEED_VAR)
+            tcp_client.send(protocols.R3Protocol.VAR_READ + protocols.R3Protocol.CURRENT_SPEED_VAR)
             speed_response = tcp_client.receive()
             try:
                 speed = float(speed_response.split("=")[-1])

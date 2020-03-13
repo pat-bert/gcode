@@ -3,7 +3,7 @@ import time
 from src import ApplicationExceptions
 from src.Coordinate import Coordinate
 from src.gcode.GCmd import GCmd
-from src.melfa.TcpClientR3 import TcpClientR3
+from src.clients.TcpClientR3 import TcpClientR3
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.speed_profile import draw_speed
 
