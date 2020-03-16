@@ -44,8 +44,7 @@ def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:
                     # Reset alarm
                     sleep(1)
                     print("Error Reset")
-                    robot.tcp.send(protocols.R3Protocol.ALARM_RESET_CMD)
-                    robot.tcp.receive(silence_errors=True)
+                    robot.protocol.reset_alarm()
     except KeyboardInterrupt:
         pass
     except ApplicationExceptions.MelfaBaseException as e:

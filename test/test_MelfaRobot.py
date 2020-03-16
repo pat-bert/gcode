@@ -3,12 +3,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.Coordinate import Coordinate
-from src.gcode.GCmd import GCmd
-from src.ApplicationExceptions import MelfaBaseException
 import src.protocols.R3Protocol as R3Protocol
+from src.Coordinate import Coordinate
 from src.clients.TcpClientR3 import TcpClientR3
-from src.printer_components.MelfaRobot import MelfaRobot, IllegalAxesCount, SpeedBelowMinimum
+from src.gcode.GCmd import GCmd
+from src.printer_components.MelfaRobot import MelfaRobot, IllegalAxesCount
 
 
 @pytest.fixture
@@ -108,14 +107,13 @@ class TestMelfaRobot:
         with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
             no_safe_robot.activate_work_coordinate(True)
         assert no_safe_robot.work_coordinate_active
-        # TODO Decouple this test from the implementation of zero
-        mock_func.assert_any_call(R3Protocol.SET_BASE_COORDINATES + "(-500,0,-250,0,0,0)")
+        mock_func.assert_any_call(R3Protocol.SET_BASE_COORDINATES + no_safe_robot.work_coordinate_offset)
 
         # Deactivate
         with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
             no_safe_robot.activate_work_coordinate(False)
         assert not no_safe_robot.work_coordinate_active
-        mock_func.assert_any_call(R3Protocol.RESET_BASE_COORDINATES)
+        mock_func.assert_any_call('EXECBASE P_NBASE')
 
     def test_handle_gcode(self):
         assert True
@@ -152,17 +150,17 @@ class TestMelfaRobot:
         with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
             no_safe_robot._change_communication_state(True)
         assert no_safe_robot.com_ctrl
-        mock_func.assert_any_call(R3Protocol.CNTL_ON)
+        mock_func.assert_any_call('CNTLON')
         with pytest.raises(AssertionError):
-            mock_func.assert_any_call(R3Protocol.CNTL_OFF)
+            mock_func.assert_any_call('CNTLOFF')
 
         # Deactivate
         with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
             no_safe_robot._change_communication_state(False)
         assert not no_safe_robot.servo
-        mock_func.assert_any_call(R3Protocol.CNTL_OFF)
+        mock_func.assert_any_call('CNTLOFF')
         with pytest.raises(AssertionError):
-            mock_func.assert_any_call(R3Protocol.CNTL_ON)
+            mock_func.assert_any_call('CNTLON')
 
     def test__change_servo_state(self, no_safe_robot):
         """
@@ -191,28 +189,56 @@ class TestMelfaRobot:
     def test_read_parameter(self):
         assert True
 
-    def test_set_speed(self, no_safe_robot):
+    def test_set_speed_linear(self, no_safe_robot):
         """
         Check that the speed commands are sent as expected.
         :param no_safe_robot:
         :return:
         """
-        with mock.patch.object(no_safe_robot, '_get_ovrd_speed') as ovrd:
-            # Error
-            with pytest.raises(SpeedBelowMinimum):
-                no_safe_robot.set_speed(0, 'linear')
-
+        with mock.patch.object(no_safe_robot.protocol.reader, 'get_override') as ovrd:
             # Regular setting
             ovrd.return_value = 100
+
+            # Error
+            with pytest.raises(ValueError):
+                no_safe_robot.set_speed(0.9, 'linear')
+
+            with pytest.raises(ValueError):
+                no_safe_robot.set_speed(1000.1, 'linear')
+
+            # Regular setting
             with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
                 no_safe_robot.set_speed(1, 'linear')
             mock_func.assert_called_with(R3Protocol.MVS_SPEED + '1.00')
 
             # Regular setting with different override
-            ovrd.return_value = 30
+            ovrd.return_value = 10
             with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
-                no_safe_robot.set_speed(12, 'linear')
-            mock_func.assert_called_with(R3Protocol.MVS_SPEED + '40.00')
+                no_safe_robot.set_speed(100, 'linear')
+            mock_func.assert_called_with(R3Protocol.MVS_SPEED + '1000.00')
+
+    def test_set_speed_joint(self, no_safe_robot):
+        with mock.patch.object(no_safe_robot.protocol.reader, 'get_override') as ovrd:
+            # Regular setting
+            ovrd.return_value = 100
+
+            # Error
+            with pytest.raises(ValueError):
+                no_safe_robot.set_speed(0.9, 'joint')
+
+            with pytest.raises(ValueError):
+                no_safe_robot.set_speed(100.1, 'joint')
+
+            # Regular setting
+            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+                no_safe_robot.set_speed(1, 'joint')
+            mock_func.assert_called_with(R3Protocol.MOV_SPEED + '1.00')
+
+            # Regular setting with different override
+            ovrd.return_value = 10
+            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+                no_safe_robot.set_speed(10, 'joint')
+            mock_func.assert_called_with(R3Protocol.MOV_SPEED + '100.00')
 
     def test_reset_linear_speed_factor(self):
         assert True
@@ -258,29 +284,6 @@ class TestMelfaRobot:
 
     def test__get_ovrd(self):
         assert True
-
-    def test__set_ovrd_speed_false(self, no_safe_robot):
-        """
-        Test that invalid override values raise an exception.
-        :param no_safe_robot:
-        :return:
-        """
-        with pytest.raises(MelfaBaseException):
-            no_safe_robot._set_ovrd(101)
-        with pytest.raises(MelfaBaseException):
-            no_safe_robot._set_ovrd(0)
-
-    @pytest.mark.parametrize("factor", [1, 53, 100])
-    def test__set_ovrd_speed_okay(self, factor, no_safe_robot):
-        """
-        Test that the override can be set to valid values.
-        :param factor:
-        :param no_safe_robot:
-        :return:
-        """
-        with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
-            no_safe_robot._set_ovrd(factor)
-        mock_func.assert_called_with(R3Protocol.OVERRIDE_CMD + "=" + str(factor))
 
     def test_wait(self):
         assert True

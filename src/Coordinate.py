@@ -153,13 +153,7 @@ class Coordinate:
         ]
         return Coordinate(values, self.axes, self.digits)
 
-    def __rmul__(self, other: Union[float, int]) -> "Coordinate":
-        """
-        Allows right hand multiplication.
-        :param other: Constant, float or int
-        :return: New set of coordinates
-        """
-        return self.__mul__(other)
+    __rmul__ = __mul__
 
     def __truediv__(self, other: float) -> "Coordinate":
         """
