@@ -7,12 +7,11 @@ import socket
 import threading
 from queue import Queue
 from time import sleep
-from typing import AnyStr
+from typing import AnyStr, Union
 
 import protocols.R3Protocol
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
-from src.Coordinate import *
 
 
 class Msg:

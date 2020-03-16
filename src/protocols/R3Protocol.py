@@ -136,9 +136,9 @@ class R3Positions:
         :param var_type:
         :return: None
         """
-        if var_type is 'position':
+        if var_type == 'position':
             var_cmd = 'POS'
-        elif var_type is 'joint':
+        elif var_type == 'joint':
             var_cmd = 'JNT'
         else:
             raise ValueError('Unknown variable type.')
@@ -419,14 +419,12 @@ class R3Setter:
             if value < lbound:
                 if ubound is not None:
                     raise ValueError('Value out of range [{:.{d}f};{:.{d}f}].'.format(lbound, ubound, d=self.digits))
-                else:
-                    raise ValueError('Value must be >= {:.{d}f}.'.format(lbound, d=self.digits))
+                raise ValueError('Value must be >= {:.{d}f}.'.format(lbound, d=self.digits))
         if ubound is not None:
             if value > ubound:
                 if lbound is not None:
                     raise ValueError('Value out of range [{:.{d}f};{:.{d}f}].'.format(lbound, ubound, d=self.digits))
-                else:
-                    raise ValueError('Value must be <= {:.{d}f}.'.format(ubound, d=self.digits))
+                raise ValueError('Value must be <= {:.{d}f}.'.format(ubound, d=self.digits))
 
 
 class R3Resetter:
@@ -484,9 +482,9 @@ class R3Resetter:
         :return: None
         """
         if default_name is None:
-            if var_type is 'point':
+            if var_type == 'point':
                 default_name = 'P_N{}'.format(command)
-            elif var_type is 'number':
+            elif var_type == 'number':
                 default_name = 'M_N{}'.format(command)
             else:
                 raise ValueError('Unknown variable type: {}'.format(var_type))

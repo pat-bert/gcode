@@ -340,8 +340,7 @@ class MelfaRobot(PrinterComponent):
             # Indicate spare speed reserve
             if ovrd_speed_factor < 100 and speed >= 1.0:
                 raise ValueError('Could not increase the speed setting above the maximum. Please increase override.')
-            else:
-                raise
+            raise
 
     # Movement functions
 
@@ -414,8 +413,7 @@ class MelfaRobot(PrinterComponent):
                 track_speed=track_speed,
             )
             return t, v
-        else:
-            return None, None
+        return None, None
 
     def circular_move_poll(
             self,
