@@ -3,16 +3,16 @@ File:       TCPClient.py
 Author:     Patrick Bertsch
 Content:    Implement TCP/IP communication to robot
 """
+import abc
 import socket
 import threading
 from queue import Queue
 from time import sleep
-from typing import AnyStr
+from typing import AnyStr, Union
 
+import src.protocols.R3Protocol as R3Protocol
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
-from src.Coordinate import *
-from src.melfa import MelfaCmd
 
 
 class Msg:
@@ -25,11 +25,11 @@ class Msg:
         return self.msg, self.ss, self.sr
 
 
-class AbstractTcp:
-    def send(self, *args, **kwargs):
+class AbstractClient(metaclass=abc.ABCMeta):
+    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False):
         pass
 
-    def receive(self, *args, **kwargs):
+    def receive(self, silence_errors=False):
         pass
 
 
@@ -47,7 +47,7 @@ def validate_port(port: int) -> bool:
     return port in range(0, 65536)
 
 
-class TcpClientR3(AbstractTcp):
+class TcpClientR3(AbstractClient):
     """
     Implements the PC-side of the TCP/IP connection.
     """
@@ -58,7 +58,7 @@ class TcpClientR3(AbstractTcp):
     BUFSIZE = 1024
 
     # Delimiter
-    DELIMITER = MelfaCmd.DELIMITER
+    DELIMITER = R3Protocol.DELIMITER
     ENCODING = "utf-8"
 
     # Parameters for R3 protocol
@@ -158,8 +158,8 @@ class TcpClientR3(AbstractTcp):
         self.send(msg)
         self.send_q.join()
 
-        if msg == MelfaCmd.SRV_ON:
-            sleep(MelfaCmd.SERVO_INIT_SEC)
+        if msg == R3Protocol.SRV_ON:
+            sleep(R3Protocol.SERVO_INIT_SEC)
 
     def receive(self, silence_errors=False) -> str:
         response = self.recv_q.get()

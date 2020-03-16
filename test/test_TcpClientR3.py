@@ -1,6 +1,6 @@
 import pytest
 
-from src.melfa.TcpClientR3 import validate_ip, validate_port
+from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
 
 
 @pytest.mark.parametrize(
@@ -28,7 +28,7 @@ from src.melfa.TcpClientR3 import validate_ip, validate_port
         # simple int
         ("0", False),
         # not convertable
-        ("Try.3.Not.4", False)
+        ("Try.3.Not.4", False),
     ],
 )
 def test_validate_ip(ip, valid):
@@ -58,7 +58,10 @@ def test_validate_port(port, valid):
 
 class TestTcpClientR3:
     def test_connect(self):
-        assert True
+        actual_tcp = TcpClientR3()
+
+        with pytest.raises(TcpError):
+            actual_tcp.connect()
 
     def test_close(self):
         assert True

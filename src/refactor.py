@@ -2,43 +2,22 @@ import time
 from time import sleep
 
 from src.ApplicationExceptions import TcpError
-from src.melfa import MelfaCmd
-from src.melfa.TcpClientR3 import TcpClientR3
-
-
-def cmd_coordinate_response(tcp_client, command):
-    tcp_client.send(command)
-    response = tcp_client.receive()
-    coordinate_str = response.split(MelfaCmd.DELIMITER)[1]
-    coordinates = coordinate_str.split(", ")
-    return [float(i) for i in coordinates]
-
-
-def joint_borders(tcp_client):
-    return cmd_coordinate_response(
-        tcp_client, MelfaCmd.PARAMETER_READ + MelfaCmd.JOINT_BORDERS
-    )
-
-
-def xyz_borders(tcp_client):
-    return cmd_coordinate_response(
-        tcp_client, MelfaCmd.PARAMETER_READ + MelfaCmd.XYZ_BORDERS
-    )
+from src.protocols.R3Protocol import R3Reader
 
 
 def cmp_response(
         poll_cmd: str,
         response_t: str,
-        tcp_client: TcpClientR3,
+        protocol: R3Reader,
         poll_rate_ms: int = 5,
         timeout_s: int = 60,
         track_speed=False,
 ):
     """
-    Uses a given command to poll for a given response.
+    Uses a given cmd to poll for a given response.
     :param poll_cmd: Command used to execute the poll
     :param response_t: Target response string
-    :param tcp_client:
+    :param protocol:
     :param poll_rate_ms: Poll rate in milliseconds
     :param timeout_s: Time until timeout in seconds
     :param track_speed:
@@ -48,7 +27,7 @@ def cmp_response(
     timeout_ms = timeout_s * 1000
     response_act = ""
 
-    response_t = response_t.split(';A')[0]
+    response_t = response_t.split(";A")[0]
 
     time_samples = []
     speed_samples = []
@@ -61,10 +40,8 @@ def cmp_response(
         if track_speed:
             current_time = time.clock()
 
-            tcp_client.send(MelfaCmd.VAR_READ + MelfaCmd.CURRENT_SPEED_VAR)
-            speed_response = tcp_client.receive()
             try:
-                speed = float(speed_response.split("=")[-1])
+                speed = protocol.get_current_linear_speed()
             except ValueError:
                 speed = 0
 
@@ -74,8 +51,8 @@ def cmp_response(
             time_samples.append(float(current_time - start_time))
             speed_samples.append(float(speed))
 
-        tcp_client.send(poll_cmd, silent_send=True, silent_recv=True)
-        response_act = tcp_client.receive()
+        protocol.client.send(poll_cmd, silent_send=True, silent_recv=True)
+        response_act = protocol.client.receive()
 
         # Check response
         if response_act.startswith(response_t):
