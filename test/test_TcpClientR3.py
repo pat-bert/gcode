@@ -1,6 +1,6 @@
 import pytest
 
-from src.melfa.TcpClientR3 import validate_ip, validate_port
+from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
 
 
 @pytest.mark.parametrize(
