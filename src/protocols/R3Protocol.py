@@ -1,33 +1,37 @@
 from time import sleep
 from typing import Tuple, Optional, Callable, Union, List
 
+from MelfaCoordinateService import MelfaCoordinateService
 from src.Coordinate import Coordinate
-from src.protocols.IProtocol import CoordinateAdapter
 
+# General commands
 DELIMITER = ';'
 DIRECT_CMD = 'EXEC'
-OVERRIDE_CMD = 'OVRD'
-JOINT_SPEED = 'JOVRD'
-LINEAR_SPEED = 'SPD'
-BASE_COORDINATE_CMD = 'BASE'
-
+VAR_READ = "VAL"
 SRV_ON = "SRVON"
 SRV_OFF = "SRVOFF"
-PARAMETER_SAFE_POSITION = "JSAFE"
-LINEAR_INTRP = DIRECT_CMD + "MVS "
-VAR_READ = "VAL"
 SRV_STATE_VAR = "M_SVO"
-CURRENT_SPEED_VAR = "M_RSPD"
-CURRENT_TOOL_NO = "M_TOOL"
-CURRENT_TOOL_DATA = "MEXTL"
-CURRENT_BASE = "MEXBS"
+SERVO_INIT_SEC = 5
+
+# Speed commands
+OVERRIDE_CMD = 'OVRD'
+JOINT_SPEED = 'JOVRD'
+MOV_SPEED = DIRECT_CMD + "JOVRD "
+LINEAR_SPEED = 'SPD'
+MVS_SPEED = DIRECT_CMD + "SPD "
+
+# Coordinate commands
+BASE_COORDINATE_CMD = 'BASE'
 CURRENT_XYZABC = "PPOSF"
 CURRENT_JOINT = "JPOSF"
-RESET_BASE_COORDINATES = DIRECT_CMD + "BASE P_NBASE"
-SET_BASE_COORDINATES = DIRECT_CMD + "BASE "
-MVS_SPEED = DIRECT_CMD + "SPD "
-MOV_SPEED = DIRECT_CMD + "JOVRD "
-SERVO_INIT_SEC = 5
+
+# Move commands
+LINEAR_INTRP = DIRECT_CMD + "MVS "
+
+# Tool commands
+STANDARD_TOOL_COORD = "MEXTL"
+CURRENT_TOOL_NO = "M_TOOL"
+CURRENT_BASE = "MEXBS"
 
 
 class R3Protocol:
@@ -36,7 +40,7 @@ class R3Protocol:
     """
     DIGITS = 2
 
-    def __init__(self, client, coordinate_adapter: CoordinateAdapter, joints, digits: int = DIGITS):
+    def __init__(self, client, coordinate_adapter: MelfaCoordinateService, joints, digits: int = DIGITS):
         """
         Create a protocol object.
         :param client: Client to be used for the communication.
@@ -226,10 +230,12 @@ class R3Reader:
         return self._get_float_cmd(OVERRIDE_CMD, direct=False)
 
     def get_current_linear_speed(self) -> float:
-        pass
+        val = self.read_variable('M_RSPD')
+        return float(val.split("=")[-1])
 
     def get_joint_speed(self) -> float:
-        pass
+        val = self.read_variable('M_JOVRD')
+        return float(val.split("=")[-1])
 
     def get_joint_borders(self) -> Tuple:
         """
@@ -261,7 +267,7 @@ class R3Reader:
         """
         self.client.send('PPOSF')
         coord_str = self.client.receive()
-        return self.from_response_to_coordinate(coord_str)
+        return self.from_response_to_coordinate(coord_str, len(self.joints))
 
     def get_current_joint(self) -> Coordinate:
         """
@@ -278,8 +284,11 @@ class R3Reader:
         :return: Coordinate object
         """
         answer_str = self._read_parameter('JSAFE')
-        safe_pos_values = [float(i) for i in answer_str.split(";")[1].split(", ")]
+        safe_pos_values = [float(i) for i in answer_str.split(DELIMITER)[1].split(", ")]
         return Coordinate(safe_pos_values, self.joints)
+
+    def get_servo_state(self):
+        pass
 
     def _read_parameter(self, parameter: str) -> str:
         """
@@ -292,7 +301,7 @@ class R3Reader:
 
     def read_variable(self, variable: str) -> str:
         """
-        Auxilary function to read any variable
+        Auxilary function to read number variables.
         :param variable: String representation of the variable
         :return: Client response excluding status
         """
@@ -300,7 +309,12 @@ class R3Reader:
         return self.client.receive()
 
     def _get_float_cmd(self, cmd: str, direct=True) -> float:
+        """
 
+        :param cmd:
+        :param direct: Flag to specify whether direct execution is required
+        :return:
+        """
         # Send cmd
         if direct:
             self.client.send('{}{}'.format(DIRECT_CMD, cmd))
@@ -427,30 +441,38 @@ class R3Resetter:
     def reset_base_coordinate_system(self) -> None:
         """
         Reset the base coordinate system to its default.
-        :return:
+        :return: None
         """
         self._reset_cmd(BASE_COORDINATE_CMD, var_type='point')
 
     def reset_override(self) -> None:
         """
         Reset the override factor to its maximum..
-        :return:
+        :return: None
         """
         self._reset_cmd(OVERRIDE_CMD, var_type='number', direct=False)
 
     def reset_linear_speed(self) -> None:
         """
         Reset the linear speed to its maximum.
-        :return:
+        :return: None
         """
         self._reset_cmd(LINEAR_SPEED, var_type='number')
 
     def reset_joint_speed(self) -> None:
         """
         Reset the joint speed factor to its maximum.
-        :return:
+        :return: None
         """
         self._reset_cmd(JOINT_SPEED, var_type='number')
+
+    def reset_all_speeds(self) -> None:
+        """
+        Reset the speed modification factors to maximum speed.
+        :return: None
+        """
+        self.reset_linear_speed()
+        self.reset_joint_speed()
 
     def _reset_cmd(self, command, *, var_type: str, default_name=None, direct=True) -> None:
         """

@@ -1,9 +1,8 @@
 from time import sleep
 
-import protocols.R3Protocol
 from src import ApplicationExceptions
-from src.printer_components.MelfaRobot import MelfaRobot
 from src.clients.TcpClientR3 import TcpClientR3
+from src.printer_components.MelfaRobot import MelfaRobot
 
 
 def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:
@@ -26,9 +25,9 @@ def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:
             if usr_msg.lower() in ["quit"]:
                 raise KeyboardInterrupt
             elif len(usr_msg) > 0:
-                robot.tcp.wait_send(usr_msg.upper())
+                robot.client.wait_send(usr_msg.upper())
                 try:
-                    robot.tcp.receive()
+                    robot.client.receive()
                 except ApplicationExceptions.MelfaBaseException as ex:
                     # Print error message
                     if len(ex.status) > 0:
@@ -36,9 +35,9 @@ def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:
                     else:
                         # Resolve empty status codes
                         print("Empty status code. Trying to resolve.")
-                        robot.tcp.wait_send("ERROR")
+                        robot.client.wait_send("ERROR")
                         try:
-                            robot.tcp.receive()
+                            robot.client.receive()
                         except ApplicationExceptions.MelfaBaseException as ex_res:
                             print(str(ex_res))
                     # Reset alarm

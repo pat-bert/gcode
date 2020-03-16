@@ -28,7 +28,7 @@ def interpret_gcode(f_input: str, f_output: str = "out.txt") -> None:
 
     # Start translation to MELFA commands
     tcp = AbstractTcp()
-    robot = MelfaRobot(tcp_client=AbstractTcp)
+    robot = MelfaRobot(io_client=AbstractTcp)
     print("Translating commands to R3 protocol commands...")
     try:
         r3_code_list = [

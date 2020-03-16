@@ -34,26 +34,26 @@ class MelfaRobot(PrinterComponent):
     INCH_IN_MM = 25.4
 
     def __init__(
-            self, tcp_client, speed_threshold=10, number_axes: int = 6, safe_return=False
+            self, io_client, speed_threshold=10, number_axes: int = 6, safe_return=False
     ):
         """
         Initialises the robot.
-        :param tcp_client: Communication object for TCP/IP-protocol
+        :param io_client: Communication object for TCP/IP-protocol
         :param number_axes: Number of robot AXES, declared by 'J[n]', n>=1
         :param safe_return:
         """
-        if not hasattr(tcp_client, "send") or not hasattr(tcp_client, "receive"):
-            raise TypeError("TCP-client does not implement required methods.")
+        if not hasattr(io_client, "send") or not hasattr(io_client, "receive"):
+            raise TypeError("Client does not implement required methods.")
         if number_axes <= 0:
             raise IllegalAxesCount
 
-        self.tcp: TcpClientR3 = tcp_client
-        self.work_coordinate_offset = "(-500,0,-250,0,0,0)"
+        self.client: TcpClientR3 = io_client
+        self.work_coordinate_offset = '(-500,0,-250,0,0,0)'
         self.joints: Sized[AnyStr] = list(
-            ["J" + str(i) for i in range(1, number_axes + 1)]
+            ['J{}'.format(i) for i in range(1, number_axes + 1)]
         )
         self.speed_threshold = speed_threshold
-        self.protocol = R3Protocol(tcp_client, MelfaCoordinateService, self.joints)
+        self.protocol = R3Protocol(io_client, MelfaCoordinateService(), self.joints)
 
         # Operation Flags
         self.safe_return = safe_return
@@ -115,14 +115,14 @@ class MelfaRobot(PrinterComponent):
                 sleep(1)
 
             # Reset all speed factors
-            self.reset_all_speeds()
+            self.protocol.resetter.reset_all_speeds()
         finally:
             # Servos off
             self._change_servo_state(False)
             # Communication & Control off
             self._change_communication_state(False)
             # Shutdown TCP in ANY CASE
-            self.tcp.close()
+            self.client.close()
 
     def activate_work_coordinate(self, active: bool) -> None:
         """
@@ -150,7 +150,7 @@ class MelfaRobot(PrinterComponent):
         """
         if interactive:
             # G-Code is executed directly
-            current_pos = self.get_pos()
+            current_pos = self.protocol.reader.get_current_xyzabc()
             current_pos = current_pos.reduce_to_axes("XYZ")
 
             # Inch conversion
@@ -251,7 +251,6 @@ class MelfaRobot(PrinterComponent):
                 raise NotImplementedError
 
     def _prepare_circle(self) -> None:
-        # TODO Can extern variables be used instead?
         for i in range(1, 4):
             self.declare_position('P{}'.format(i))
 
@@ -300,7 +299,7 @@ class MelfaRobot(PrinterComponent):
             cmp_response(
                 protocols.R3Protocol.VAR_READ + protocols.R3Protocol.SRV_STATE_VAR,
                 protocols.R3Protocol.SRV_STATE_VAR + "=+1",
-                self.tcp,
+                self.protocol.reader,
                 timeout_s=protocols.R3Protocol.SERVO_INIT_SEC,
             )
             sleep(1)
@@ -311,7 +310,7 @@ class MelfaRobot(PrinterComponent):
             cmp_response(
                 protocols.R3Protocol.VAR_READ + protocols.R3Protocol.SRV_STATE_VAR,
                 protocols.R3Protocol.SRV_STATE_VAR + "=+0",
-                self.tcp,
+                self.protocol.reader,
                 timeout_s=protocols.R3Protocol.SERVO_INIT_SEC,
             )
 
@@ -344,14 +343,6 @@ class MelfaRobot(PrinterComponent):
             else:
                 raise
 
-    def reset_all_speeds(self):
-        """
-        Reset the speed modification factors to maximum speed.
-        :return:
-        """
-        self.protocol.resetter.reset_linear_speed()
-        self.protocol.resetter.reset_joint_speed()
-
     # Movement functions
 
     def go_home(self, option='') -> None:
@@ -367,7 +358,7 @@ class MelfaRobot(PrinterComponent):
                 zero = zero.reduce_to_axes(option, make_none=True)
 
             # Acquire current position to determine robot orientation
-            current_position = self.get_pos()
+            current_position = self.protocol.reader.get_current_xyzabc()
             zero.update_empty(current_position)
 
             # Move to zero
@@ -381,15 +372,13 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         # Read safe position
-        safe_pos = self.protocol.reader._read_parameter(protocols.R3Protocol.PARAMETER_SAFE_POSITION)
-        safe_pos_values = [float(i) for i in safe_pos.split(";")[1].split(", ")]
-        safe_pos = Coordinate(safe_pos_values, self.joints)
+        safe_pos = self.protocol.reader.get_safe_pos()
 
-        # Return to safe position
+        # Go to safe position
         self.protocol.pos.go_safe_pos()
 
         # Wait until position is reached
-        cmp_response(protocols.R3Protocol.CURRENT_JOINT, safe_pos.to_melfa_response(), self.tcp)
+        cmp_response(protocols.R3Protocol.CURRENT_JOINT, safe_pos.to_melfa_response(), self.protocol.reader)
 
     def linear_move_poll(
             self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None
@@ -407,26 +396,21 @@ class MelfaRobot(PrinterComponent):
             self.set_speed(speed, "linear")
 
         # Only send command if any coordinates are passed, otherwise just set the speed
-        if len(target_pos.values) > 0 and any(
-                a is not None for a in target_pos.values
-        ):
+        if len(target_pos.values) > 0 and any(a is not None for a in target_pos.values):
             # Fill None values with current position to predict correct response
             if current_pos is None:
-                current_pos = self.get_pos()
+                # No need to do this twice
+                current_pos = self.protocol.reader.get_current_xyzabc()
             target_pos.update_empty(current_pos)
 
             # Send move command
-            self.tcp.send(
-                protocols.R3Protocol.LINEAR_INTRP
-                + MelfaCoordinateService.to_cmd(target_pos, self.active_plane)
-            )
-            self.tcp.receive()
+            self.protocol.pos.linear_move(target_pos)
 
             # Wait until position is reached
             t, v = cmp_response(
                 protocols.R3Protocol.CURRENT_XYZABC,
                 target_pos.to_melfa_response(),
-                self.tcp,
+                self.protocol.reader,
                 track_speed=track_speed,
             )
             return t, v
@@ -453,7 +437,7 @@ class MelfaRobot(PrinterComponent):
         """
         # Determine start position
         if start_pos is None:
-            start_pos = self.get_pos()
+            start_pos = self.protocol.reader.get_current_xyzabc()
 
         # Set speed
         if speed is not None:
@@ -498,7 +482,7 @@ class MelfaRobot(PrinterComponent):
                 self.protocol.pos.circular_move_centre('P1', 'P2', 'P3')
 
             # Wait until position is reached
-            cmp_response(protocols.R3Protocol.CURRENT_XYZABC, target_pos.to_melfa_response(), self.tcp)
+            cmp_response(protocols.R3Protocol.CURRENT_XYZABC, target_pos.to_melfa_response(), self.protocol.reader)
 
     def get_directed_angle(self, start_pos, target_pos, center_pos, is_clockwise):
         # Determine the angle
@@ -534,14 +518,7 @@ class MelfaRobot(PrinterComponent):
         Get the current position.
         :return: Coordinate object containing the robot coordinates.
         """
-        # Current position
-        # pos = self.protocol.reader.get_current_xyzabc()
-        self.tcp.send(protocols.R3Protocol.CURRENT_XYZABC)
-        response = self.tcp.receive()
-
-        # Convert response using coordinate factory
-        pos = MelfaCoordinateService.from_response(response, len(self.joints))
-        return pos
+        return self.protocol.reader.get_current_xyzabc()
 
     def _check_speed_threshold(self, speed_threshold: float):
         """
@@ -549,9 +526,9 @@ class MelfaRobot(PrinterComponent):
         :param speed_threshold:
         :return:
         """
-        # Reset all speed factors
-        self.reset_all_speeds()
-        # Check for low speed
+        # Reset all speed factors for clean initial state
+        self.protocol.resetter.reset_all_speeds()
+        # Check the override
         speed = self.protocol.reader.get_override()
         # Threshold violation
         if speed > speed_threshold:
@@ -572,7 +549,7 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         # TODO Implement waiting (G04)
-        # self.tcp.wait_send('DLY')
+        # self.client.wait_send('DLY')
         raise NotImplementedError
 
     def _zero(self):

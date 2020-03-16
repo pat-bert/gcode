@@ -99,21 +99,19 @@ class TestMelfaRobot:
     def test_activate_work_coordinate(self, no_safe_robot):
         """
         Test that the state variable can be changed accordingly and that the correct commands are delegated/not
-        delegated to the tcp.
+        delegated to the client.
         :param no_safe_robot:
         :return:
         """
         # Activate
-        with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+        with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()):
             no_safe_robot.activate_work_coordinate(True)
         assert no_safe_robot.work_coordinate_active
-        mock_func.assert_any_call(R3Protocol.SET_BASE_COORDINATES + no_safe_robot.work_coordinate_offset)
 
         # Deactivate
-        with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+        with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()):
             no_safe_robot.activate_work_coordinate(False)
         assert not no_safe_robot.work_coordinate_active
-        mock_func.assert_any_call('EXECBASE P_NBASE')
 
     def test_handle_gcode(self):
         assert True
@@ -142,12 +140,12 @@ class TestMelfaRobot:
     def test__change_communication_state(self, no_safe_robot):
         """
         Test that the state variable can be changed accordingly and that the correct commands are delegated/not
-        delegated to the tcp.
+        delegated to the client.
         :param no_safe_robot:
         :return:
         """
         # Activate
-        with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+        with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
             no_safe_robot._change_communication_state(True)
         assert no_safe_robot.com_ctrl
         mock_func.assert_any_call('CNTLON')
@@ -155,7 +153,7 @@ class TestMelfaRobot:
             mock_func.assert_any_call('CNTLOFF')
 
         # Deactivate
-        with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+        with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
             no_safe_robot._change_communication_state(False)
         assert not no_safe_robot.servo
         mock_func.assert_any_call('CNTLOFF')
@@ -165,13 +163,13 @@ class TestMelfaRobot:
     def test__change_servo_state(self, no_safe_robot):
         """
         Test that the state variable can be changed accordingly and that the correct commands are delegated/not
-        delegated to the tcp.
+        delegated to the client.
         :param no_safe_robot:
         :return:
         """
         with mock.patch('src.printer_components.MelfaRobot.sleep', return_value=None):
             # Activate
-            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
                 no_safe_robot._change_servo_state(True)
             assert no_safe_robot.servo
             mock_func.assert_any_call(R3Protocol.SRV_ON)
@@ -179,7 +177,7 @@ class TestMelfaRobot:
                 mock_func.assert_any_call(R3Protocol.SRV_OFF)
 
             # Deactivate
-            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
                 no_safe_robot._change_servo_state(False)
             assert not no_safe_robot.servo
             mock_func.assert_any_call(R3Protocol.SRV_OFF)
@@ -207,13 +205,13 @@ class TestMelfaRobot:
                 no_safe_robot.set_speed(1000.1, 'linear')
 
             # Regular setting
-            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
                 no_safe_robot.set_speed(1, 'linear')
             mock_func.assert_called_with(R3Protocol.MVS_SPEED + '1.00')
 
             # Regular setting with different override
             ovrd.return_value = 10
-            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
                 no_safe_robot.set_speed(100, 'linear')
             mock_func.assert_called_with(R3Protocol.MVS_SPEED + '1000.00')
 
@@ -230,13 +228,13 @@ class TestMelfaRobot:
                 no_safe_robot.set_speed(100.1, 'joint')
 
             # Regular setting
-            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
                 no_safe_robot.set_speed(1, 'joint')
             mock_func.assert_called_with(R3Protocol.MOV_SPEED + '1.00')
 
             # Regular setting with different override
             ovrd.return_value = 10
-            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_func:
+            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
                 no_safe_robot.set_speed(10, 'joint')
             mock_func.assert_called_with(R3Protocol.MOV_SPEED + '100.00')
 
@@ -257,7 +255,7 @@ class TestMelfaRobot:
                              ])
     def test_linear_move_poll(self, target, speed, expected_speed, expected_move, no_safe_robot):
         with mock.patch.object(no_safe_robot, 'set_speed', spec=mock.Mock()) as mock_set_speed:
-            with mock.patch.object(no_safe_robot.tcp, 'send', spec=mock.Mock()) as mock_send:
+            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_send:
                 no_safe_robot.linear_move_poll(target, speed, track_speed=False)
 
         # Assert speed setting
