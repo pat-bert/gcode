@@ -58,7 +58,10 @@ def test_validate_port(port, valid):
 
 class TestTcpClientR3:
     def test_connect(self):
-        assert True
+        actual_tcp = TcpClientR3()
+
+        with pytest.raises(TcpError):
+            actual_tcp.connect()
 
     def test_close(self):
         assert True
