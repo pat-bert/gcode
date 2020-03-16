@@ -3,6 +3,7 @@ File:       TCPClient.py
 Author:     Patrick Bertsch
 Content:    Implement TCP/IP communication to robot
 """
+import abc
 import socket
 import threading
 from queue import Queue
@@ -24,11 +25,11 @@ class Msg:
         return self.msg, self.ss, self.sr
 
 
-class AbstractTcp:
-    def send(self, *args, **kwargs):
+class AbstractClient(metaclass=abc.ABCMeta):
+    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False):
         pass
 
-    def receive(self, *args, **kwargs):
+    def receive(self, silence_errors=False):
         pass
 
 
@@ -46,7 +47,7 @@ def validate_port(port: int) -> bool:
     return port in range(0, 65536)
 
 
-class TcpClientR3(AbstractTcp):
+class TcpClientR3(AbstractClient):
     """
     Implements the PC-side of the TCP/IP connection.
     """
