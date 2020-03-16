@@ -57,15 +57,22 @@ class Coordinate:
                 except KeyError:
                     raise TypeError("Incompatible axis.")
 
-    def reduce_to_axes(self, axes_to_keep, make_none=False) -> 'Coordinate':
+    def reduce_to_axes(self, axes_to_keep, make_none=False) -> "Coordinate":
         if make_none:
-            coordinate = {key: None if key not in axes_to_keep else val for key, val in self.coordinate.items()}
-            return self.__class__(coordinate.values(), coordinate.keys(), digits=self.digits)
+            coordinate = {
+                key: None if key not in axes_to_keep else val
+                for key, val in self.coordinate.items()
+            }
+            return self.__class__(
+                coordinate.values(), coordinate.keys(), digits=self.digits
+            )
         else:
             coordinate = {
                 key: val for key, val in self.coordinate.items() if key in axes_to_keep
             }
-            return self.__class__(coordinate.values(), coordinate.keys(), digits=self.digits)
+            return self.__class__(
+                coordinate.values(), coordinate.keys(), digits=self.digits
+            )
 
     def __str__(self):
         """
@@ -153,7 +160,8 @@ class Coordinate:
         ]
         return Coordinate(values, self.axes, self.digits)
 
-    __rmul__ = __mul__
+    def __rmul__(self, other: Union[float, int]) -> "Coordinate":
+        return self.__mul__(other)
 
     def __truediv__(self, other: float) -> "Coordinate":
         """
@@ -180,7 +188,9 @@ class Coordinate:
         :return:
         """
         if self._are_axes_compatible(other):
-            return sum((self.coordinate[axis] * other.coordinate[axis] for axis in self.axes))
+            return sum(
+                (self.coordinate[axis] * other.coordinate[axis] for axis in self.axes)
+            )
         else:
             raise TypeError("Incompatible axis.")
 
@@ -197,7 +207,10 @@ class Coordinate:
                 add2 = self.coordinate[axis_list[b]] * other.coordinate[axis_list[a]]
                 return add1 - add2
 
-            values = [cross_row_formula(idx_a, idx_b) for idx_a, idx_b in zip(indices_a, indices_b)]
+            values = [
+                cross_row_formula(idx_a, idx_b)
+                for idx_a, idx_b in zip(indices_a, indices_b)
+            ]
 
             return Coordinate(values, axis_list, digits)
         else:

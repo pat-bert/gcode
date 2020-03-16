@@ -5,8 +5,8 @@ from MelfaCoordinateService import MelfaCoordinateService
 from src.Coordinate import Coordinate
 
 # General commands
-DELIMITER = ';'
-DIRECT_CMD = 'EXEC'
+DELIMITER = ";"
+DIRECT_CMD = "EXEC"
 VAR_READ = "VAL"
 SRV_ON = "SRVON"
 SRV_OFF = "SRVOFF"
@@ -14,14 +14,14 @@ SRV_STATE_VAR = "M_SVO"
 SERVO_INIT_SEC = 5
 
 # Speed commands
-OVERRIDE_CMD = 'OVRD'
-JOINT_SPEED = 'JOVRD'
+OVERRIDE_CMD = "OVRD"
+JOINT_SPEED = "JOVRD"
 MOV_SPEED = DIRECT_CMD + "JOVRD "
-LINEAR_SPEED = 'SPD'
+LINEAR_SPEED = "SPD"
 MVS_SPEED = DIRECT_CMD + "SPD "
 
 # Coordinate commands
-BASE_COORDINATE_CMD = 'BASE'
+BASE_COORDINATE_CMD = "BASE"
 CURRENT_XYZABC = "PPOSF"
 CURRENT_JOINT = "JPOSF"
 
@@ -38,9 +38,16 @@ class R3Protocol:
     """
     Mitsubishi robots do not support G-Code natively, hence the protocol for the commands is implemented.
     """
+
     DIGITS = 2
 
-    def __init__(self, client, coordinate_adapter: MelfaCoordinateService, joints, digits: int = DIGITS):
+    def __init__(
+            self,
+            client,
+            coordinate_adapter: MelfaCoordinateService,
+            joints,
+            digits: int = DIGITS,
+    ):
         """
         Create a protocol object.
         :param client: Client to be used for the communication.
@@ -54,8 +61,15 @@ class R3Protocol:
         self.coord_adapt = coordinate_adapter
 
         # Sub-APIs
-        self.pos = R3Positions(client, coordinate2cmd=self.coord_adapt.to_cmd, digits=digits)
-        self.reader = R3Reader(client, joints, response2coordinate=self.coord_adapt.from_response, digits=digits)
+        self.pos = R3Positions(
+            client, coordinate2cmd=self.coord_adapt.to_cmd, digits=digits
+        )
+        self.reader = R3Reader(
+            client,
+            joints,
+            response2coordinate=self.coord_adapt.from_response,
+            digits=digits,
+        )
         self.setter = R3Setter(client, digits)
         self.resetter = R3Resetter(client, digits)
 
@@ -64,7 +78,7 @@ class R3Protocol:
         Sends the cmd to open the communication.
         :return: None
         """
-        self.client.send('OPEN=NARCUSER')
+        self.client.send("OPEN=NARCUSER")
         self.client.receive()
 
     def close_communication(self) -> None:
@@ -72,7 +86,7 @@ class R3Protocol:
         Sends the cmd to close the communication.
         :return: None
         """
-        self.client.send('CLOSE')
+        self.client.send("CLOSE")
         self.client.receive()
 
     def obtain_control(self) -> None:
@@ -80,7 +94,7 @@ class R3Protocol:
         Sends the cmd to obtain control.
         :return: None
         """
-        self.client.send('CNTLON')
+        self.client.send("CNTLON")
         self.client.receive()
 
     def release_control(self) -> None:
@@ -88,7 +102,7 @@ class R3Protocol:
         Sends the cmd to release control.
         :return: None
         """
-        self.client.send('CNTLOFF')
+        self.client.send("CNTLOFF")
         self.client.receive()
 
     def activate_servo(self) -> None:
@@ -96,7 +110,7 @@ class R3Protocol:
         Activates the servos.
         :return: None
         """
-        self.client.send('SRVON')
+        self.client.send("SRVON")
         self.client.receive()
 
     def deactivate_servo(self) -> None:
@@ -104,11 +118,11 @@ class R3Protocol:
         Deactivate the servos.
         :return: None
         """
-        self.client.send('SRVOFF')
+        self.client.send("SRVOFF")
         self.client.receive()
 
     def reset_alarm(self) -> None:
-        self.client.send('RSTALRM')
+        self.client.send("RSTALRM")
         self.client.receive(silence_errors=True)
 
 
@@ -136,12 +150,12 @@ class R3Positions:
         :param var_type:
         :return: None
         """
-        if var_type == 'position':
-            var_cmd = 'POS'
-        elif var_type == 'joint':
-            var_cmd = 'JNT'
+        if var_type == "position":
+            var_cmd = "POS"
+        elif var_type == "joint":
+            var_cmd = "JNT"
         else:
-            raise ValueError('Unknown variable type.')
+            raise ValueError("Unknown variable type.")
 
         self.client.send("{}DEF {} {}".format(DIRECT_CMD, var_cmd, name))
         self.client.receive()
@@ -154,7 +168,7 @@ class R3Positions:
         :return: None
         """
         coord_str = self.from_coord_to_cmd(target)
-        self.client.send('{}MVS{}'.format(DIRECT_CMD, coord_str))
+        self.client.send("{}MVS{}".format(DIRECT_CMD, coord_str))
         self.client.receive()
 
     def joint_move(self, target: Coordinate) -> None:
@@ -164,7 +178,7 @@ class R3Positions:
         :return:
         """
         coord_str = self.from_coord_to_cmd(target)
-        self.client.send('{}MOV{}'.format(DIRECT_CMD, coord_str))
+        self.client.send("{}MOV{}".format(DIRECT_CMD, coord_str))
         self.client.receive()
 
     def circular_move_centre(self, start: str, target: str, center: str) -> None:
@@ -175,10 +189,12 @@ class R3Positions:
         :param center: Center position of the arc
         :return:
         """
-        self.client.send('{}MVR3 {},{},{}'.format(DIRECT_CMD, start, target, center))
+        self.client.send("{}MVR3 {},{},{}".format(DIRECT_CMD, start, target, center))
         self.client.receive()
 
-    def circular_move_intermediate(self, start: str, intermediate: str, target: str) -> None:
+    def circular_move_intermediate(
+            self, start: str, intermediate: str, target: str
+    ) -> None:
         """
         Move to a position using circular interpolation.
         :param start: Start position of the arc
@@ -186,10 +202,14 @@ class R3Positions:
         :param target: End position of the arc
         :return:
         """
-        self.client.send('{}MVR {},{},{}'.format(DIRECT_CMD, start, intermediate, target))
+        self.client.send(
+            "{}MVR {},{},{}".format(DIRECT_CMD, start, intermediate, target)
+        )
         self.client.receive()
 
-    def circular_move_full(self, start: str, intermediate1: str, intermediate2: str) -> None:
+    def circular_move_full(
+            self, start: str, intermediate1: str, intermediate2: str
+    ) -> None:
         """
         Move to a position using circular interpolation.
         :param start: Start position of the arc
@@ -197,11 +217,13 @@ class R3Positions:
         :param intermediate2: Second intermediate position of the arc
         :return:
         """
-        self.client.send('{}MVC {},{},{}'.format(DIRECT_CMD, start, intermediate1, intermediate2))
+        self.client.send(
+            "{}MVC {},{},{}".format(DIRECT_CMD, start, intermediate1, intermediate2)
+        )
         self.client.receive()
 
     def go_safe_pos(self) -> None:
-        self.client.send('MOVSP')
+        self.client.send("MOVSP")
         self.client.receive()
 
 
@@ -230,11 +252,11 @@ class R3Reader:
         return self._get_float_cmd(OVERRIDE_CMD, direct=False)
 
     def get_current_linear_speed(self) -> float:
-        val = self.read_variable('M_RSPD')
+        val = self.read_variable("M_RSPD")
         return float(val.split("=")[-1])
 
     def get_joint_speed(self) -> float:
-        val = self.read_variable('M_JOVRD')
+        val = self.read_variable("M_JOVRD")
         return float(val.split("=")[-1])
 
     def get_joint_borders(self) -> Tuple:
@@ -242,7 +264,7 @@ class R3Reader:
         Get the limits for the joints in degrees.
         :return:
         """
-        borders = self._read_parameter('MEJAR')
+        borders = self._read_parameter("MEJAR")
         coordinates = self.parse_comma_string(borders)
         return tuple(float(i) for i in coordinates)
 
@@ -251,21 +273,21 @@ class R3Reader:
         Get the limits for XYZ in mm.
         :return:
         """
-        borders = self._read_parameter('MEPAR')
+        borders = self._read_parameter("MEPAR")
         coordinates = self.parse_comma_string(borders)
         return tuple(float(i) for i in coordinates)
 
     @staticmethod
     def parse_comma_string(response: str) -> List[str]:
         relevant_str = response.split(DELIMITER)[1]
-        return relevant_str.split(', ')
+        return relevant_str.split(", ")
 
     def get_current_xyzabc(self) -> Coordinate:
         """
         Get the current positions for XYZABC.
         :return: Coordinate object
         """
-        self.client.send('PPOSF')
+        self.client.send("PPOSF")
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(coord_str, len(self.joints))
 
@@ -274,7 +296,7 @@ class R3Reader:
         Get the current joint angles.
         :return: Coordinate object
         """
-        self.client.send('JPOSF')
+        self.client.send("JPOSF")
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(coord_str)
 
@@ -283,7 +305,7 @@ class R3Reader:
         Get the current value of the safe position.
         :return: Coordinate object
         """
-        answer_str = self._read_parameter('JSAFE')
+        answer_str = self._read_parameter("JSAFE")
         safe_pos_values = [float(i) for i in answer_str.split(DELIMITER)[1].split(", ")]
         return Coordinate(safe_pos_values, self.joints)
 
@@ -296,7 +318,7 @@ class R3Reader:
         :param parameter: String representation of the paramter
         :return: Client response excluding status
         """
-        self.client.send('PNR{}'.format(parameter))
+        self.client.send("PNR{}".format(parameter))
         return self.client.receive()
 
     def read_variable(self, variable: str) -> str:
@@ -305,7 +327,7 @@ class R3Reader:
         :param variable: String representation of the variable
         :return: Client response excluding status
         """
-        self.client.send('VAL{}'.format(variable))
+        self.client.send("VAL{}".format(variable))
         return self.client.receive()
 
     def _get_float_cmd(self, cmd: str, direct=True) -> float:
@@ -317,7 +339,7 @@ class R3Reader:
         """
         # Send cmd
         if direct:
-            self.client.send('{}{}'.format(DIRECT_CMD, cmd))
+            self.client.send("{}{}".format(DIRECT_CMD, cmd))
         else:
             self.client.send(cmd)
         return_val = self.client.receive()
@@ -328,7 +350,7 @@ class R3Reader:
 
     def _get_coordinate_cmd(self, cmd: str, direct=True) -> float:
         if direct:
-            self.client.send('{}{}'.format(DIRECT_CMD, cmd))
+            self.client.send("{}{}".format(DIRECT_CMD, cmd))
         else:
             self.client.send(cmd)
         coord_str = self.client.receive()
@@ -350,7 +372,7 @@ class R3Setter:
         :param offset:
         :return:
         """
-        self.client.send('{}{} {}'.format(DIRECT_CMD, BASE_COORDINATE_CMD, offset))
+        self.client.send("{}{} {}".format(DIRECT_CMD, BASE_COORDINATE_CMD, offset))
         self.client.receive()
 
     def set_override(self, factor: float) -> None:
@@ -360,7 +382,7 @@ class R3Setter:
         :return: None
         """
         self._check_bounds(factor, lbound=1.0, ubound=100.0)
-        self.client.send('{}={:.{d}f}'.format(OVERRIDE_CMD, factor, d=self.digits))
+        self.client.send("{}={:.{d}f}".format(OVERRIDE_CMD, factor, d=self.digits))
         self.client.receive()
 
     def set_linear_speed(self, speed: float) -> None:
@@ -379,8 +401,14 @@ class R3Setter:
         """
         self._set_float_cmd(JOINT_SPEED, speed, lbound=1.0, ubound=100.0)
 
-    def _set_float_cmd(self, cmd: str, val: float, direct=True, lbound: Optional[float] = None,
-                       ubound: Optional[float] = None):
+    def _set_float_cmd(
+            self,
+            cmd: str,
+            val: float,
+            direct=True,
+            lbound: Optional[float] = None,
+            ubound: Optional[float] = None,
+    ):
         """
         Sets a float value to a variable.
         :param cmd: Command used to set the variable
@@ -400,12 +428,16 @@ class R3Setter:
 
         # Send cmd
         if direct:
-            self.client.send('{}{} {:.{d}f}'.format(DIRECT_CMD, cmd, float(value), d=self.digits))
+            self.client.send(
+                "{}{} {:.{d}f}".format(DIRECT_CMD, cmd, float(value), d=self.digits)
+            )
         else:
-            self.client.send('{} {:.{d}f}'.format(cmd, float(value), d=self.digits))
+            self.client.send("{} {:.{d}f}".format(cmd, float(value), d=self.digits))
         self.client.receive()
 
-    def _check_bounds(self, value: float, lbound: Union[float, None], ubound: Union[float, None]) -> None:
+    def _check_bounds(
+            self, value: float, lbound: Union[float, None], ubound: Union[float, None]
+    ) -> None:
         """
         Check whether a value is within specified bounds.
         :param value: Value to be checked
@@ -418,13 +450,25 @@ class R3Setter:
         if lbound is not None:
             if value < lbound:
                 if ubound is not None:
-                    raise ValueError('Value out of range [{:.{d}f};{:.{d}f}].'.format(lbound, ubound, d=self.digits))
-                raise ValueError('Value must be >= {:.{d}f}.'.format(lbound, d=self.digits))
+                    raise ValueError(
+                        "Value out of range [{:.{d}f};{:.{d}f}].".format(
+                            lbound, ubound, d=self.digits
+                        )
+                    )
+                raise ValueError(
+                    "Value must be >= {:.{d}f}.".format(lbound, d=self.digits)
+                )
         if ubound is not None:
             if value > ubound:
                 if lbound is not None:
-                    raise ValueError('Value out of range [{:.{d}f};{:.{d}f}].'.format(lbound, ubound, d=self.digits))
-                raise ValueError('Value must be <= {:.{d}f}.'.format(ubound, d=self.digits))
+                    raise ValueError(
+                        "Value out of range [{:.{d}f};{:.{d}f}].".format(
+                            lbound, ubound, d=self.digits
+                        )
+                    )
+                raise ValueError(
+                    "Value must be <= {:.{d}f}.".format(ubound, d=self.digits)
+                )
 
 
 class R3Resetter:
@@ -441,28 +485,28 @@ class R3Resetter:
         Reset the base coordinate system to its default.
         :return: None
         """
-        self._reset_cmd(BASE_COORDINATE_CMD, var_type='point')
+        self._reset_cmd(BASE_COORDINATE_CMD, var_type="point")
 
     def reset_override(self) -> None:
         """
         Reset the override factor to its maximum..
         :return: None
         """
-        self._reset_cmd(OVERRIDE_CMD, var_type='number', direct=False)
+        self._reset_cmd(OVERRIDE_CMD, var_type="number", direct=False)
 
     def reset_linear_speed(self) -> None:
         """
         Reset the linear speed to its maximum.
         :return: None
         """
-        self._reset_cmd(LINEAR_SPEED, var_type='number')
+        self._reset_cmd(LINEAR_SPEED, var_type="number")
 
     def reset_joint_speed(self) -> None:
         """
         Reset the joint speed factor to its maximum.
         :return: None
         """
-        self._reset_cmd(JOINT_SPEED, var_type='number')
+        self._reset_cmd(JOINT_SPEED, var_type="number")
 
     def reset_all_speeds(self) -> None:
         """
@@ -472,7 +516,9 @@ class R3Resetter:
         self.reset_linear_speed()
         self.reset_joint_speed()
 
-    def _reset_cmd(self, command, *, var_type: str, default_name=None, direct=True) -> None:
+    def _reset_cmd(
+            self, command, *, var_type: str, default_name=None, direct=True
+    ) -> None:
         """
         Resets a variable to its default.
         :param command: Command used to manipulate the variable
@@ -482,14 +528,14 @@ class R3Resetter:
         :return: None
         """
         if default_name is None:
-            if var_type == 'point':
-                default_name = 'P_N{}'.format(command)
-            elif var_type == 'number':
-                default_name = 'M_N{}'.format(command)
+            if var_type == "point":
+                default_name = "P_N{}".format(command)
+            elif var_type == "number":
+                default_name = "M_N{}".format(command)
             else:
-                raise ValueError('Unknown variable type: {}'.format(var_type))
+                raise ValueError("Unknown variable type: {}".format(var_type))
         if direct:
-            self.client.send('{}{} {}'.format(DIRECT_CMD, command, default_name))
+            self.client.send("{}{} {}".format(DIRECT_CMD, command, default_name))
         else:
-            self.client.send('{} {}'.format(command, default_name))
+            self.client.send("{} {}".format(command, default_name))
         self.client.receive()

@@ -18,7 +18,9 @@ def cube(robot: MelfaRobot, speed: float) -> None:
     square_size = 240
 
     # Base coordinates
-    start = Coordinate([-square_size / 2, square_size / 2, 0, 180, 0, 0], robot.AXES)  # pragma: no mutate
+    start = Coordinate(
+        [-square_size / 2, square_size / 2, 0, 180, 0, 0], robot.AXES
+    )  # pragma: no mutate
 
     x_vec = Coordinate([square_size, 0, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
     y_vec = Coordinate([0, -square_size, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate

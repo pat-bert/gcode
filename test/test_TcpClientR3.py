@@ -28,7 +28,7 @@ from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, Tcp
         # simple int
         ("0", False),
         # not convertable
-        ("Try.3.Not.4", False)
+        ("Try.3.Not.4", False),
     ],
 )
 def test_validate_ip(ip, valid):

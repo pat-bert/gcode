@@ -36,7 +36,7 @@ class MelfaCoordinateService:
         :return:
         """
         txt = (
-            "{:.{d}f}".format(i, d=c.digits) if i is not None else '' for i in c.values
+            "{:.{d}f}".format(i, d=c.digits) if i is not None else "" for i in c.values
         )
         return "(" + ",".join(txt) + ")" + "(7,0)"
 
@@ -49,7 +49,7 @@ class MelfaCoordinateService:
         """
         # TODO Determine reliable ABC angles
         if plane is Plane.XY:
-            return {'A': 180.0, 'B': 0.0, 'C': 0.0}
+            return {"A": 180.0, "B": 0.0, "C": 0.0}
         elif plane is Plane.XZ:
             raise NotImplementedError
         elif plane is Plane.YZ:

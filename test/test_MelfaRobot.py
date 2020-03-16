@@ -48,10 +48,10 @@ class TestMelfaRobot:
             MelfaRobot(tcp, number_axes=0)
 
         a = MelfaRobot(tcp, number_axes=1)
-        assert a.joints == ['J1']
+        assert a.joints == ["J1"]
 
         b = MelfaRobot(tcp, number_axes=2)
-        assert b.joints == ['J1', 'J2']
+        assert b.joints == ["J1", "J2"]
 
     def test_boot_no_safe(self, no_safe_robot):
         """
@@ -59,8 +59,12 @@ class TestMelfaRobot:
         :param no_safe_robot:
         :return:
         """
-        with mock.patch.object(no_safe_robot, 'go_safe_pos', autospec=True) as mock_func:
-            with mock.patch('src.printer_components.MelfaRobot.sleep', return_value=None):
+        with mock.patch.object(
+                no_safe_robot, "go_safe_pos", autospec=True
+        ) as mock_func:
+            with mock.patch(
+                    "src.printer_components.MelfaRobot.sleep", return_value=None
+            ):
                 no_safe_robot.boot()
         assert not mock_func.called
 
@@ -70,8 +74,10 @@ class TestMelfaRobot:
         :param safe_robot:
         :return:
         """
-        with mock.patch.object(safe_robot, 'go_safe_pos', autospec=True) as mock_func:
-            with mock.patch('src.printer_components.MelfaRobot.sleep', return_value=None):
+        with mock.patch.object(safe_robot, "go_safe_pos", autospec=True) as mock_func:
+            with mock.patch(
+                    "src.printer_components.MelfaRobot.sleep", return_value=None
+            ):
                 safe_robot.boot()
         assert mock_func.called
 
@@ -81,7 +87,9 @@ class TestMelfaRobot:
         :param no_safe_robot:
         :return:
         """
-        with mock.patch.object(no_safe_robot, 'go_safe_pos', autospec=True) as mock_func:
+        with mock.patch.object(
+                no_safe_robot, "go_safe_pos", autospec=True
+        ) as mock_func:
             no_safe_robot.shutdown()
         assert not mock_func.called
 
@@ -91,8 +99,10 @@ class TestMelfaRobot:
         :param safe_robot:
         :return:
         """
-        with mock.patch.object(safe_robot, 'go_safe_pos', autospec=True) as mock_func:
-            with mock.patch('src.printer_components.MelfaRobot.sleep', return_value=None):
+        with mock.patch.object(safe_robot, "go_safe_pos", autospec=True) as mock_func:
+            with mock.patch(
+                    "src.printer_components.MelfaRobot.sleep", return_value=None
+            ):
                 safe_robot.shutdown()
         assert mock_func.called
 
@@ -104,12 +114,12 @@ class TestMelfaRobot:
         :return:
         """
         # Activate
-        with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()):
+        with mock.patch.object(no_safe_robot.client, "send", spec=mock.Mock()):
             no_safe_robot.activate_work_coordinate(True)
         assert no_safe_robot.work_coordinate_active
 
         # Deactivate
-        with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()):
+        with mock.patch.object(no_safe_robot.client, "send", spec=mock.Mock()):
             no_safe_robot.activate_work_coordinate(False)
         assert not no_safe_robot.work_coordinate_active
 
@@ -122,8 +132,8 @@ class TestMelfaRobot:
         :param no_safe_robot:
         :return:
         """
-        activate_inch = GCmd.read_cmd_str('G20')
-        deactivate_inch = GCmd.read_cmd_str('G21')
+        activate_inch = GCmd.read_cmd_str("G20")
+        deactivate_inch = GCmd.read_cmd_str("G21")
 
         no_safe_robot.handle_gcode(activate_inch)
         assert no_safe_robot.inch_active
@@ -145,20 +155,24 @@ class TestMelfaRobot:
         :return:
         """
         # Activate
-        with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
+        with mock.patch.object(
+                no_safe_robot.client, "send", spec=mock.Mock()
+        ) as mock_func:
             no_safe_robot._change_communication_state(True)
         assert no_safe_robot.com_ctrl
-        mock_func.assert_any_call('CNTLON')
+        mock_func.assert_any_call("CNTLON")
         with pytest.raises(AssertionError):
-            mock_func.assert_any_call('CNTLOFF')
+            mock_func.assert_any_call("CNTLOFF")
 
         # Deactivate
-        with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
+        with mock.patch.object(
+                no_safe_robot.client, "send", spec=mock.Mock()
+        ) as mock_func:
             no_safe_robot._change_communication_state(False)
         assert not no_safe_robot.servo
-        mock_func.assert_any_call('CNTLOFF')
+        mock_func.assert_any_call("CNTLOFF")
         with pytest.raises(AssertionError):
-            mock_func.assert_any_call('CNTLON')
+            mock_func.assert_any_call("CNTLON")
 
     def test__change_servo_state(self, no_safe_robot):
         """
@@ -167,9 +181,11 @@ class TestMelfaRobot:
         :param no_safe_robot:
         :return:
         """
-        with mock.patch('src.printer_components.MelfaRobot.sleep', return_value=None):
+        with mock.patch("src.printer_components.MelfaRobot.sleep", return_value=None):
             # Activate
-            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
+            with mock.patch.object(
+                    no_safe_robot.client, "send", spec=mock.Mock()
+            ) as mock_func:
                 no_safe_robot._change_servo_state(True)
             assert no_safe_robot.servo
             mock_func.assert_any_call(R3Protocol.SRV_ON)
@@ -177,7 +193,9 @@ class TestMelfaRobot:
                 mock_func.assert_any_call(R3Protocol.SRV_OFF)
 
             # Deactivate
-            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
+            with mock.patch.object(
+                    no_safe_robot.client, "send", spec=mock.Mock()
+            ) as mock_func:
                 no_safe_robot._change_servo_state(False)
             assert not no_safe_robot.servo
             mock_func.assert_any_call(R3Protocol.SRV_OFF)
@@ -193,50 +211,58 @@ class TestMelfaRobot:
         :param no_safe_robot:
         :return:
         """
-        with mock.patch.object(no_safe_robot.protocol.reader, 'get_override') as ovrd:
+        with mock.patch.object(no_safe_robot.protocol.reader, "get_override") as ovrd:
             # Regular setting
             ovrd.return_value = 100
 
             # Error
             with pytest.raises(ValueError):
-                no_safe_robot.set_speed(0.9, 'linear')
+                no_safe_robot.set_speed(0.9, "linear")
 
             with pytest.raises(ValueError):
-                no_safe_robot.set_speed(1000.1, 'linear')
+                no_safe_robot.set_speed(1000.1, "linear")
 
             # Regular setting
-            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
-                no_safe_robot.set_speed(1, 'linear')
-            mock_func.assert_called_with(R3Protocol.MVS_SPEED + '1.00')
+            with mock.patch.object(
+                    no_safe_robot.client, "send", spec=mock.Mock()
+            ) as mock_func:
+                no_safe_robot.set_speed(1, "linear")
+            mock_func.assert_called_with(R3Protocol.MVS_SPEED + "1.00")
 
             # Regular setting with different override
             ovrd.return_value = 10
-            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
-                no_safe_robot.set_speed(100, 'linear')
-            mock_func.assert_called_with(R3Protocol.MVS_SPEED + '1000.00')
+            with mock.patch.object(
+                    no_safe_robot.client, "send", spec=mock.Mock()
+            ) as mock_func:
+                no_safe_robot.set_speed(100, "linear")
+            mock_func.assert_called_with(R3Protocol.MVS_SPEED + "1000.00")
 
     def test_set_speed_joint(self, no_safe_robot):
-        with mock.patch.object(no_safe_robot.protocol.reader, 'get_override') as ovrd:
+        with mock.patch.object(no_safe_robot.protocol.reader, "get_override") as ovrd:
             # Regular setting
             ovrd.return_value = 100
 
             # Error
             with pytest.raises(ValueError):
-                no_safe_robot.set_speed(0.9, 'joint')
+                no_safe_robot.set_speed(0.9, "joint")
 
             with pytest.raises(ValueError):
-                no_safe_robot.set_speed(100.1, 'joint')
+                no_safe_robot.set_speed(100.1, "joint")
 
             # Regular setting
-            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
-                no_safe_robot.set_speed(1, 'joint')
-            mock_func.assert_called_with(R3Protocol.MOV_SPEED + '1.00')
+            with mock.patch.object(
+                    no_safe_robot.client, "send", spec=mock.Mock()
+            ) as mock_func:
+                no_safe_robot.set_speed(1, "joint")
+            mock_func.assert_called_with(R3Protocol.MOV_SPEED + "1.00")
 
             # Regular setting with different override
             ovrd.return_value = 10
-            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_func:
-                no_safe_robot.set_speed(10, 'joint')
-            mock_func.assert_called_with(R3Protocol.MOV_SPEED + '100.00')
+            with mock.patch.object(
+                    no_safe_robot.client, "send", spec=mock.Mock()
+            ) as mock_func:
+                no_safe_robot.set_speed(10, "joint")
+            mock_func.assert_called_with(R3Protocol.MOV_SPEED + "100.00")
 
     def test_reset_linear_speed_factor(self):
         assert True
@@ -248,19 +274,27 @@ class TestMelfaRobot:
         assert True
 
     @pytest.mark.parametrize("speed,expected_speed", [(None, False), (100, True)])
-    @pytest.mark.parametrize("target,expected_move",
-                             [
-                                 (Coordinate((10, -20, 0), 'XYZ'), True),
-                                 (Coordinate((None, None, None), 'XYZ'), False)
-                             ])
-    def test_linear_move_poll(self, target, speed, expected_speed, expected_move, no_safe_robot):
-        with mock.patch.object(no_safe_robot, 'set_speed', spec=mock.Mock()) as mock_set_speed:
-            with mock.patch.object(no_safe_robot.client, 'send', spec=mock.Mock()) as mock_send:
+    @pytest.mark.parametrize(
+        "target,expected_move",
+        [
+            (Coordinate((10, -20, 0), "XYZ"), True),
+            (Coordinate((None, None, None), "XYZ"), False),
+        ],
+    )
+    def test_linear_move_poll(
+            self, target, speed, expected_speed, expected_move, no_safe_robot
+    ):
+        with mock.patch.object(
+                no_safe_robot, "set_speed", spec=mock.Mock()
+        ) as mock_set_speed:
+            with mock.patch.object(
+                    no_safe_robot.client, "send", spec=mock.Mock()
+            ) as mock_send:
                 no_safe_robot.linear_move_poll(target, speed, track_speed=False)
 
         # Assert speed setting
         if expected_speed:
-            mock_set_speed.assert_called_with(speed, 'linear')
+            mock_set_speed.assert_called_with(speed, "linear")
 
         # Assert movement
         if expected_move:
