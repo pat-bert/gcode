@@ -9,7 +9,7 @@ from queue import Queue
 from time import sleep
 from typing import AnyStr, Union
 
-import protocols.R3Protocol
+import src.protocols.R3Protocol as R3Protocol
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
 
@@ -57,7 +57,7 @@ class TcpClientR3(AbstractTcp):
     BUFSIZE = 1024
 
     # Delimiter
-    DELIMITER = protocols.R3Protocol.DELIMITER
+    DELIMITER = R3Protocol.DELIMITER
     ENCODING = "utf-8"
 
     # Parameters for R3 protocol
@@ -157,8 +157,8 @@ class TcpClientR3(AbstractTcp):
         self.send(msg)
         self.send_q.join()
 
-        if msg == protocols.R3Protocol.SRV_ON:
-            sleep(protocols.R3Protocol.SERVO_INIT_SEC)
+        if msg == R3Protocol.SRV_ON:
+            sleep(R3Protocol.SERVO_INIT_SEC)
 
     def receive(self, silence_errors=False) -> str:
         response = self.recv_q.get()

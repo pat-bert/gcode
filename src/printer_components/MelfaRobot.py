@@ -2,8 +2,8 @@ from math import pi
 from time import sleep
 from typing import Sized, AnyStr, Union, List
 
-import protocols.R3Protocol
-from protocols.R3Protocol import R3Protocol
+import src.protocols.R3Protocol as R3Protocol_Cmd
+from src.protocols.R3Protocol import R3Protocol
 from src import ApplicationExceptions
 from src.ApplicationExceptions import MelfaBaseException, ApiException
 from src.Coordinate import Coordinate
@@ -242,7 +242,7 @@ class MelfaRobot(PrinterComponent):
         else:
             # Melfa code is saved for later usage
             if gcode.id in ["G00", "G0", "G01", "G1"]:
-                return protocols.R3Protocol.LINEAR_INTRP + gcode.cartesian_abs.to_melfa_point()
+                return R3Protocol_Cmd.LINEAR_INTRP + gcode.cartesian_abs.to_melfa_point()
             elif gcode.id in ["G02", "G2"]:
                 raise NotImplementedError
             elif gcode.id in ["G03", "G3"]:
@@ -297,10 +297,10 @@ class MelfaRobot(PrinterComponent):
 
             # Poll for active state
             cmp_response(
-                protocols.R3Protocol.VAR_READ + protocols.R3Protocol.SRV_STATE_VAR,
-                protocols.R3Protocol.SRV_STATE_VAR + "=+1",
+                R3Protocol_Cmd.VAR_READ + R3Protocol_Cmd.SRV_STATE_VAR,
+                R3Protocol_Cmd.SRV_STATE_VAR + "=+1",
                 self.protocol.reader,
-                timeout_s=protocols.R3Protocol.SERVO_INIT_SEC,
+                timeout_s=R3Protocol_Cmd.SERVO_INIT_SEC,
             )
             sleep(1)
         else:
@@ -308,10 +308,10 @@ class MelfaRobot(PrinterComponent):
 
             # Poll for inactive state
             cmp_response(
-                protocols.R3Protocol.VAR_READ + protocols.R3Protocol.SRV_STATE_VAR,
-                protocols.R3Protocol.SRV_STATE_VAR + "=+0",
+                R3Protocol_Cmd.VAR_READ + R3Protocol_Cmd.SRV_STATE_VAR,
+                R3Protocol_Cmd.SRV_STATE_VAR + "=+0",
                 self.protocol.reader,
-                timeout_s=protocols.R3Protocol.SERVO_INIT_SEC,
+                timeout_s=R3Protocol_Cmd.SERVO_INIT_SEC,
             )
 
         self.servo = activate
@@ -377,7 +377,7 @@ class MelfaRobot(PrinterComponent):
         self.protocol.pos.go_safe_pos()
 
         # Wait until position is reached
-        cmp_response(protocols.R3Protocol.CURRENT_JOINT, safe_pos.to_melfa_response(), self.protocol.reader)
+        cmp_response(R3Protocol_Cmd.CURRENT_JOINT, safe_pos.to_melfa_response(), self.protocol.reader)
 
     def linear_move_poll(
             self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None
@@ -407,7 +407,7 @@ class MelfaRobot(PrinterComponent):
 
             # Wait until position is reached
             t, v = cmp_response(
-                protocols.R3Protocol.CURRENT_XYZABC,
+                R3Protocol_Cmd.CURRENT_XYZABC,
                 target_pos.to_melfa_response(),
                 self.protocol.reader,
                 track_speed=track_speed,
@@ -480,7 +480,7 @@ class MelfaRobot(PrinterComponent):
                 self.protocol.pos.circular_move_centre('P1', 'P2', 'P3')
 
             # Wait until position is reached
-            cmp_response(protocols.R3Protocol.CURRENT_XYZABC, target_pos.to_melfa_response(), self.protocol.reader)
+            cmp_response(R3Protocol_Cmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.protocol.reader)
 
     def get_directed_angle(self, start_pos, target_pos, center_pos, is_clockwise):
         # Determine the angle
