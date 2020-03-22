@@ -1,7 +1,7 @@
 from src.ApplicationExceptions import GCmdError, MelfaBaseException
 from src.gcode.GCmd import GCmd
 from src.printer_components.MelfaRobot import MelfaRobot
-from src.clients.TcpClientR3 import AbstractClient
+from clients.IClient import IClient
 
 
 def interpret_gcode(f_input: str, f_output: str = "out.txt") -> None:
@@ -27,8 +27,8 @@ def interpret_gcode(f_input: str, f_output: str = "out.txt") -> None:
         print("Done.")
 
     # Start translation to MELFA commands
-    tcp = AbstractClient()
-    robot = MelfaRobot(io_client=AbstractClient)
+    tcp = IClient()
+    robot = MelfaRobot(io_client=IClient)
     print("Translating commands to R3 protocol commands...")
     try:
         r3_code_list = [

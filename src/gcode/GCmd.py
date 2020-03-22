@@ -40,8 +40,8 @@ class GCmd(BaseCmd):
     def __init__(
             self,
             code_id: str,
-            abs_cr: Tuple[float] = None,
-            rel_cr: Tuple[float] = None,
+            abs_cr: Tuple[float, ...] = None,
+            rel_cr: Tuple[float, ...] = None,
             speed: float = None,
             e_length: float = None,
             time_ms: int = None,
@@ -210,7 +210,7 @@ class GCmd(BaseCmd):
     @classmethod
     def expand_coordinates(
             cls, coordinates: List[Union[str, None]]
-    ) -> Union[Tuple[float], None]:
+    ) -> Union[Tuple[float, ...], None]:
         """
 
         :param coordinates:
