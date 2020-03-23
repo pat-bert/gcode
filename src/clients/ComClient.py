@@ -170,15 +170,8 @@ class ComClient(IClient):
 if __name__ == '__main__':
     client = ComClient((0x0403, 0x6001))
     client.connect()
-    client._ser.reset_input_buffer()
-    client._ser.reset_output_buffer()
-
-    no_bytes = 0
-    while no_bytes < 1250:
-        no_bytes = client._ser.in_waiting
+    sleep(10)
     client.receive()
-
-    sleep(3)
 
     while True:
         cmd = input('Command: ')
