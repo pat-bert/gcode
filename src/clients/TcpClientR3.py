@@ -27,7 +27,7 @@ def validate_ip(ip: AnyStr) -> bool:
 
 
 def validate_port(port: int) -> bool:
-    return port in range(0, 65536)
+    return 0 <= port < 65536
 
 
 class TcpClientR3(IClient):
