@@ -3,7 +3,6 @@ File:       TCPClient.py
 Author:     Patrick Bertsch
 Content:    Implement TCP/IP communication to robot
 """
-import abc
 import socket
 import threading
 from queue import Queue
@@ -11,26 +10,10 @@ from time import sleep
 from typing import AnyStr, Union
 
 import src.protocols.R3Protocol as R3Protocol
+from src.clients.IClient import Msg
+from src.clients.IClient import IClient
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
-
-
-class Msg:
-    def __init__(self, msg, silent_send, silent_recv):
-        self.msg = msg
-        self.ss = silent_send
-        self.sr = silent_recv
-
-    def unpack(self):
-        return self.msg, self.ss, self.sr
-
-
-class AbstractClient(metaclass=abc.ABCMeta):
-    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False):
-        pass
-
-    def receive(self, silence_errors=False):
-        pass
 
 
 def validate_ip(ip: AnyStr) -> bool:
@@ -44,10 +27,10 @@ def validate_ip(ip: AnyStr) -> bool:
 
 
 def validate_port(port: int) -> bool:
-    return port in range(0, 65536)
+    return 0 <= port < 65536
 
 
-class TcpClientR3(AbstractClient):
+class TcpClientR3(IClient):
     """
     Implements the PC-side of the TCP/IP connection.
     """

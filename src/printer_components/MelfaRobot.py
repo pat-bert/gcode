@@ -3,7 +3,6 @@ from time import sleep
 from typing import Sized, AnyStr, Union, List
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
-from src.protocols.R3Protocol import R3Protocol
 from src import ApplicationExceptions
 from src.ApplicationExceptions import MelfaBaseException, ApiException
 from src.Coordinate import Coordinate
@@ -13,6 +12,7 @@ from src.circle_util import get_angle, get_intermediate_point
 from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
 from src.printer_components.PrinterComponent import PrinterComponent
+from src.protocols.R3Protocol import R3Protocol
 from src.refactor import cmp_response
 
 
@@ -161,18 +161,7 @@ class MelfaRobot(PrinterComponent):
 
             # Inch conversion
             if self.inch_active:
-                if (
-                        gcode.cartesian_abs is not None
-                        and len(gcode.cartesian_abs.coordinate) > 0
-                ):
-                    gcode.cartesian_abs *= self.INCH_IN_MM
-                if (
-                        gcode.cartesian_rel is not None
-                        and len(gcode.cartesian_rel.coordinate) > 0
-                ):
-                    gcode.cartesian_rel *= self.INCH_IN_MM
-                if gcode.speed is not None:
-                    gcode.speed *= self.INCH_IN_MM
+                self.adjust_units(gcode)
 
             # Speed conversion mm/min to mm/s
             if gcode.speed is not None:
@@ -264,11 +253,27 @@ class MelfaRobot(PrinterComponent):
             else:
                 raise NotImplementedError
 
+    def adjust_units(self, gcode: GCmd):
+        if (
+                gcode.cartesian_abs is not None
+                and len(gcode.cartesian_abs.coordinate) > 0
+        ):
+            gcode.cartesian_abs *= self.INCH_IN_MM
+        if (
+                gcode.cartesian_rel is not None
+                and len(gcode.cartesian_rel.coordinate) > 0
+        ):
+            gcode.cartesian_rel *= self.INCH_IN_MM
+        if gcode.speed is not None:
+            gcode.speed *= self.INCH_IN_MM
+        if gcode.extrude_len is not None:
+            gcode.extrude_len *= self.INCH_IN_MM
+
     def _prepare_circle(self) -> None:
         for i in range(1, 4):
             self.declare_position("P{}".format(i))
 
-    def declare_position(self, var_name):
+    def declare_position(self, var_name: str) -> None:
         try:
             self.protocol.pos.define_variable(var_name, var_type="position")
         except ApplicationExceptions.MelfaBaseException as e:
