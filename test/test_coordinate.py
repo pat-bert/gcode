@@ -14,9 +14,23 @@ class TestCoordinate:
             # Normal
             (3, "X", 2, None, None, None),
             # Too many print axes
-            (3, "X", 2, "XY", ValueError, "Axes and print representation need to be of same length.",),
+            (
+                    3,
+                    "X",
+                    2,
+                    "XY",
+                    ValueError,
+                    "Axes and print representation need to be of same length.",
+            ),
             # Too few print axes
-            ([3, 4], "XY", 2, "Y", ValueError, "Axes and print representation need to be of same length.",),
+            (
+                    [3, 4],
+                    "XY",
+                    2,
+                    "Y",
+                    ValueError,
+                    "Axes and print representation need to be of same length.",
+            ),
             # Too few digits
             (3, "X", -1, None, ValueError, "Digits must be positive."),
             # Not enough values
@@ -106,7 +120,11 @@ class TestCoordinate:
         left_sum_coordinate = add1 + add2
         right_sum_coordinate = add2 + add1
 
-        assert list(left_sum_coordinate.values) == list(right_sum_coordinate.values) == expected
+        assert (
+                list(left_sum_coordinate.values)
+                == list(right_sum_coordinate.values)
+                == expected
+        )
 
     def test_add_zero(self):
         a = Coordinate([1, None, 0], "XYZ")

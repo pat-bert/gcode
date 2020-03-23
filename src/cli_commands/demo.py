@@ -3,7 +3,7 @@ import time
 from src import ApplicationExceptions
 from src.Coordinate import Coordinate
 from src.gcode.GCmd import GCmd
-from src.melfa.TcpClientR3 import TcpClientR3
+from src.clients.TcpClientR3 import TcpClientR3
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.speed_profile import draw_speed
 
@@ -18,7 +18,9 @@ def cube(robot: MelfaRobot, speed: float) -> None:
     square_size = 240
 
     # Base coordinates
-    start = Coordinate([-square_size / 2, square_size / 2, 0, 180, 0, 0], robot.AXES)  # pragma: no mutate
+    start = Coordinate(
+        [-square_size / 2, square_size / 2, 0, 180, 0, 0], robot.AXES
+    )  # pragma: no mutate
 
     x_vec = Coordinate([square_size, 0, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
     y_vec = Coordinate([0, -square_size, 0, 0, 0, 0], robot.AXES)  # pragma: no mutate
@@ -74,7 +76,7 @@ def speed_test(robot: MelfaRobot, speed: float) -> None:
     finish = start + vector  # pragma: no mutate
 
     # Back to start
-    robot.reset_linear_speed_factor()
+    robot.protocol.resetter.reset_linear_speed()
     robot.linear_move_poll(start)
 
     # Test distance

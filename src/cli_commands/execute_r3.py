@@ -1,6 +1,6 @@
-from src.ApplicationExceptions import *
+from src.ApplicationExceptions import TcpError, PreCheckError, ApiException
 from src.printer_components.MelfaRobot import MelfaRobot
-from src.melfa.TcpClientR3 import TcpClientR3
+from src.clients.TcpClientR3 import TcpClientR3
 
 
 def execute_r3(f_input: str, ip, port, f_log: str = "run.log") -> None:
@@ -43,13 +43,13 @@ def execute_r3(f_input: str, ip, port, f_log: str = "run.log") -> None:
     try:
         with open(f_log, "w") as fid_log:
             for r3_cmd in r3_commands:
-                # TODO Send command
+                # TODO Send cmd
                 pass
     except OSError as file_exception:
         print(file_exception)
         raise
     except ApiException:
-        # TODO Replace by specific exception (communication, command, ...) and print something
+        # TODO Replace by specific exception (communication, cmd, ...) and print something
         raise
     else:
         print("Done.")

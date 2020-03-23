@@ -47,8 +47,14 @@ from src.cli_commands.execute_r3 import execute_r3
 from src.cli_commands.interactive_gcode import interactive_gcode
 from src.cli_commands.interactive_melfa import interactive_melfa
 from src.cli_commands.interpret_gcode import interpret_gcode
-from src.exit_codes import *
-from src.melfa.TcpClientR3 import validate_ip, validate_port
+from src.clients.TcpClientR3 import validate_ip, validate_port
+from src.exit_codes import (
+    EXIT_SUCCESS,
+    EXIT_BAD_INPUT,
+    EXIT_INTERNAL_ERROR,
+    EXIT_PACKAGE_ERROR,
+    EXIT_UNEXPECTED_ERROR,
+)
 
 # Third-party libraries
 try:
@@ -138,17 +144,17 @@ def main(*argv):
                     raise ApiException(
                         "Unknown option passed. Type --help for more info."
                     )
-    except SchemaError as e:
+    except SchemaError:
         # Input validation error
+        logging.exception("Input data invalid.")
         sys.exit(EXIT_BAD_INPUT)
-    except ApiException as e:
+    except ApiException:
         # Intentionally thrown exception by functions of this module
-        print("Application crashed due to '{}'".format(e))
+        logging.exception("Internal error.")
         sys.exit(EXIT_INTERNAL_ERROR)
-    except KeyError as e:
+    except KeyError:
         # Accessing the arg dictionary with different keys as specified in docstring
-        print(e)
-        print(
+        logging.exception(
             "This might have happened due to different versions of CLI documentation and parsing."
         )
         sys.exit(EXIT_UNEXPECTED_ERROR)
