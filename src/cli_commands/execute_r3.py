@@ -1,4 +1,4 @@
-from src.ApplicationExceptions import *
+from src.ApplicationExceptions import TcpError, PreCheckError, ApiException
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.clients.TcpClientR3 import TcpClientR3
 

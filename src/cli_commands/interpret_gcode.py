@@ -1,7 +1,7 @@
 from src.ApplicationExceptions import GCmdError, MelfaBaseException
 from src.gcode.GCmd import GCmd
 from src.printer_components.MelfaRobot import MelfaRobot
-from clients.IClient import IClient
+from src.clients.IClient import IClient
 
 
 def interpret_gcode(f_input: str, f_output: str = "out.txt") -> None:
