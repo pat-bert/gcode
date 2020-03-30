@@ -1,6 +1,22 @@
 import pytest
 
 from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
+from test.util import SkipIfNotConditionWrapper
+
+
+@pytest.fixture
+def valid_tcp_client():
+    return TestTcpClientR3()
+
+
+@pytest.fixture
+def non_existing_tcp_client():
+    return TestTcpClientR3()
+
+
+# TODO Use this for integration tests
+hardware = SkipIfNotConditionWrapper(lambda: False,
+                                     'For now this requires a physical port.')
 
 
 @pytest.mark.parametrize(
@@ -50,36 +66,42 @@ def test_validate_ip_exc(ip):
 
 
 @pytest.mark.parametrize(
-    "port,valid", [(0, True), (-1, False), (65535, True), (65536, False)]
+    "port,valid", [(0, False), (1, True), (65535, True), (65536, False)]
 )
 def test_validate_port(port, valid):
     assert validate_port(port) == valid
 
 
 class TestTcpClientR3:
-    def test_connect(self):
-        actual_tcp = TcpClientR3()
-
+    def test_connect_timeout(self):
+        actual_tcp = TcpClientR3(timeout=0.1)
         with pytest.raises(TcpError):
             actual_tcp.connect()
 
+    @hardware.required
     def test_close(self):
         assert True
 
+    @hardware.required
     def test_send(self):
         assert True
 
+    @hardware.required
     def test_send_before_connect(self):
         assert True
 
+    @hardware.required
     def test_send_message_too_long(self):
         assert True
 
+    @hardware.required
     def test_wait_send(self):
         assert True
 
+    @hardware.required
     def test_receive(self):
         assert True
 
+    @hardware.required
     def test_mainloop(self):
         assert True

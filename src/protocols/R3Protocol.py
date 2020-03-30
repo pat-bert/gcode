@@ -2,6 +2,7 @@ from time import sleep
 from typing import Tuple, Optional, Callable, Union, List
 
 from MelfaCoordinateService import MelfaCoordinateService
+from clients.IClient import IClient
 from src.Coordinate import Coordinate
 
 # General commands
@@ -41,18 +42,12 @@ class R3Protocol:
 
     DIGITS = 2
 
-    def __init__(
-            self,
-            client,
-            coordinate_adapter: MelfaCoordinateService,
-            joints,
-            digits: int = DIGITS,
-    ):
+    def __init__(self, client, coordinate_adapter: MelfaCoordinateService, joints, digits: int = DIGITS):
         """
         Create a protocol object.
         :param client: Client to be used for the communication.
         :param coordinate_adapter:
-        :param digits:
+        :param digits: Number of digits to be used for string to float conversions, defaults to 2
         """
         self.client = client
         self.digits = digits
@@ -232,12 +227,13 @@ class R3Reader:
     API functions related to reading values, parameters, ...
     """
 
-    def __init__(self, client, joints, *, response2coordinate: Callable, digits: int):
+    def __init__(self, client: IClient, joints, *, response2coordinate: Callable, digits: int):
         """
-
-        :param client:
+        Create an interface object for reading functions.
+        :param client: Communication client
+        :param joints:
         :param response2coordinate: Callable to convert a response to a target object.
-        :param digits:
+        :param digits: Number of digits to be used for float to string conversions.
         """
         self.joints = joints
         self.client = client
@@ -252,26 +248,34 @@ class R3Reader:
         return self._get_float_cmd(OVERRIDE_CMD, direct=False)
 
     def get_current_linear_speed(self) -> float:
+        """
+        Get the current linear speed in mm/s.
+        :return: Current linear speed factor, float.
+        """
         val = self.read_variable("M_RSPD")
         return float(val.split("=")[-1])
 
     def get_joint_speed(self) -> float:
+        """
+        Get the current joint speed in percent.
+        :return: Current joint override, float.
+        """
         val = self.read_variable("M_JOVRD")
         return float(val.split("=")[-1])
 
-    def get_joint_borders(self) -> Tuple:
+    def get_joint_borders(self) -> Tuple[float, ...]:
         """
         Get the limits for the joints in degrees.
-        :return:
+        :return: Tuple of the joint borders: -J1, +J1, -J2, +J2, ...
         """
         borders = self._read_parameter("MEJAR")
         coordinates = self.parse_comma_string(borders)
         return tuple(float(i) for i in coordinates)
 
-    def get_xyz_borders(self) -> Tuple:
+    def get_xyz_borders(self) -> Tuple[float, ...]:
         """
         Get the limits for XYZ in mm.
-        :return:
+        :return: Tuple of the cartesian borders: -X, +X, -Y, +X, -Z, +Z
         """
         borders = self._read_parameter("MEPAR")
         coordinates = self.parse_comma_string(borders)
@@ -310,6 +314,7 @@ class R3Reader:
         return Coordinate(safe_pos_values, self.joints)
 
     def get_servo_state(self):
+        # TODO Implement command and parsing
         pass
 
     def _read_parameter(self, parameter: str) -> str:
@@ -332,10 +337,10 @@ class R3Reader:
 
     def _get_float_cmd(self, cmd: str, direct=True) -> float:
         """
-
-        :param cmd:
+        Use an arbitrary command getting a float value
+        :param cmd: Command to be used to get the value
         :param direct: Flag to specify whether direct execution is required
-        :return:
+        :return: Value converted to float
         """
         # Send cmd
         if direct:
@@ -362,7 +367,12 @@ class R3Setter:
     API functions related to setting.
     """
 
-    def __init__(self, client, digits):
+    def __init__(self, client: IClient, digits: int):
+        """
+        Create an interface object for reading functions.
+        :param client: Communication client
+        :param digits: Number of digits to be used for float to string conversions.
+        """
         self.client = client
         self.digits = digits
 
@@ -370,7 +380,7 @@ class R3Setter:
         """
         Sets the current coordinate system to the origin specified by the offset
         :param offset:
-        :return:
+        :return: None
         """
         self.client.send("{}{} {}".format(DIRECT_CMD, BASE_COORDINATE_CMD, offset))
         self.client.receive()
@@ -378,8 +388,9 @@ class R3Setter:
     def set_override(self, factor: float) -> None:
         """
         Sends the cmd to set the override value to the specified factor.
-        :param factor: Override factor to set in percent
+        :param factor: Override factor to set in percent, [1,100] %
         :return: None
+        :raises: ValueError, if the value is outside of the bounds
         """
         self._check_bounds(factor, lbound=1.0, ubound=100.0)
         self.client.send("{}={:.{d}f}".format(OVERRIDE_CMD, factor, d=self.digits))
@@ -388,16 +399,18 @@ class R3Setter:
     def set_linear_speed(self, speed: float) -> None:
         """
         Set the linear speed to a given value.
-        :param speed: Desired speed in mm/s
-        :return:
+        :param speed: Desired speed in mm/s, [1,1000]
+        :return: None
+        :raises: ValueError, if the value is outside of the bounds
         """
         self._set_float_cmd(LINEAR_SPEED, speed, lbound=1.0, ubound=1000.0)
 
     def set_joint_speed(self, speed: float) -> None:
         """
         Set the joint speed to a given value.
-        :param speed: Desired speed in percent
-        :return:
+        :param speed: Desired speed in percent, [1,100] %
+        :return: None
+        :raises: ValueError, if the value is outside of the bounds
         """
         self._set_float_cmd(JOINT_SPEED, speed, lbound=1.0, ubound=100.0)
 

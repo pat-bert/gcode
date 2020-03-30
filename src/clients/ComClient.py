@@ -1,10 +1,13 @@
+import threading
+from queue import Queue
 from time import sleep
-from typing import Tuple
+from typing import Tuple, Union
 
 import serial
 import serial.tools.list_ports
 
-from src.clients.IClient import IClient, ClientNotAvailableError, ClientOpenError, ClientError
+from src.clients.IClient import IClient, ClientNotAvailableError, ClientOpenError, ClientError, AmbiguousHardwareError, \
+    ClientCloseError
 
 
 def validate_id(id_number: int) -> bool:
@@ -18,7 +21,7 @@ def validate_id(id_number: int) -> bool:
 
 class ComClient(IClient):
     """
-    Client for serial communication.
+    Implements the client side of the serial communication.
     """
     BAUD_RATE = 115200
     PARITY = serial.PARITY_NONE
@@ -43,53 +46,70 @@ class ComClient(IClient):
         """
 
         # Create port object but do not connect
+        # TODO Check timeout setting, for sockets blocking is used when it is accessed in a separate thread
         self._ser = serial.Serial(baudrate=baud, parity=parity, stopbits=stopbits, bytesize=byte, timeout=1)
+
         # Unpack and transform IDs
         self.vid, self.pid = map(int, ids)
         self.send_encoding, self.read_encoding = encodings or (self.DEFAULT_WRITE_ENCODING, self.DEFAULT_READ_ENCODING)
+
+        # Queues and thread for communication from and to worker tread
+        self.t: Union[threading.Thread, None] = None
+        self.send_q = Queue()
+        self.recv_q = Queue()
 
     def connect(self) -> None:
         """
         Attempt to open the serial port connected to the device with the specified IDs.
         :return: None
-        :raises:
+        :raises: AmbiguousHardwareError if multiple devices have the same VID:PID.
+        :raises: ClientOpenError if there was any error while opening the port, e.g. port already open
         """
-        available_devices = serial.tools.list_ports.comports()
-        # Search for port matching the desired IDs
-        for usb_device in available_devices:
-            if usb_device.vid == self.vid and usb_device.pid == self.pid:
-                # Get the info necessary to open the port
-                self._ser.port = usb_device.device
-                # Attempt to open the port
-                try:
-                    self._ser.open()
-                except serial.SerialException as e:
-                    raise ClientOpenError(e) from e
-                else:
-                    print('Connected to {} - {}.'.format(usb_device.description, usb_device.hwid))
-                    break
-        else:
+        # Search for ports matching the desired IDs
+        matches = [usb for usb in serial.tools.list_ports.comports() if usb.vid == self.vid and usb.pid == self.pid]
+
+        # Cases ordered by estimated occurence
+        if len(matches) == 0:
             # Could not find desired client
             raise ClientNotAvailableError(self.vid, self.pid)
+        elif len(matches) == 1:
+            # Configure the serial port accordingly
+            self._ser.port = matches[0].device
+
+            # Attempt to open the port
+            try:
+                self._ser.open()
+            except serial.SerialException as e:
+                raise ClientOpenError(e) from e
+            else:
+                # Successful attempt, worker thread can now be started and the search for the port is done
+                print('Connected to {} - {}.'.format(matches[0].description, matches[0].hwid))
+                self.t = threading.Thread(target=self.mainloop)
+        else:
+            # Found multiple clients
+            raise AmbiguousHardwareError
 
     def close(self) -> None:
         """
         Attempt to close the serial port.
         :return: None
-        :raises: IOError if port could not be closed.
+        :raises: ClientCloseError if port could not be closed.
         """
+
+        # self.t.join()
         # Just call it. This should not raise an exception.
         self._ser.close()
 
         # Ensure that the port is closed
         if self._ser.is_open:
-            raise IOError("Could not close serial port.")
+            raise ClientCloseError('Could not close serial port {}.'.format(self._ser.port))
 
     def receive(self, silence_errors=False) -> str:
         """
         Receive data sent on the serial port.
         :param silence_errors:
-        :return:
+        :return: Message string
+        :raises:
         """
         prev_count, curr_count = 0, 0  # Keep track of the number of bytes waiting in ingoing buffer for each poll
         response_buffer = []  # Collect the decoded responses
@@ -131,21 +151,37 @@ class ComClient(IClient):
 
         return response
 
-    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False) -> int:
+    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False):
         """
-        :param msg:
+        Sends data on the serial port.
+        :param msg: Message to be sent, will be terminated by newline character if not present.
         :param silent_recv:
         :param silent_send:
         :return: Number of bytes written
         :raises: IOError when a specified timeout occurs
         :raises: UnicodeError if the message cannot be encoded in the specified encoding
         """
-        print('>>: {}'.format(msg.strip()))
+        # Display the message to the user
+        if not silent_send:
+            print('>>: {}'.format(msg.strip()))
 
+        # Ensure that the message is terminated properly
         if not msg.endswith('\n'):
             msg += '\n'
         data = msg.encode(encoding=self.send_encoding)
-        return self._ser.write(data)
+
+        # Send the message
+        total_sent_bytes = 0
+        total_bytes = len(data)
+
+        # Ensure that all the data is sent
+        while total_sent_bytes < total_bytes:
+            # Send only the remaining data
+            sent_bytes = self._ser.write(data[total_sent_bytes:])
+            total_sent_bytes += sent_bytes
+
+    def mainloop(self):
+        pass
 
     def is_available(self) -> bool:
         """

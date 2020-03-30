@@ -5,15 +5,14 @@ Content:    Implement TCP/IP communication to robot
 """
 import socket
 import threading
-from queue import Queue
-from time import sleep
+from queue import Queue, Empty
 from typing import AnyStr, Union
 
 import src.protocols.R3Protocol as R3Protocol
-from src.clients.IClient import Msg
-from src.clients.IClient import IClient
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
+from src.clients.IClient import IClient, ServerClosedConnectionError
+from src.clients.IClient import Msg
 
 
 def validate_ip(ip: AnyStr) -> bool:
@@ -27,18 +26,20 @@ def validate_ip(ip: AnyStr) -> bool:
 
 
 def validate_port(port: int) -> bool:
-    return 0 <= port < 65536
+    return 0 < port < 65536
 
 
 class TcpClientR3(IClient):
     """
-    Implements the PC-side of the TCP/IP connection.
+    Implements the client side of the TCP/IP communication.
+    The implementation uses a single blocking socket which is run in permanently in a separate process.
+    Communication is achieved by putting messages to a sending queue and getting messages from a receiving queue.
     """
 
     # Network parameters
     HOST = "192.168.0.1"
     PORT = 10002
-    BUFSIZE = 1024
+    BUFSIZE = 4096
 
     # Delimiter
     DELIMITER = R3Protocol.DELIMITER
@@ -49,105 +50,124 @@ class TcpClientR3(IClient):
     PROGRAM_NO = 1
 
     def __init__(
-            self, host: str = HOST, port: int = PORT, bufsize: int = BUFSIZE
+            self, host: str = HOST, port: int = PORT, bufsize: int = BUFSIZE, timeout: float = 60
     ) -> None:
         """
         Initialises the objects for the TCP communication
         :param host: Host IP-Address
         :param port: Connection port
         :param bufsize: Buffer size for communication
+        :param timeout: Specifies a timeout to be applied during connection phase, defaults to 60 s.
         """
-        # Socket parameters
+        # Socket parameters (blocking)
+        self.s: Union[socket.socket, None] = None
         self.host = host
         self.port = port
         self.bufsize = bufsize
+        self.timeout = timeout
 
-        # Thread and socket properties
+        # Queues and thread for communication from and to worker tread
         self.t: Union[threading.Thread, None] = None
-        self.s: Union[socket.socket, None] = None
-
-        # Queues for communication from and to worker tread
         self.send_q = Queue()
         self.recv_q = Queue()
+        self.alive = threading.Event()
 
     def connect(self) -> None:
         """
         Connect to the robot via a worker thread for the protocol communication
-        :raises: ConnectionError
-        :raises: TimeoutError
-        :return:
+        :raises: ValueError if invalid connection parameters are passed.
+        :raises: TcpError for network related issues.
+        :return: None
         """
+        # TODO How to handle repeated calls and reconnects?
         # Create new thread
         self.t = threading.Thread(target=self.mainloop)
 
+        # Create new socket
         try:
-            # Create new socket
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            # Open connection to controller
-            print("Initialising TCP connection.")
+        except socket.error as e:
+            raise TcpError('Failed to create new socket.') from e
+
+        # Attemp to open a connection
+        try:
+            # Set a timeout to make this deterministic and testable on all machines
+            self.s.settimeout(self.timeout)
+            print('Attempting TCP connection to {}:{}.'.format(self.host, self.port))
             self.s.connect((self.host, self.port))
-            print("Connected.")
-        except ConnectionError as e:
-            print(e)
-            print("No connection possible.")
-            raise TcpError
-        except TimeoutError:
-            print("Connection could not be established within time.")
-            raise TcpError
+            print('Connected.')
+
+            # Reset the socket to blocking mode
+            self.s.settimeout(None)
+        except socket.gaierror as e:
+            # Specifically bad connection parameters
+            raise TcpError('Invalid connection parameters.') from e
+        except socket.timeout as e:
+            # Connection timeout
+            raise TcpError('Connection attempt timed out.') from e
+        except socket.error as e:
+            # Any other socket error
+            raise TcpError('No connection possible.') from e
         else:
             # Start thread
+            self.alive.set()
             self.t.start()
 
     def close(self) -> None:
         """
         Terminate the worker thread for the protocol communication.
-        :return:
+        :return: None
         """
         # Put close object
         self.send_q.put(None)
-        # Wait for queue to finish
+        # Wait for queues to finish
         self.recv_q.join()
         self.send_q.join()
-        # Wait for task to finish
+        # Wait for task to finish, this can be done multiple times
+        self.alive.clear()
         self.t.join()
-        # Close socket
+        # Close socket, no mutex required since the worker thread will be closed
         self.s.close()
-        print("Done.")
+        print('Closed communication.')
 
-    def send(
-            self, msg: str, silent_send: bool = False, silent_recv: bool = False
-    ) -> None:
+    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False) -> None:
         """
         Sends a message via the worker thread for the protocol communication.
-        :param msg:
+        :param msg: Message to be sent. Needs to be shorter than 128 characters.
         :param silent_send:
         :param silent_recv:
-        :return:
+        :return: None
         """
-        # Put the message to the outgoing queue of the protocol
+        # Put the message to the outgoing queue of the protocol, None is used to end the communication
         if msg is not None:
             if len(msg) <= 127:
                 msg = Msg(msg, silent_send, silent_recv)
                 self.send_q.put(msg)
-            else:
-                raise ValueError("The message cannot be longer than 127 characters.")
+            raise ValueError("The message cannot be longer than 127 characters.")
 
     def wait_send(self, msg: str) -> None:
         """
         Sends a message and waits until all messages are processed.
         :param msg:
-        :return:
+        :return: None
         """
         self.send(msg)
         self.send_q.join()
 
-        if msg == R3Protocol.SRV_ON:
-            sleep(R3Protocol.SERVO_INIT_SEC)
-
     def receive(self, silence_errors=False) -> str:
+        """
+        Get the last response received by the worker thread.
+        :param silence_errors: Specify whether exceptions should be silenced.
+        :return: Message string without status code
+        """
+        # Get the last response from the queue
         response = self.recv_q.get()
-        exception = ApplicationExceptions.ErrorDispatch[response[:3]]
         self.recv_q.task_done()
+
+        # Dispatch the status code part of the response
+        exception = ApplicationExceptions.ErrorDispatch[response[:3]]
+
+        # Raise an exception if something went wrong
         if exception is not None and not silence_errors:
             # Something went wrong
             raise exception(response[3:])
@@ -155,42 +175,72 @@ class TcpClientR3(IClient):
 
     def mainloop(self) -> None:
         """
-        Main loop function for the worker thread for the protocol communication.
-        :return:
+        Main loop function for the worker thread for the network communication.
+        :return: None
+        :raises: ServerClosedConnectionError if an empty string is received
         """
-        while True:
+        # Event to indicate that the thread should terminate
+        while self.alive.isSet():
             # Get an item from the outgoing queue of the protocol
-            msg = self.send_q.get()
+            try:
+                # Using a timeout ensures that the loop condition is checked if no item is present
+                msg = self.send_q.get(timeout=0.01)
+            except Empty:
+                # Restart the loop
+                continue
+            else:
+                msg, silent_send, silent_recv = msg.unpack()
+                if msg is None:
+                    # End of queue
+                    self.send_q.task_done()
+                    break
+                else:
+                    # Regular message
+                    response = self._handle_msg(msg, silent_recv, silent_send)
 
-            # Check for end of queue
-            if msg is None:
-                self.send_q.task_done()
-                break
+                    # Put the response and indicate that the task is done
+                    self.recv_q.put(response)
+                    self.send_q.task_done()
 
-            # Unpack message
-            msg, silent_send, silent_recv = msg.unpack()
+                    # Server closed down connection
+                    if len(response) == 0:
+                        # TODO Can this be recovered by reopening the connection on a higher level?
+                        raise ServerClosedConnectionError
 
-            # Robot message
-            msg_str = (
-                    str(self.ROBOT_NO)
-                    + self.DELIMITER
-                    + str(self.PROGRAM_NO)
-                    + self.DELIMITER
-                    + str(msg)
-            )
-            if not silent_send:
-                print("Sending:\t " + msg_str)
-            msg_b = bytes(msg_str, encoding=self.ENCODING)
+    def _handle_msg(self, msg: str, silent_recv, silent_send) -> str:
+        # Robot message
+        # TODO This is specific and should be done by the protocol layer
+        msg_str = '{}{d}{}{d}{}'.format(self.ROBOT_NO, self.PROGRAM_NO, msg, d=self.DELIMITER)
 
-            # Send the message
-            self.s.send(msg_b)
+        # Log the message
+        if not silent_send:
+            print('>>: {}'.format(msg_str.strip()))
 
-            # Handle the receive
-            response: bytes = self.s.recv(self.bufsize)
-            response_str = str(response, encoding=self.ENCODING)
-            if not silent_recv:
-                print("Received:\t " + response_str)
-            self.recv_q.put(response_str)
+        # Send the message
+        msg_b = bytes(msg_str, encoding=self.ENCODING)
+        self._send_all_bytes(msg_b)
 
-            # Indicate that the task is done
-            self.send_q.task_done()
+        # Receive the message
+        response_b: bytes = self.s.recv(self.bufsize)
+        response_str = str(response_b, encoding=self.ENCODING)
+
+        # Log the message
+        if not silent_recv:
+            print("<<: {} ".format(response_str.strip()))
+
+        return response_str
+
+    def _send_all_bytes(self, msg_b: bytes) -> None:
+        """
+        Repeatedly calls the send function to ensure that all the data is sent.
+        :param msg_b: Message in byte format
+        :return: None
+        """
+        # Send the message
+        total_sent_bytes = 0
+        total_bytes = len(msg_b)
+        # Ensure that all the data is sent
+        while total_sent_bytes < total_bytes:
+            # Send only the remaining data
+            sent_bytes = self.s.send(msg_b[total_sent_bytes:])
+            total_sent_bytes += sent_bytes

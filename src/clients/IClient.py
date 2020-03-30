@@ -29,9 +29,30 @@ class ClientError(IOError):
     pass
 
 
+class ServerClosedConnectionError(IOError):
+    """
+    Exception to be raised if a connection closed unexpectedly.
+    """
+    pass
+
+
+class ClientCloseError(ClientError):
+    """
+    Exception to be raised if a connection to the client cannot be closed.
+    """
+    pass
+
+
 class ClientOpenError(ClientError):
     """
     Exception to be raised if a connection to the client cannot be opened.
+    """
+    pass
+
+
+class AmbiguousHardwareError(ClientOpenError):
+    """
+    Exception to be raised if multiple clients match the search criteria.
     """
     pass
 

@@ -2,7 +2,7 @@ import pytest
 
 import src.clients.IClient as IClient
 from src.clients.ComClient import ComClient, validate_id
-from test.util import SkipIfConditionWrapper
+from test.util import SkipIfNotConditionWrapper
 
 
 @pytest.fixture
@@ -16,8 +16,8 @@ def non_existing_com_client():
 
 
 # TODO Use this for integration tests
-hardware = SkipIfConditionWrapper(lambda: ComClient((0x0403, 0x6001)).is_available(),
-                                  'For now this requires a physical port.')
+hardware = SkipIfNotConditionWrapper(lambda: ComClient((0x0403, 0x6001)).is_available(),
+                                     'For now this requires a physical port.')
 
 
 class TestComClient:
