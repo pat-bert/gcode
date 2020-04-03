@@ -1,10 +1,11 @@
 import pytest
 
+from src.ApplicationExceptions import ErrorDispatch
 from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
-from src.clients.TcpEchoServer import TcpEchoServer
+from src.clients.TcpEchoServer import TcpEchoServer, ConfigurableEchoServer
 from test.util import SkipIfNotConditionWrapper
 
-VALID_HOST, VALID_PORT = '127.0.0.1', 10002
+VALID_HOST, VALID_PORT = 'localhost', 10002
 INVALID_HOST, INVALID_PORT = '192.168.0.1', 10002
 
 
@@ -18,7 +19,7 @@ def non_existing_tcp_client():
     return TcpClientR3(host=INVALID_HOST, port=INVALID_PORT, timeout=0.1)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def simple_tcp_echo():
     return TcpEchoServer(VALID_HOST, VALID_PORT)
 
@@ -81,6 +82,7 @@ def test_validate_port(port, valid):
     assert validate_port(port) == valid
 
 
+@pytest.mark.flaky(reruns=3)
 class TestTcpClientR3:
     def test_connect_timeout(self, non_existing_tcp_client):
         """
@@ -108,6 +110,7 @@ class TestTcpClientR3:
         # Stop the server again
         simple_tcp_echo.shutdown()
 
+    @pytest.mark.timeout(10)
     @pytest.mark.parametrize("msg_list", [['Test', 'message']])
     def test_send_and_receive(self, msg_list, valid_tcp_client, simple_tcp_echo):
         """
@@ -141,6 +144,7 @@ class TestTcpClientR3:
         with pytest.raises(TcpError):
             valid_tcp_client.send('Test')
 
+    @pytest.mark.timeout(10)
     def test_send_message_too_long(self, valid_tcp_client, simple_tcp_echo):
         """
         Test that messages longer than 128 characters are refused but that the client remains alive.
@@ -168,13 +172,52 @@ class TestTcpClientR3:
             valid_tcp_client.close()
             simple_tcp_echo.shutdown()
 
-    @hardware.required
-    def test_wait_send(self):
-        assert True
+    @pytest.mark.timeout(10)
+    def test_recv_exception(self, valid_tcp_client):
+        """
+        Test that the correct exceptions are raised if necessary.
+        :param valid_tcp_client:
+        :return:
+        """
+        message = 'Test'
+        server = ConfigurableEchoServer(VALID_HOST, VALID_PORT, 'utf-8')
+        server.listen()
 
-    @hardware.required
-    def test_mainloop(self):
-        assert True
+        try:
+            # Setup TCP Client
+            valid_tcp_client.connect()
 
-    def test_server_shutting_down(self):
-        pass
+            # Iterate over all possible exceptions
+            for prefix, exc in ErrorDispatch.items():
+                # Configure the server to send the current error prefix
+                server.reconfigure(prefix=prefix)
+                valid_tcp_client.send(message)
+
+                if exc is not None:
+                    # Check that the correct exception is raised and that it contains the rest of the message
+                    with pytest.raises(exc, match=message):
+                        valid_tcp_client.receive()
+                else:
+                    # Check that the response is equal to the message without the prefix
+                    response = valid_tcp_client.receive()
+                    assert response == message
+
+        finally:
+            # Close the connection
+            valid_tcp_client.close()
+            server.shutdown()
+
+    @pytest.mark.skip
+    def test_server_shutting_down(self, valid_tcp_client):
+        server = ConfigurableEchoServer(VALID_HOST, VALID_PORT, 'utf-8')
+        server.listen()
+
+        try:
+            valid_tcp_client.connect()
+            server.reconfigure(msg='')
+            valid_tcp_client.send('Test')
+            valid_tcp_client.receive()
+        finally:
+            # Close the connection
+            valid_tcp_client.close()
+            server.shutdown()

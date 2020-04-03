@@ -28,6 +28,7 @@ hardware = SkipIfNotConditionWrapper(lambda: ComClient((0x0403, 0x6001)).is_avai
                                      'For now this requires a physical port.')
 
 
+@pytest.mark.flaky(reruns=3)
 class TestComClient:
     """
     Tests for the client layer in case of using a COM client
@@ -107,19 +108,19 @@ class TestComClient:
         finally:
             valid_com_client.close()
 
-    # @hardware.required
-    @pytest.mark.skip
+    @hardware.required
     def test_close(self, valid_com_client):
         """
         Test that closing does not raise an exception and closes the COM client properly.
         :param valid_com_client:
         :return:
         """
-        valid_com_client.connect()
+        try:
+            valid_com_client.connect()
+            # TODO Actual sending or receiving once the host is clean
+        finally:
+            valid_com_client.close()
 
-        # TODO Actual sending or receiving once the host is clean
-
-        valid_com_client.close()
         # Receiving is not possible afterwards
         with pytest.raises(IClient.ClientError):
             valid_com_client.receive()
@@ -138,8 +139,7 @@ class TestComClient:
     def test_receive(self):
         assert False
 
-    # @hardware.required
-    @pytest.mark.skip
+    @hardware.required
     def test_send(self, valid_com_client, capsys):
         msg = 'This is a message.'
 

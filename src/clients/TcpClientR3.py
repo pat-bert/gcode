@@ -90,10 +90,7 @@ class TcpClientR3(IClient):
         self.t = threading.Thread(target=self.mainloop, name=thread_name)
 
         # Create new socket
-        try:
-            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        except socket.error as e:
-            raise TcpError('Failed to create new socket.') from e
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Attemp to open a connection
         try:
@@ -261,8 +258,3 @@ class TcpClientR3(IClient):
             # Send only the remaining data
             sent_bytes = self.s.send(msg_b[total_sent_bytes:])
             total_sent_bytes += sent_bytes
-
-
-if __name__ == '__main__':
-    a = TcpClientR3(host='127.0.0.1', port=10001)
-    a.connect()
