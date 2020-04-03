@@ -10,12 +10,12 @@ PORT = 10009
 def tcp_server():
     global PORT
     PORT += 1
-    return TcpEchoServer('localhost', PORT)
+    return TcpEchoServer('127.0.0.1', PORT)
 
 
 @pytest.fixture
 def tcp_client():
-    return TcpClientR3(host='localhost', port=PORT)
+    return TcpClientR3(host='127.0.0.1', port=PORT)
 
 
 class TestTcpEchoServer:

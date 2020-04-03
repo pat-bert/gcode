@@ -4,7 +4,7 @@ from src.ApplicationExceptions import ErrorDispatch
 from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
 from src.clients.TcpEchoServer import TcpEchoServer, ConfigurableEchoServer
 
-VALID_HOST, VALID_PORT = 'localhost', 10002
+VALID_HOST, VALID_PORT = '127.0.0.1', 10002
 INVALID_HOST, INVALID_PORT = '192.168.0.1', 10002
 
 
