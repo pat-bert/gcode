@@ -27,7 +27,6 @@ hardware = SkipIfNotConditionWrapper(lambda: ComClient((0x0403, 0x6001)).is_avai
                                      'For now this requires a physical port.')
 
 
-@pytest.mark.flaky(reruns=3)
 class TestComClient:
     """
     Tests for the client layer in case of using a COM client

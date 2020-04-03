@@ -15,6 +15,7 @@ def tcp_client():
 
 
 class TestTcpEchoServer:
+    @pytest.mark.skip
     @pytest.mark.timeout(10)
     def test_listen(self, tcp_server):
         """
@@ -35,6 +36,7 @@ class TestTcpEchoServer:
             tcp_server.shutdown()
             assert not tcp_server.is_listening
 
+    @pytest.mark.skip
     @pytest.mark.timeout(10)
     def test_successive_connections(self, tcp_server, tcp_client):
         """
@@ -61,6 +63,7 @@ class TestTcpEchoServer:
             tcp_server.shutdown()
             assert not tcp_server.is_listening
 
+    @pytest.mark.skip
     @pytest.mark.timeout(10)
     def test_reboot(self, tcp_server, tcp_client):
         """
