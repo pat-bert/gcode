@@ -57,7 +57,7 @@ class TcpClientR3(IClient):
         :param host: Host IP-Address
         :param port: Connection port
         :param bufsize: Buffer size for communication
-        :param timeout: Specifies a timeout to be applied during connection phase, defaults to 60 s.
+        :param timeout: Specifies a timeout in seconds to be applied during connection phase, defaults to 60 s.
         """
         # Socket parameters (blocking)
         self.s: Union[socket.socket, None] = None
@@ -71,6 +71,10 @@ class TcpClientR3(IClient):
         self.send_q = Queue()
         self.recv_q = Queue()
         self.alive = threading.Event()
+        self._cnt_conn = 0
+
+        # Status Flags
+        self._is_connected = False
 
     def connect(self) -> None:
         """
@@ -81,7 +85,9 @@ class TcpClientR3(IClient):
         """
         # TODO How to handle repeated calls and reconnects?
         # Create new thread
-        self.t = threading.Thread(target=self.mainloop)
+        self._cnt_conn += 1
+        thread_name = 'TCP-Client ({}:{}) #{}'.format(self.host, self.port, self._cnt_conn)
+        self.t = threading.Thread(target=self.mainloop, name=thread_name)
 
         # Create new socket
         try:
@@ -112,6 +118,7 @@ class TcpClientR3(IClient):
             # Start thread
             self.alive.set()
             self.t.start()
+            self._is_connected = True
 
     def close(self) -> None:
         """
@@ -128,6 +135,7 @@ class TcpClientR3(IClient):
         self.t.join()
         # Close socket, no mutex required since the worker thread will be closed
         self.s.close()
+        self._is_connected = False
         print('Closed communication.')
 
     def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False) -> None:
@@ -137,13 +145,19 @@ class TcpClientR3(IClient):
         :param silent_send:
         :param silent_recv:
         :return: None
+        :raises: TcpError if client has not been connected successfully. Otherwise all messages passed to send would be
+        sent out once a connection is established.
         """
         # Put the message to the outgoing queue of the protocol, None is used to end the communication
-        if msg is not None:
-            if len(msg) <= 127:
-                msg = Msg(msg, silent_send, silent_recv)
-                self.send_q.put(msg)
-            raise ValueError("The message cannot be longer than 127 characters.")
+        if self._is_connected:
+            if msg is not None:
+                if len(msg) <= 127:
+                    msg = Msg(msg, silent_send, silent_recv)
+                    self.send_q.put(msg)
+                else:
+                    raise ValueError("The message cannot be longer than 127 characters.")
+        else:
+            raise TcpError('Client needs to be connected before sending since this could lead to unexpected behavior.')
 
     def wait_send(self, msg: str) -> None:
         """
@@ -165,7 +179,10 @@ class TcpClientR3(IClient):
         self.recv_q.task_done()
 
         # Dispatch the status code part of the response
-        exception = ApplicationExceptions.ErrorDispatch[response[:3]]
+        try:
+            exception = ApplicationExceptions.ErrorDispatch[response[:3]]
+        except KeyError:
+            return response
 
         # Raise an exception if something went wrong
         if exception is not None and not silence_errors:
@@ -189,13 +206,13 @@ class TcpClientR3(IClient):
                 # Restart the loop
                 continue
             else:
-                msg, silent_send, silent_recv = msg.unpack()
                 if msg is None:
                     # End of queue
                     self.send_q.task_done()
                     break
                 else:
                     # Regular message
+                    msg, silent_send, silent_recv = msg.unpack()
                     response = self._handle_msg(msg, silent_recv, silent_send)
 
                     # Put the response and indicate that the task is done
@@ -210,14 +227,14 @@ class TcpClientR3(IClient):
     def _handle_msg(self, msg: str, silent_recv, silent_send) -> str:
         # Robot message
         # TODO This is specific and should be done by the protocol layer
-        msg_str = '{}{d}{}{d}{}'.format(self.ROBOT_NO, self.PROGRAM_NO, msg, d=self.DELIMITER)
+        # msg = '{}{d}{}{d}{}'.format(self.ROBOT_NO, self.PROGRAM_NO, msg, d=self.DELIMITER)
 
         # Log the message
         if not silent_send:
-            print('>>: {}'.format(msg_str.strip()))
+            print('>>: {}'.format(msg.strip()))
 
         # Send the message
-        msg_b = bytes(msg_str, encoding=self.ENCODING)
+        msg_b = bytes(msg, encoding=self.ENCODING)
         self._send_all_bytes(msg_b)
 
         # Receive the message
@@ -244,3 +261,8 @@ class TcpClientR3(IClient):
             # Send only the remaining data
             sent_bytes = self.s.send(msg_b[total_sent_bytes:])
             total_sent_bytes += sent_bytes
+
+
+if __name__ == '__main__':
+    a = TcpClientR3(host='127.0.0.1', port=10001)
+    a.connect()

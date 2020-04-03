@@ -95,8 +95,7 @@ class TestComClient:
                 finally:
                     duplicate_com_client.close()
 
-    # @hardware.required
-    # @pytest.mark.skip
+    @hardware.required
     def test_connect_properly(self, valid_com_client):
         """
         Test that no exception is raised on a valid connect.
