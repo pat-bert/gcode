@@ -72,7 +72,7 @@ class ComClient(IClient):
         if len(matches) == 0:
             # Could not find desired client
             raise ClientNotAvailableError(self.vid, self.pid)
-        elif len(matches) == 1:
+        if len(matches) == 1:
             # Configure the serial port accordingly
             self._ser.port = matches[0].device
 
