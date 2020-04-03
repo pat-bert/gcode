@@ -37,6 +37,6 @@ scipy==1.4.1
 six==1.14.0
 toml==0.10.0
 tox==3.14.6
-virtualenv==20.0.14
+virtualenv==20.0.15
 wcwidth==0.1.9
 zipp==3.1.0
