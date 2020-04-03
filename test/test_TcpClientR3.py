@@ -3,7 +3,6 @@ import pytest
 from src.ApplicationExceptions import ErrorDispatch
 from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
 from src.clients.TcpEchoServer import TcpEchoServer, ConfigurableEchoServer
-from test.util import SkipIfNotConditionWrapper
 
 VALID_HOST, VALID_PORT = 'localhost', 10002
 INVALID_HOST, INVALID_PORT = '192.168.0.1', 10002
@@ -22,11 +21,6 @@ def non_existing_tcp_client():
 @pytest.fixture
 def simple_tcp_echo():
     return TcpEchoServer(VALID_HOST, VALID_PORT)
-
-
-# TODO Use this for integration tests
-hardware = SkipIfNotConditionWrapper(lambda: False,
-                                     'For now this requires a physical port.')
 
 
 @pytest.mark.parametrize(

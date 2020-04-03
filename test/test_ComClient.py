@@ -14,7 +14,6 @@ def valid_com_client():
 
 @pytest.fixture
 def duplicate_com_client():
-    # TODO How to register/simulate/mock duplicated devices?
     return ComClient((0x0001, 0x0001))
 
 

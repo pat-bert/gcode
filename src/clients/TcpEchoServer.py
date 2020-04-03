@@ -41,6 +41,7 @@ class TcpEchoServer:
 
             # Create a new socket (one-time use, will be closed on server shutdown)
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, socket.SHUT_RDWR)
 
             # Bind the adress
             self.s.bind((self.host, self.port))
@@ -135,7 +136,8 @@ class TcpEchoServer:
         # Shutdown connection properly
         connection.close()
 
-    def determine_response(self, msg: bytes) -> bytes:
+    @staticmethod
+    def determine_response(msg: bytes) -> bytes:
         """
         Hook for implementing a dynamic response.
         :param msg:
