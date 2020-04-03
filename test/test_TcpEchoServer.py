@@ -3,19 +3,22 @@ import pytest
 from src.clients.TcpClientR3 import TcpClientR3
 from src.clients.TcpEchoServer import TcpEchoServer
 
+PORT = 10009
+
 
 @pytest.fixture
 def tcp_server():
-    return TcpEchoServer('localhost', 10009)
+    global PORT
+    PORT += 1
+    return TcpEchoServer('localhost', PORT)
 
 
 @pytest.fixture
 def tcp_client():
-    return TcpClientR3(host='localhost', port=10009)
+    return TcpClientR3(host='localhost', port=PORT)
 
 
 class TestTcpEchoServer:
-    @pytest.mark.skip
     @pytest.mark.timeout(10)
     def test_listen(self, tcp_server):
         """
@@ -36,7 +39,6 @@ class TestTcpEchoServer:
             tcp_server.shutdown()
             assert not tcp_server.is_listening
 
-    @pytest.mark.skip
     @pytest.mark.timeout(10)
     def test_successive_connections(self, tcp_server, tcp_client):
         """
@@ -63,7 +65,6 @@ class TestTcpEchoServer:
             tcp_server.shutdown()
             assert not tcp_server.is_listening
 
-    @pytest.mark.skip
     @pytest.mark.timeout(10)
     def test_reboot(self, tcp_server, tcp_client):
         """

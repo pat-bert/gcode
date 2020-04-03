@@ -9,6 +9,11 @@ INVALID_HOST, INVALID_PORT = '192.168.0.1', 10002
 
 
 @pytest.fixture
+def simple_tcp_echo():
+    return TcpEchoServer(VALID_HOST, VALID_PORT)
+
+
+@pytest.fixture
 def valid_tcp_client():
     return TcpClientR3(host=VALID_HOST, port=VALID_PORT, timeout=3)
 
@@ -16,11 +21,6 @@ def valid_tcp_client():
 @pytest.fixture
 def non_existing_tcp_client():
     return TcpClientR3(host=INVALID_HOST, port=INVALID_PORT, timeout=0.1)
-
-
-@pytest.fixture
-def simple_tcp_echo():
-    return TcpEchoServer(VALID_HOST, VALID_PORT)
 
 
 @pytest.mark.parametrize(
@@ -95,6 +95,8 @@ class TestTcpClientR3:
         """
         # Open the server
         simple_tcp_echo.listen()
+        global VALID_PORT
+        VALID_PORT += 1
 
         # Try the connection
         valid_tcp_client.connect()
@@ -103,7 +105,6 @@ class TestTcpClientR3:
         # Stop the server again
         simple_tcp_echo.shutdown()
 
-    @pytest.mark.skip
     @pytest.mark.timeout(10)
     @pytest.mark.parametrize("msg_list", [['Test', 'message']])
     def test_send_and_receive(self, msg_list, valid_tcp_client, simple_tcp_echo):
@@ -116,6 +117,8 @@ class TestTcpClientR3:
         """
         # Open the connection
         simple_tcp_echo.listen()
+        global VALID_PORT
+        VALID_PORT += 1
 
         try:
             # Check the connection
@@ -138,7 +141,6 @@ class TestTcpClientR3:
         with pytest.raises(TcpError):
             valid_tcp_client.send('Test')
 
-    @pytest.mark.skip
     @pytest.mark.timeout(10)
     def test_send_message_too_long(self, valid_tcp_client, simple_tcp_echo):
         """
@@ -149,6 +151,8 @@ class TestTcpClientR3:
         """
         # Open the connection
         simple_tcp_echo.listen()
+        global VALID_PORT
+        VALID_PORT += 1
 
         try:
             # Send a valid message
@@ -175,8 +179,10 @@ class TestTcpClientR3:
         :return:
         """
         message = 'Test'
+        global VALID_PORT
         server = ConfigurableEchoServer(VALID_HOST, VALID_PORT, 'utf-8')
         server.listen()
+        VALID_PORT += 1
 
         try:
             # Setup TCP Client
@@ -204,8 +210,10 @@ class TestTcpClientR3:
 
     @pytest.mark.skip
     def test_server_shutting_down(self, valid_tcp_client):
+        global VALID_PORT
         server = ConfigurableEchoServer(VALID_HOST, VALID_PORT, 'utf-8')
         server.listen()
+        VALID_PORT += 1
 
         try:
             valid_tcp_client.connect()

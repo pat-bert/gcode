@@ -46,7 +46,7 @@ class TcpEchoServer:
             self.s.bind((self.host, self.port))
 
             # Listen for connections
-            print('Server listening.')
+            print('Server listening at {}:{}.'.format(self.host, self.port))
             self.s.listen(5)
 
             # Create a new thread for accepting incoming connections so that this function does not block
