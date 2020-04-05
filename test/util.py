@@ -1,7 +1,7 @@
 import pytest
 
 
-class SkipIfConditionWrapper:
+class SkipIfNotConditionWrapper:
     """
     This class can be instantiated to create a decorator to skip tests for a common condition.
     """

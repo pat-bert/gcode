@@ -144,7 +144,7 @@ def get_intermediate_point(
     :param target: Target point
     :param center: Center point
     :param plane: Preferred plane as fallback
-    :param normal_vec: Normal vector for unusual plane
+    :param normal_vec: Normal vector for unusual plane, only considered if plane is passed as plane.ANY
     :return: coordinates of an intermediate point (half the angle)
     """
     if abs(angle) > 2 * pi:
@@ -161,11 +161,10 @@ def get_intermediate_point(
 
     # Point in the middle of start and target on a direct line
     middle = 0.5 * (target - start) + start
-    cm = middle - center
 
     # Full circle (just take opposite point)
     if abs(angle) == 2 * pi:
-        intermediate = center - cm
+        intermediate = 2 * center - middle
     # Half circle
     elif abs(angle) == pi:
         if plane is Plane.XY:
@@ -196,7 +195,8 @@ def get_intermediate_point(
         # intermediate = center + ci
         intermediate = center + normal_r * (center - start).vector_len()
     else:
-        cm_rescaled = cm / (cm.vector_len()) * (center - start).vector_len()
+        cm = middle - center
+        cm_rescaled = cm / cm.vector_len() * (center - start).vector_len()
         if pi > abs(angle) > 0:
             intermediate = center + cm_rescaled
         else:
