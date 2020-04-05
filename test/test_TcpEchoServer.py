@@ -3,19 +3,15 @@ import pytest
 from src.clients.TcpClientR3 import TcpClientR3
 from src.clients.TcpEchoServer import TcpEchoServer
 
-PORT = 10009
-
 
 @pytest.fixture
 def tcp_server():
-    global PORT
-    PORT += 1
-    return TcpEchoServer('127.0.0.1', PORT)
+    return TcpEchoServer('localhost', 10009)
 
 
 @pytest.fixture
 def tcp_client():
-    return TcpClientR3(host='127.0.0.1', port=PORT)
+    return TcpClientR3(host='localhost', port=10009)
 
 
 class TestTcpEchoServer:
