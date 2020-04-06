@@ -6,3 +6,5 @@
 /src/gcode.egg-info/
 /src/.pytest_cache/
 /src/.mutmut-cache
+/exportToHTML/
+/coverage.xml

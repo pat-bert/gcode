@@ -15,8 +15,7 @@ class Coordinate:
         """
         if digits < 0:
             raise ValueError("Digits must be positive.")
-        else:
-            self.digits = digits
+        self.digits = digits
 
         # Create dictionary of coordinates
         try:
@@ -27,8 +26,7 @@ class Coordinate:
         # Print representation
         if print_axes is not None and len(print_axes) != len(axes):
             raise ValueError("Axes and print representation need to be of same length.")
-        else:
-            self.print_axes = print_axes
+        self.print_axes = print_axes
 
     def to_melfa_response(self) -> str:
         txt = [
@@ -57,15 +55,22 @@ class Coordinate:
                 except KeyError:
                     raise TypeError("Incompatible axis.")
 
-    def reduce_to_axes(self, axes_to_keep, make_none=False) -> 'Coordinate':
+    def reduce_to_axes(self, axes_to_keep, make_none=False) -> "Coordinate":
         if make_none:
-            coordinate = {key: None if key not in axes_to_keep else val for key, val in self.coordinate.items()}
-            return self.__class__(coordinate.values(), coordinate.keys(), digits=self.digits)
+            coordinate = {
+                key: None if key not in axes_to_keep else val
+                for key, val in self.coordinate.items()
+            }
+            return self.__class__(
+                coordinate.values(), coordinate.keys(), digits=self.digits
+            )
         else:
             coordinate = {
                 key: val for key, val in self.coordinate.items() if key in axes_to_keep
             }
-            return self.__class__(coordinate.values(), coordinate.keys(), digits=self.digits)
+            return self.__class__(
+                coordinate.values(), coordinate.keys(), digits=self.digits
+            )
 
     def __str__(self):
         """
@@ -94,23 +99,22 @@ class Coordinate:
         """
         if other == 0:
             return self
+        if self._are_axes_compatible(other):
+            axis_list = self.axes
+            values = []
+            for axis in axis_list:
+                try:
+                    val = self.coordinate[axis] + other.coordinate[axis]
+                except TypeError:
+                    val = None
+                    values.append(val)
+                else:
+                    values.append(val)
+            values = tuple(values)
+            digits = min(self.digits, other.digits)
+            return Coordinate(values, axis_list, digits)
         else:
-            if self._are_axes_compatible(other):
-                axis_list = self.axes
-                values = []
-                for axis in axis_list:
-                    try:
-                        val = self.coordinate[axis] + other.coordinate[axis]
-                    except TypeError:
-                        val = None
-                        values.append(val)
-                    else:
-                        values.append(val)
-                values = tuple(values)
-                digits = min(self.digits, other.digits)
-                return Coordinate(values, axis_list, digits)
-            else:
-                raise TypeError("Incompatible axis.")
+            raise TypeError("Incompatible axis.")
 
     def __radd__(self, other: Union["Coordinate", int]) -> "Coordinate":
         """
@@ -120,8 +124,7 @@ class Coordinate:
         """
         if other == 0:
             return self
-        else:
-            return self.__add__(other)
+        return self.__add__(other)
 
     def __sub__(self, other: "Coordinate") -> "Coordinate":
         if self._are_axes_compatible(other):
@@ -130,8 +133,7 @@ class Coordinate:
             ]
             digits = min(self.digits, other.digits)
             return Coordinate(values, self.axes, digits)
-        else:
-            raise TypeError("Incompatible axis.")
+        raise TypeError("Incompatible axis.")
 
     def __rsub__(self, other: "Coordinate") -> "Coordinate":
         """
@@ -154,11 +156,6 @@ class Coordinate:
         return Coordinate(values, self.axes, self.digits)
 
     def __rmul__(self, other: Union[float, int]) -> "Coordinate":
-        """
-        Allows right hand multiplication.
-        :param other: Constant, float or int
-        :return: New set of coordinates
-        """
         return self.__mul__(other)
 
     def __truediv__(self, other: float) -> "Coordinate":
@@ -186,9 +183,10 @@ class Coordinate:
         :return:
         """
         if self._are_axes_compatible(other):
-            return sum((self.coordinate[axis] * other.coordinate[axis] for axis in self.axes))
-        else:
-            raise TypeError("Incompatible axis.")
+            return sum(
+                (self.coordinate[axis] * other.coordinate[axis] for axis in self.axes)
+            )
+        raise TypeError("Incompatible axis.")
 
     def cross(self, other: "Coordinate") -> "Coordinate":
         if self._are_axes_compatible(other):
@@ -203,11 +201,13 @@ class Coordinate:
                 add2 = self.coordinate[axis_list[b]] * other.coordinate[axis_list[a]]
                 return add1 - add2
 
-            values = [cross_row_formula(idx_a, idx_b) for idx_a, idx_b in zip(indices_a, indices_b)]
+            values = [
+                cross_row_formula(idx_a, idx_b)
+                for idx_a, idx_b in zip(indices_a, indices_b)
+            ]
 
             return Coordinate(values, axis_list, digits)
-        else:
-            raise TypeError("Incompatible axis.")
+        raise TypeError("Incompatible axis.")
 
     def vector_len(self):
         return sqrt(sum((i ** 2 for i in self.values)))

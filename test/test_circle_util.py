@@ -97,7 +97,9 @@ def test_get_intermediate_point_standard(
 
     actual_intermediate = get_intermediate_point(angle, s, t, c, plane, None)
 
-    assert list(actual_intermediate.values) == pytest.approx(list(expected_intermediate), abs=tol)
+    assert list(actual_intermediate.values) == pytest.approx(
+        list(expected_intermediate), abs=tol
+    )
 
 
 @pytest.mark.parametrize(
@@ -130,9 +132,15 @@ def test_get_intermediate_point_free_plane(
 
     actual_intermediate = get_intermediate_point(angle, s, t, c, Plane.ANY, n)
 
-    assert list(actual_intermediate.values) == pytest.approx(list(expected_intermediate), abs=tol)
-    assert (s - actual_intermediate).vector_len() == pytest.approx((t - actual_intermediate).vector_len(), abs=tol)
-    assert (s - c).vector_len() == pytest.approx((actual_intermediate - c).vector_len(), abs=tol)
+    assert list(actual_intermediate.values) == pytest.approx(
+        list(expected_intermediate), abs=tol
+    )
+    assert (s - actual_intermediate).vector_len() == pytest.approx(
+        (t - actual_intermediate).vector_len(), abs=tol
+    )
+    assert (s - c).vector_len() == pytest.approx(
+        (actual_intermediate - c).vector_len(), abs=tol
+    )
 
 
 @pytest.mark.parametrize("angle", [3 * pi, -3 * pi])

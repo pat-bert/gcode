@@ -6,7 +6,7 @@ from src.GRedirect import RedirectionTargets, GRedirect
 from src.printer_components.Heater import Heater
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.printer_components.PrinterComponent import PrinterComponent
-from src.melfa.TcpClientR3 import TcpClientR3
+from src.clients.TcpClientR3 import TcpClientR3
 from src.printer_components.UxHandler import UxHandler
 
 

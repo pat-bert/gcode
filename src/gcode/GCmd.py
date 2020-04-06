@@ -19,7 +19,7 @@ class GCmd(BaseCmd):
     # Define speed descriptor
     SPEED_DESCRIPTOR = "F"
     # Define feeder descriptor
-    FEED_DESCRIPTOR = "E"
+    EXTRUDE_DESCRIPTOR = "E"
     # Time descriptors
     TIME_MS_DESCRIPTOR = "P"
     TIME_S_DESCRIPTOR = "S"
@@ -40,10 +40,10 @@ class GCmd(BaseCmd):
     def __init__(
             self,
             code_id: str,
-            abs_cr: Tuple[float] = None,
-            rel_cr: Tuple[float] = None,
+            abs_cr: Tuple[float, ...] = None,
+            rel_cr: Tuple[float, ...] = None,
             speed: float = None,
-            f_speed: float = None,
+            e_length: float = None,
             time_ms: int = None,
             misc_cmd: Union[float, str] = None,
             home: str = "",
@@ -54,8 +54,8 @@ class GCmd(BaseCmd):
         :param code_id: G-Code identifier
         :param abs_cr: Optional tuple of absolute cartesian coordinates
         :param rel_cr: Optional tuple of relative cartesian coordinates
-        :param speed: Optional number for speed
-        :param f_speed: Optional number for feeding rate
+        :param speed: Optional number for speed of printer head
+        :param e_length: Optional number for extrude length
         :param time_ms: Optional number for time in ms
         :param misc_cmd: Optional argument for M-commands
         :param home: Optional string for homing
@@ -67,7 +67,7 @@ class GCmd(BaseCmd):
             rel_cr, self.ABS_AXES, self.DIGITS, print_axes=self.REL_AXES
         )
         self.speed = speed
-        self.feeder_speed = f_speed
+        self.extrude_len = e_length
         self.time_ms = time_ms
         self.machine_option = misc_cmd
         self.home_opt = home
@@ -109,7 +109,7 @@ class GCmd(BaseCmd):
             rel_str = ""
 
         speed_str = self.combine(self.SPEED_DESCRIPTOR, self.speed)
-        feeder_speed_str = self.combine(self.FEED_DESCRIPTOR, self.feeder_speed)
+        extruder_len_str = self.combine(self.EXTRUDE_DESCRIPTOR, self.extrude_len)
         time_str = self.combine(self.TIME_MS_DESCRIPTOR, self.time_ms)
         m_str = self.combine(self.M_DESCRIPTOR, self.machine_option)
         home_str = " ".join(self.home_opt)
@@ -120,7 +120,7 @@ class GCmd(BaseCmd):
                 + abs_str
                 + rel_str
                 + speed_str
-                + feeder_speed_str
+                + extruder_len_str
                 + time_str
                 + m_str
                 + home_str
@@ -167,7 +167,7 @@ class GCmd(BaseCmd):
             else:
                 # Get speed arguments
                 speed = args.get(cls.SPEED_DESCRIPTOR, None)
-                f_speed = args.get(cls.FEED_DESCRIPTOR, None)
+                e_length = args.get(cls.EXTRUDE_DESCRIPTOR, None)
 
                 # Get time argument, preferring milliseconds
                 time_ms = args.get(cls.TIME_MS_DESCRIPTOR, None)
@@ -201,7 +201,7 @@ class GCmd(BaseCmd):
                     abs_cr=abs_cr,
                     rel_cr=rel_cr,
                     speed=speed,
-                    f_speed=f_speed,
+                    e_length=e_length,
                     time_ms=time_ms,
                     misc_cmd=misc_cmd,
                     home=home,
@@ -210,7 +210,7 @@ class GCmd(BaseCmd):
     @classmethod
     def expand_coordinates(
             cls, coordinates: List[Union[str, None]]
-    ) -> Union[Tuple[float], None]:
+    ) -> Union[Tuple[float, ...], None]:
         """
 
         :param coordinates:
