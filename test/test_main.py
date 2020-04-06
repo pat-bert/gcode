@@ -2,7 +2,7 @@ import unittest.mock as mock
 
 import pytest
 
-from src.exit_codes import *
+from src.exit_codes import EXIT_SUCCESS
 from src.main import __doc__ as cli_doc
 from src.main import main
 
@@ -45,7 +45,6 @@ class TestMain:
         path = tmpdir.join("In_File")
         with pytest.raises(SystemExit) as cm:
             main([cmd, str(path)])
-        assert True
         # assert mock_func.called
         # assert cm.value.code == EXIT_SUCCESS
 

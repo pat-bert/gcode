@@ -1,8 +1,8 @@
 from time import sleep
 from typing import Tuple, Optional, Callable, Union, List
 
-from MelfaCoordinateService import MelfaCoordinateService
-from clients.IClient import IClient
+from src.MelfaCoordinateService import MelfaCoordinateService
+from src.clients.IClient import IClient
 from src.Coordinate import Coordinate
 
 # General commands

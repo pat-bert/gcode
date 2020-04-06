@@ -2,17 +2,17 @@ import pytest
 
 from src.ApplicationExceptions import ErrorDispatch
 from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
-from src.clients.TcpEchoServer import TcpEchoServer, ConfigurableEchoServer
+from src.clients.TcpEchoServer import ConfigurableEchoServer
 
-# Try to use port 0 next, maybe issue with CircleCi
-# Needs to resolve actual port for clients
 VALID_HOST, VALID_PORT = 'localhost', 10002
 INVALID_HOST, INVALID_PORT = '192.168.0.1', 10002
 
 
 @pytest.fixture
 def simple_tcp_echo():
-    return TcpEchoServer(VALID_HOST, VALID_PORT)
+    # Using the context manager to open and shutdown the communication for each test
+    with ConfigurableEchoServer(VALID_HOST, VALID_PORT, 'utf-8') as new_server:
+        yield new_server
 
 
 @pytest.fixture
@@ -95,17 +95,16 @@ class TestTcpClientR3:
         :param simple_tcp_echo: Simple TCP-Servo echoing back all messages
         :return:
         """
-        # Open the server
-        simple_tcp_echo.listen()
-        global VALID_PORT
-        VALID_PORT += 1
-
         # Try the connection
         valid_tcp_client.connect()
+        assert valid_tcp_client.is_connected
         valid_tcp_client.close()
+        assert not valid_tcp_client.is_connected
 
-        # Stop the server again
-        simple_tcp_echo.shutdown()
+        # Context manager
+        with valid_tcp_client as tcp_client:
+            assert tcp_client.is_connected
+        assert not tcp_client.is_connected
 
     @pytest.mark.timeout(10)
     @pytest.mark.parametrize("msg_list", [['Test', 'message']])
@@ -117,22 +116,12 @@ class TestTcpClientR3:
         :param simple_tcp_echo: Simple TCP-Servo echoing back all messages
         :return:
         """
-        # Open the connection
-        simple_tcp_echo.listen()
-        global VALID_PORT
-        VALID_PORT += 1
-
-        try:
-            # Check the connection
-            valid_tcp_client.connect()
+        # Check the connection
+        with valid_tcp_client as tcp_client:
             for msg in msg_list:
-                valid_tcp_client.send(msg)
-                response = valid_tcp_client.receive()
+                tcp_client.send(msg)
+                response = tcp_client.receive()
                 assert response == msg
-        finally:
-            # Close the connection
-            valid_tcp_client.close()
-            simple_tcp_echo.shutdown()
 
     def test_send_before_connect(self, valid_tcp_client):
         """
@@ -151,78 +140,40 @@ class TestTcpClientR3:
         :param simple_tcp_echo:
         :return:
         """
-        # Open the connection
-        simple_tcp_echo.listen()
-        global VALID_PORT
-        VALID_PORT += 1
-
-        try:
+        with valid_tcp_client as tcp_client:
             # Send a valid message
-            valid_tcp_client.connect()
-            valid_tcp_client.send('T' * 127)
+            tcp_client.send('T' * 127)
 
             # Send some invalid messages
             for _ in range(2):
                 with pytest.raises(ValueError):
-                    valid_tcp_client.send('T' * 128)
+                    tcp_client.send('T' * 128)
 
             # Send a valid message
-            valid_tcp_client.send('E' * 127)
-        finally:
-            # Close the connection in any case
-            valid_tcp_client.close()
-            simple_tcp_echo.shutdown()
+            tcp_client.send('E' * 127)
 
     @pytest.mark.timeout(10)
-    def test_recv_exception(self, valid_tcp_client):
+    def test_recv_exception(self, valid_tcp_client, simple_tcp_echo):
         """
         Test that the correct exceptions are raised if necessary.
         :param valid_tcp_client:
         :return:
         """
         message = 'Test'
-        global VALID_PORT
-        server = ConfigurableEchoServer(VALID_HOST, VALID_PORT, 'utf-8')
-        server.listen()
-        VALID_PORT += 1
 
-        try:
-            # Setup TCP Client
-            valid_tcp_client.connect()
-
+        # Can also be used as context manager (ensures that connection is closed)
+        with valid_tcp_client as tcp_client:
             # Iterate over all possible exceptions
             for prefix, exc in ErrorDispatch.items():
                 # Configure the server to send the current error prefix
-                server.reconfigure(prefix=prefix)
-                valid_tcp_client.send(message)
+                simple_tcp_echo.reconfigure(prefix=prefix)
+                tcp_client.send(message)
 
                 if exc is not None:
                     # Check that the correct exception is raised and that it contains the rest of the message
                     with pytest.raises(exc, match=message):
-                        valid_tcp_client.receive()
+                        tcp_client.receive()
                 else:
                     # Check that the response is equal to the message without the prefix
-                    response = valid_tcp_client.receive()
+                    response = tcp_client.receive()
                     assert response == message
-
-        finally:
-            # Close the connection
-            valid_tcp_client.close()
-            server.shutdown()
-
-    @pytest.mark.skip
-    def test_server_shutting_down(self, valid_tcp_client):
-        global VALID_PORT
-        server = ConfigurableEchoServer(VALID_HOST, VALID_PORT, 'utf-8')
-        server.listen()
-        VALID_PORT += 1
-
-        try:
-            valid_tcp_client.connect()
-            server.reconfigure(msg='')
-            valid_tcp_client.send('Test')
-            valid_tcp_client.receive()
-        finally:
-            # Close the connection
-            valid_tcp_client.close()
-            server.shutdown()
