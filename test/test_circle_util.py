@@ -5,10 +5,17 @@ import pytest
 from src.ApplicationExceptions import UnknownPlaneError, IllegalAngleError
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import Plane
-from src.circle_util import get_angle, get_intermediate_point
+from src.circle_util import get_angle, get_intermediate_point, RIGHTHAND_AXES
+
+# Rotate axes through, e.g. XYZ->YZX->ZXY
+RIGHTHAND_AXES_ROTATED = [RIGHTHAND_AXES[i:] + RIGHTHAND_AXES[:i] for i in range(0, 3)]
 
 
-@pytest.mark.parametrize("plane,normal_v", [(Plane.XY, None)])
+@pytest.mark.parametrize("plane,axes",
+                         [
+                             (Plane.XY, RIGHTHAND_AXES_ROTATED[0]),
+                             (Plane.YZ, RIGHTHAND_AXES_ROTATED[1]),
+                             (Plane.XZ, RIGHTHAND_AXES_ROTATED[2])])
 @pytest.mark.parametrize(
     "s,t,c,expected_angle",
     [
@@ -19,20 +26,33 @@ from src.circle_util import get_angle, get_intermediate_point
         [(25, 10, 0), (25, 10, 0), (0, 0, 0), 0],
         # 45 degrees
         [(10, 0, 0), (10, 10, 0), (0, 0, 0), pi / 4],
-        # y-axis to a-axis in XY-plane, first quadrant
+        # 135 degrees, second quadrant
+        [(10, 0, 0), (-10, 10, 0), (0, 0, 0), 3 / 4 * pi],
+        # y-axis to x-axis in XY-plane, first quadrant
         [(0, 10, 0), (5, 0, 0), (0, 0, 0), -pi / 2],
         # 180 degrees, second quadrant
         [(10, 0, 0), (-10, +0, 0), (0, 0, 0), pi],
         # -90 degrees, fourth quadrant
         [(10, 0, 0), (0, -10, 0), (0, 0, 0), -pi / 2],
-        # -90 degrees, third quadrant
-        [(10, 0, 0), (-10, -10, 0), (0, 0, 0), -0.75 * pi],
+        # -45 degrees, fourth quadrant
+        [(10, 0, 0), (10, -10, 0), (0, 0, 0), -pi / 4],
+        # -135 degrees, third quadrant
+        [(10, 0, 0), (-10, -10, 0), (0, 0, 0), -3 / 4 * pi],
         # Start in second quadrant, finish in third quadrant
         [(10, 10, 0), (-10, 10, 0), (0, 0, 0), pi / 2],
     ],
 )
-def test_get_angle_standard_planes(plane, normal_v, s, t, c, expected_angle):
-    axes = "XYZ"
+def test_get_angle_standard_planes(plane, s, t, c, expected_angle, axes):
+    """
+    Test that the function calculates the correct angle on the standard planes.
+    :param plane: Planes are rotated through by rotating the passed axes
+    :param s:
+    :param t:
+    :param c:
+    :param expected_angle:
+    :param axes:
+    :return:
+    """
     tol = 0.001
 
     actual_angle = get_angle(
@@ -40,26 +60,65 @@ def test_get_angle_standard_planes(plane, normal_v, s, t, c, expected_angle):
         Coordinate(t, axes),
         Coordinate(c, axes),
         plane,
-        normal_vec=normal_v,
+        normal_vec=None,
     )
 
+    assert abs(actual_angle) <= pi
+    assert actual_angle == pytest.approx(expected_angle, abs=tol)
+
+
+@pytest.mark.parametrize(
+    "s,t,c,n,expected_angle",
+    [
+        # Simply tilted around x axis
+        [(5, 0, 0), (0, 3, 4), (0, 0, 0), (0, -4, 3), pi / 2],
+        [(5, 0, 0), (0, -3, -4), (0, 0, 0), (0, -4, 3), -pi / 2],
+        [(5, 0, 0), (-5, 0, 0), (0, 0, 0), (0, -4, 3), pi],
+        [(5, 0, 0), (5, 0, 0), (0, 0, 0), (0, -4, 3), 0],
+    ]
+)
+def test_get_angle_free_plane(s, t, c, n, expected_angle):
+    tol = 0.001
+
+    start = Coordinate(s, RIGHTHAND_AXES)
+    target = Coordinate(t, RIGHTHAND_AXES)
+    center = Coordinate(c, RIGHTHAND_AXES)
+    normal = Coordinate(n, RIGHTHAND_AXES)
+
+    assert (start - center).vector_len() == pytest.approx((target - center).vector_len(), abs=tol)
+
+    actual_angle = get_angle(
+        start,
+        target,
+        center,
+        Plane.ANY,
+        normal_vec=normal,
+    )
+
+    assert abs(actual_angle) <= pi
     assert actual_angle == pytest.approx(expected_angle, abs=tol)
 
 
 def test_get_angle_illegal_plane():
-    zero = Coordinate((0, 0, 0), "XYZ")
+    """
+    Test that an exception is raised if an unknown plane is passed.
+    :return:
+    """
+    zero = Coordinate((0, 0, 0), RIGHTHAND_AXES)
     with pytest.raises(UnknownPlaneError):
         # noinspection PyTypeChecker
         get_angle(zero, zero, zero, -1, None)
 
 
-@pytest.mark.parametrize(
-    "axes,plane", [("XYZ", Plane.XY), ("YZX", Plane.YZ), ("XZY", Plane.XZ)]
-)
+@pytest.mark.parametrize("plane,axes",
+                         [
+                             (Plane.XY, RIGHTHAND_AXES_ROTATED[0]),
+                             (Plane.YZ, RIGHTHAND_AXES_ROTATED[1]),
+                             (Plane.XZ, RIGHTHAND_AXES_ROTATED[2])])
 @pytest.mark.parametrize(
     "start,target,center,angle,expected_intermediate",
     [
-        # -pi/2, XY-Plane (will work in any plane since coordinates are used instead)
+        # -pi/2, XY-Plane (will work in any plane since coordinates are used instead), clockwise
         [
             (0, 0, 0),
             (5, 5, 0),
@@ -67,7 +126,7 @@ def test_get_angle_illegal_plane():
             -pi / 2,
             (5 - 0.5 * sqrt(2) * 5, 0.5 * sqrt(2) * 5, 0),
         ],
-        # +3/2*pi, XY-Plane (will work in any plane since coordinates are used instead)
+        # +3/2*pi, XY-Plane (will work in any plane since coordinates are used instead), counter-clockwise
         [
             (0, 0, 0),
             (5, 5, 0),
@@ -82,10 +141,12 @@ def test_get_angle_illegal_plane():
     ],
 )
 def test_get_intermediate_point_standard(
-        axes, plane, start, target, center, angle: float, expected_intermediate
+        plane, axes, start, target, center, angle: float, expected_intermediate
 ):
     """
     Test that for any given arc the correct intermediate point is calculated
+    :param plane:
+    :param axes:
     :param start:
     :param target:
     :param center:
@@ -128,10 +189,10 @@ def test_get_intermediate_point_free_plane(
     :return:
     """
     tol = 0.001
-    s = Coordinate(start, "XYZ")
-    t = Coordinate(target, "XYZ")
-    c = Coordinate(center, "XYZ")
-    n = Coordinate(normal_v, "XYZ")
+    s = Coordinate(start, RIGHTHAND_AXES)
+    t = Coordinate(target, RIGHTHAND_AXES)
+    c = Coordinate(center, RIGHTHAND_AXES)
+    n = Coordinate(normal_v, RIGHTHAND_AXES)
 
     actual_intermediate = get_intermediate_point(angle, s, t, c, Plane.ANY, n)
 
@@ -152,9 +213,9 @@ def test_get_intermediate_point_illegal_angle(angle):
     abs(angle) <= 2*pi is required
     :return:
     """
-    s = Coordinate((0, 0, 0), "XYZ")
-    t = Coordinate((5, 5, 0), "XYZ")
-    c = Coordinate((5, 0, 0), "XYZ")
+    s = Coordinate((0, 0, 0), RIGHTHAND_AXES)
+    t = Coordinate((5, 5, 0), RIGHTHAND_AXES)
+    c = Coordinate((5, 0, 0), RIGHTHAND_AXES)
 
     with pytest.raises(IllegalAngleError):
         get_intermediate_point(angle, s, t, c, Plane.XY, normal_vec=None)
