@@ -14,6 +14,9 @@ from src.circle_util import get_angle, get_intermediate_point
     [
         # x-axis to y-axis in XY-plane, first quadrant
         [(10, 0, 0), (0, 10, 0), (0, 0, 0), pi / 2],
+        # Full circle
+        [(0, 10, 0), (0, 10, 0), (0, 0, 0), 0],
+        [(25, 10, 0), (25, 10, 0), (0, 0, 0), 0],
         # 45 degrees
         [(10, 0, 0), (10, 10, 0), (0, 0, 0), pi / 4],
         # y-axis to a-axis in XY-plane, first quadrant

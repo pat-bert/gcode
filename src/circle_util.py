@@ -58,9 +58,9 @@ def get_circle_cs(veca, vecb, plane: Plane, normal_vec=None):
         raise UnknownPlaneError
 
     # Normal vector of any circle can be tilted in two directions but does not need to be twisted
-    # TODO Consider z axis parallel y axis
-    y_axis_r = numpy.array([0, 1, 0])
-    x_axis = numpy.cross(y_axis_r, z_axis)
+    x_axis = veca
+    x_axis = x_axis / numpy.sqrt(numpy.sum(x_axis ** 2))
+
     # Get corresponding y-axis for right-hand system
     y_axis = numpy.cross(z_axis, x_axis)
     y_axis = y_axis / numpy.sqrt(numpy.sum(y_axis ** 2))
@@ -120,10 +120,9 @@ def get_angle(
 
     # Projections onto a and y axis
     x_b, y_b = project_vector(vecb, x_axis_c, y_axis_c)
-    x_a, y_a = project_vector(veca, x_axis_c, y_axis_c)
 
     # Get the angle
-    return atan2(y_b, x_b) - atan2(y_a, x_a)
+    return atan2(y_b, x_b)
 
 
 def get_intermediate_point(
