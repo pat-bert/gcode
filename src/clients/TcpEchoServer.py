@@ -182,3 +182,9 @@ class ConfigurableEchoServer(TcpEchoServer):
         if self.postfix is not None:
             msg = msg + self.postfix
         return msg
+
+    def __enter__(self):
+        return super().__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        super().__exit__(exc_type, exc_val, exc_tb)
