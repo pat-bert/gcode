@@ -2,11 +2,20 @@ version: 2.1
 
 orbs:
   python: circleci/python@0.2.1
+  win: circleci/windows@2.2.0
 
-jobs:
-  test:
+executors:
+  linux-executor:
     docker:
       - image: themattrix/tox
+  windows-executor: win/default
+
+jobs:
+  test-job:
+    parameters:
+      e:
+        type: executor
+    executor: << parameters.e >>
     steps:
       - checkout
       - restore_cache:
@@ -43,4 +52,7 @@ workflows:
   version: 2
   main:
     jobs:
-      - test
+      - test-job:
+          e: linux-executor
+      - test-job:
+          e: windows-executor
