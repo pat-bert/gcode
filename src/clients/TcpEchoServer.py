@@ -139,14 +139,61 @@ class TcpEchoServer:
     def determine_response(msg: bytes) -> bytes:
         """
         Hook for implementing a dynamic response.
-        :param msg:
-        :return:
+        :param msg: Message received by the server in bytes
+        :return: Message to be responded by the server in bytes
         """
         return msg
 
+    def __enter__(self):
+        """
+        Entering method when used as a context manager
+        :return: Current instance
+
+        Example:
+        with TcpEchoServer:
+            # Custom code here
+
+        is equivalent to
+        TcpEchoServer.__enter__()
+        try:
+            # Custom code here
+        finally:
+            TcpEchoServer.__exit__()
+        """
+        self.listen()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exit method when used as a context manager
+        :return: Current instance
+
+        Example:
+        with TcpEchoServer:
+            # Custom code here. Server will be started before and closed in any case afterwards
+
+        is equivalent to
+        TcpEchoServer.__enter__()
+        try:
+            # Custom code here
+        finally:
+            TcpEchoServer.__exit__()
+        """
+        self.shutdown()
+
 
 class ConfigurableEchoServer(TcpEchoServer):
+    """
+    Extends the functionality to include response manipulation.
+    """
+
     def __init__(self, host, port, encoding: str):
+        """
+        Initialize the TCP Server
+        :param host: Hostname as IPv4-adress
+        :param port: TCP-Port to be listened to
+        :param encoding: Encoding to be used to convert between string and bytes representation of modifiers.
+        """
         super().__init__(host, port)
         self.encoding = encoding
         self.prefix = None
@@ -155,8 +202,14 @@ class ConfigurableEchoServer(TcpEchoServer):
 
     def reconfigure(self, prefix: Union[None, str] = None,
                     postfix: Union[None, str] = None,
-                    msg: Union[None, str] = None):
-
+                    msg: Union[None, str] = None) -> None:
+        """
+        Adjust the calculation of the server response.
+        :param prefix: String to be inserted before each actual message
+        :param postfix: String to be inserted before each actual message
+        :param msg: String to replace the actual message with
+        :return: None
+        """
         # Set the prefix as bytes
         if prefix is not None:
             self.prefix = bytes(prefix, encoding=self.encoding)
@@ -175,6 +228,11 @@ class ConfigurableEchoServer(TcpEchoServer):
             self.replace_msg = msg
 
     def determine_response(self, msg: bytes) -> bytes:
+        """
+        Apply the modifications to the message.
+        :param msg: Message received by the server in bytes
+        :return: Message to be responded by the server in bytes
+        """
         if self.replace_msg is not None:
             msg = self.replace_msg
         if self.prefix is not None:
@@ -182,3 +240,9 @@ class ConfigurableEchoServer(TcpEchoServer):
         if self.postfix is not None:
             msg = msg + self.postfix
         return msg
+
+    def __enter__(self):
+        return super().__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        super().__exit__(exc_type, exc_val, exc_tb)

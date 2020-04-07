@@ -11,7 +11,7 @@ from typing import AnyStr, Union
 import src.protocols.R3Protocol as R3Protocol
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
-from src.clients.IClient import IClient, ServerClosedConnectionError
+from src.clients.IClient import IClient
 from src.clients.IClient import Msg
 
 
@@ -83,13 +83,12 @@ class TcpClientR3(IClient):
         :raises: TcpError for network related issues.
         :return: None
         """
-        # TODO How to handle repeated calls and reconnects?
         # Create new thread
         self._cnt_conn += 1
         thread_name = 'TCP-Client ({}:{}) #{}'.format(self.host, self.port, self._cnt_conn)
         self.t = threading.Thread(target=self.mainloop, name=thread_name)
 
-        # Create new socket
+        # Create new socket (unusable after closed)
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Attemp to open a connection
@@ -115,11 +114,14 @@ class TcpClientR3(IClient):
             # Start thread
             self.alive.set()
             self.t.start()
-            self._is_connected = True
+
+    @property
+    def is_connected(self):
+        return self.alive.isSet()
 
     def close(self) -> None:
         """
-        Terminate the worker thread for the protocol communication.
+        Close the client cleanly.
         :return: None
         """
         # Put close object
@@ -132,7 +134,6 @@ class TcpClientR3(IClient):
         self.t.join()
         # Close socket, no mutex required since the worker thread will be closed
         self.s.close()
-        self._is_connected = False
         print('Closed communication.')
 
     def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False) -> None:
@@ -146,13 +147,15 @@ class TcpClientR3(IClient):
         sent out once a connection is established.
         """
         # Put the message to the outgoing queue of the protocol, None is used to end the communication
-        if self._is_connected:
+        if self.alive.isSet():
             if msg is not None:
                 if len(msg) <= 127:
+                    # Valid message can be queued
                     msg = Msg(msg, silent_send, silent_recv)
                     self.send_q.put(msg)
                 else:
                     raise ValueError("The message cannot be longer than 127 characters.")
+            # TODO Should an empty message be sent to be polite?
         else:
             raise TcpError('Client needs to be connected before sending since this could lead to unexpected behavior.')
 
@@ -171,21 +174,25 @@ class TcpClientR3(IClient):
         :param silence_errors: Specify whether exceptions should be silenced.
         :return: Message string without status code
         """
-        # Get the last response from the queue
-        response = self.recv_q.get()
-        self.recv_q.task_done()
+        # Thread needs to be running or this will block indefinetly
+        if self.alive.isSet():
+            # Get the last response from the queue
+            response = self.recv_q.get()
+            self.recv_q.task_done()
 
-        # Dispatch the status code part of the response
-        try:
-            exception = ApplicationExceptions.ErrorDispatch[response[:3]]
-        except KeyError:
-            return response
+            # Dispatch the status code part of the response
+            try:
+                exception = ApplicationExceptions.ErrorDispatch[response[:3]]
+            except KeyError:
+                return response
 
-        # Raise an exception if something went wrong
-        if exception is not None and not silence_errors:
-            # Something went wrong
-            raise exception(response[3:])
-        return response[3:]
+            # Raise an exception if something went wrong
+            if exception is not None and not silence_errors:
+                # Something went wrong
+                raise exception(response[3:])
+            # Return the rest of the response without the status code
+            return response[3:]
+        raise TcpError('Client needs to be connected before sending since this could lead to unexpected behavior.')
 
     def mainloop(self) -> None:
         """
@@ -218,8 +225,8 @@ class TcpClientR3(IClient):
 
                     # Server closed down connection
                     if len(response) == 0:
-                        # TODO Can this be recovered by reopening the connection on a higher level?
-                        raise ServerClosedConnectionError
+                        self.alive.clear()
+                        return
 
     def _handle_msg(self, msg: str, silent_recv, silent_send) -> str:
         # Robot message
@@ -258,3 +265,10 @@ class TcpClientR3(IClient):
             # Send only the remaining data
             sent_bytes = self.s.send(msg_b[total_sent_bytes:])
             total_sent_bytes += sent_bytes
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

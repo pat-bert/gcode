@@ -1,4 +1,5 @@
 import unittest.mock as mock
+from time import sleep
 
 import pytest
 
@@ -132,10 +133,19 @@ class TestComClient:
         valid_com_client.close()
         non_existing_com_client.close()
 
-    # @hardware.required
-    @pytest.mark.skip
-    def test_receive(self):
-        assert False
+    @hardware.required
+    def test_receive(self, valid_com_client):
+        valid_com_client.connect()
+        sleep(8)
+        # Get startup message
+        valid_com_client.receive()
+
+        valid_com_client.send('M114')
+        response = valid_com_client.receive()
+
+        assert 'ok' in response
+
+        valid_com_client.close()
 
     @hardware.required
     def test_send(self, valid_com_client, capsys):
