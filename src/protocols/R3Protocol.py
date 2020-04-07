@@ -459,29 +459,13 @@ class R3Setter:
         :return: None
         :raises: ValueError, if the value is outside of the bounds specified
         """
-        # Check range
-        if lbound is not None:
-            if value < lbound:
-                if ubound is not None:
-                    raise ValueError(
-                        "Value out of range [{:.{d}f};{:.{d}f}].".format(
-                            lbound, ubound, d=self.digits
-                        )
-                    )
-                raise ValueError(
-                    "Value must be >= {:.{d}f}.".format(lbound, d=self.digits)
-                )
-        if ubound is not None:
-            if value > ubound:
-                if lbound is not None:
-                    raise ValueError(
-                        "Value out of range [{:.{d}f};{:.{d}f}].".format(
-                            lbound, ubound, d=self.digits
-                        )
-                    )
-                raise ValueError(
-                    "Value must be <= {:.{d}f}.".format(ubound, d=self.digits)
-                )
+        # Check lower range range
+        if lbound is not None and value < lbound:
+            raise ValueError("Value must be >= {:.{d}f}.".format(lbound, d=self.digits))
+
+        # Check upper range
+        if ubound is not None and value > ubound:
+            raise ValueError("Value must be <= {:.{d}f}.".format(ubound, d=self.digits))
 
 
 class R3Resetter:
