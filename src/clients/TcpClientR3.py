@@ -8,7 +8,6 @@ import threading
 from queue import Queue, Empty
 from typing import AnyStr, Union
 
-import src.protocols.R3Protocol as R3Protocol
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
 from src.clients.IClient import IClient
@@ -40,14 +39,7 @@ class TcpClientR3(IClient):
     HOST = "192.168.0.1"
     PORT = 10002
     BUFSIZE = 4096
-
-    # Delimiter
-    DELIMITER = R3Protocol.DELIMITER
     ENCODING = "utf-8"
-
-    # Parameters for R3 protocol
-    ROBOT_NO = 1
-    PROGRAM_NO = 1
 
     def __init__(
             self, host: str = HOST, port: int = PORT, bufsize: int = BUFSIZE, timeout: float = 60
@@ -229,10 +221,6 @@ class TcpClientR3(IClient):
                         return
 
     def _handle_msg(self, msg: str, silent_recv, silent_send) -> str:
-        # Robot message
-        # TODO This is specific and should be done by the protocol layer
-        # msg = '{}{d}{}{d}{}'.format(self.ROBOT_NO, self.PROGRAM_NO, msg, d=self.DELIMITER)
-
         # Log the message
         if not silent_send:
             print('>>: {}'.format(msg.strip()))
