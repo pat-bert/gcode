@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Tuple, Optional, Callable, Union, List
+from typing import Tuple, Optional, Callable, List, AnyStr
 
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService
@@ -39,57 +39,52 @@ ROBOT_NO = 1
 PROGRAM_NO = 1
 
 
-class R3Protocol:
+class R3SubApi:
     """
-    Mitsubishi robots do not support G-Code natively, hence the protocol for the commands is implemented.
+    All R3 APIs need to inherit from this to ensure that the root (object) is initialized correctly.
     """
 
-    DIGITS = 2
-
-    def __init__(self, client: IClient, coordinate_adapter: MelfaCoordinateService, joints, digits: int = DIGITS):
-        """
-        Create a protocol object.
-        :param client: Client to be used for the communication.
-        :param coordinate_adapter:
-        :param digits: Number of digits to be used for string to float conversions, defaults to 2
-        """
-        self.client = client
-        self.digits = digits
-
-        self.joints = joints
-        self.coord_adapt = coordinate_adapter
-
-        # Sub-APIs
-        self.pos = R3Positions(
-            client, coordinate2cmd=self.coord_adapt.to_cmd, digits=digits
-        )
-        self.reader = R3Reader(
-            client,
-            joints,
-            response2coordinate=self.coord_adapt.from_response,
-            digits=digits,
-        )
-        self.setter = R3Setter(client, digits)
-        self.resetter = R3Resetter(client, digits)
+    def __init__(self, *_, **kwargs):
+        # Discard any further optional parameters
+        super().__init__()
+        self.client = kwargs['client']
 
     def _protocol_send(self, msg: str):
         msg = '{}{d}{}{d}{}'.format(ROBOT_NO, PROGRAM_NO, msg, d=DELIMITER)
         self.client.send(msg)
 
-    def open_communication(self) -> None:
+
+class R3Utility(R3SubApi):
+    """
+    API-functions related to general utility.
+    """
+
+    def __init__(self, client: IClient, **kwargs):
+        super().__init__(client=client, **kwargs)
+        print('Setting up Utility-API.')
+
+    def reset_alarm(self) -> None:
         """
-        Sends the cmd to open the communication.
+        Reset the alarm bell on the rboot control.
         :return: None
         """
-        self._protocol_send("OPEN=NARCUSER")
+        self._protocol_send("RSTALRM")
+        self.client.receive(silence_errors=True)
+
+    def activate_servo(self) -> None:
+        """
+        Activates the servos.
+        :return: None
+        """
+        self._protocol_send("SRVON")
         self.client.receive()
 
-    def close_communication(self) -> None:
+    def deactivate_servo(self) -> None:
         """
-        Sends the cmd to close the communication.
+        Deactivate the servos.
         :return: None
         """
-        self._protocol_send("CLOSE")
+        self._protocol_send("SRVOFF")
         self.client.receive()
 
     def obtain_control(self) -> None:
@@ -108,36 +103,33 @@ class R3Protocol:
         self._protocol_send("CNTLOFF")
         self.client.receive()
 
-    def activate_servo(self) -> None:
+    def open_communication(self) -> None:
         """
-        Activates the servos.
+        Sends the cmd to open the communication.
         :return: None
         """
-        self._protocol_send("SRVON")
+        self._protocol_send("OPEN=NARCUSER")
         self.client.receive()
 
-    def deactivate_servo(self) -> None:
+    def close_communication(self) -> None:
         """
-        Deactivate the servos.
+        Sends the cmd to close the communication.
         :return: None
         """
-        self._protocol_send("SRVOFF")
+        self._protocol_send("CLOSE")
         self.client.receive()
 
-    def reset_alarm(self) -> None:
-        self._protocol_send("RSTALRM")
-        self.client.receive(silence_errors=True)
 
+class R3Positions(R3SubApi):
+    """
+    API functions related to moving to cetain positions and declaring them.
+    """
 
-class R3Positions:
-    def __init__(self, client: IClient, *, coordinate2cmd: Callable, digits: int):
-        self.client = client
+    def __init__(self, client: IClient, *, coordinate2cmd: Callable, digits: int, **kwargs):
+        super().__init__(client=client, digits=digits, **kwargs)
+        print('Setting up Position-API.')
         self.from_coord_to_cmd = coordinate2cmd
         self.digits = digits
-
-    def _protocol_send(self, msg: str):
-        msg = '{}{d}{}{d}{}'.format(ROBOT_NO, PROGRAM_NO, msg, d=DELIMITER)
-        self.client.send(msg)
 
     def set_position(self, name: str, pos: Coordinate) -> None:
         """
@@ -182,7 +174,7 @@ class R3Positions:
         """
         Move to a position using joint interpolation.
         :param target: End position of the movement
-        :return:
+        :return: None
         """
         coord_str = self.from_coord_to_cmd(target)
         self._protocol_send("{}MOV{}".format(DIRECT_CMD, coord_str))
@@ -194,35 +186,31 @@ class R3Positions:
         :param start: Start position of the arc
         :param target: End position of the arc
         :param center: Center position of the arc
-        :return:
+        :return: None
         """
         self._protocol_send("{}MVR3 {},{},{}".format(DIRECT_CMD, start, target, center))
         self.client.receive()
 
-    def circular_move_intermediate(
-            self, start: str, intermediate: str, target: str
-    ) -> None:
+    def circular_move_intermediate(self, start: str, intermediate: str, target: str) -> None:
         """
         Move to a position using circular interpolation.
         :param start: Start position of the arc
         :param intermediate: Intermediate position of the arc
         :param target: End position of the arc
-        :return:
+        :return: None
         """
         self._protocol_send(
             "{}MVR {},{},{}".format(DIRECT_CMD, start, intermediate, target)
         )
         self.client.receive()
 
-    def circular_move_full(
-            self, start: str, intermediate1: str, intermediate2: str
-    ) -> None:
+    def circular_move_full(self, start: str, intermediate1: str, intermediate2: str) -> None:
         """
         Move to a position using circular interpolation.
         :param start: Start position of the arc
         :param intermediate1: First intermediate position of the arc
         :param intermediate2: Second intermediate position of the arc
-        :return:
+        :return: None
         """
         self._protocol_send(
             "{}MVC {},{},{}".format(DIRECT_CMD, start, intermediate1, intermediate2)
@@ -230,31 +218,32 @@ class R3Positions:
         self.client.receive()
 
     def go_safe_pos(self) -> None:
+        """
+        Moves the robot to its safe position.
+        :return: None
+        """
         self._protocol_send("MOVSP")
         self.client.receive()
 
 
-class R3Reader:
+class R3Reader(R3SubApi):
     """
     API functions related to reading values, parameters, ...
     """
 
-    def __init__(self, client: IClient, joints, *, response2coordinate: Callable, digits: int):
+    def __init__(self, client: IClient, joints, *, r2c: Callable, digits: int, **kwargs):
         """
         Create an interface object for reading functions.
         :param client: Communication client
         :param joints:
-        :param response2coordinate: Callable to convert a response to a target object.
+        :param r2c: Callable to convert a response to a target object.
         :param digits: Number of digits to be used for float to string conversions.
         """
+        super().__init__(client=client, digits=digits, **kwargs)
+        print('Setting up Reader-API.')
         self.joints = joints
-        self.client = client
-        self.from_response_to_coordinate = response2coordinate
+        self.from_response_to_coordinate = r2c
         self.digits = digits
-
-    def _protocol_send(self, msg: str):
-        msg = '{}{d}{}{d}{}'.format(ROBOT_NO, PROGRAM_NO, msg, d=DELIMITER)
-        self.client.send(msg)
 
     def get_override(self) -> float:
         """
@@ -309,7 +298,7 @@ class R3Reader:
         """
         self._protocol_send("PPOSF")
         coord_str = self.client.receive()
-        return self.from_response_to_coordinate(coord_str, len(self.joints))
+        return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=6)
 
     def get_current_joint(self) -> Coordinate:
         """
@@ -318,7 +307,7 @@ class R3Reader:
         """
         self._protocol_send("JPOSF")
         coord_str = self.client.receive()
-        return self.from_response_to_coordinate(coord_str)
+        return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=len(self.joints))
 
     def get_safe_pos(self) -> Coordinate:
         """
@@ -375,26 +364,23 @@ class R3Reader:
         else:
             self._protocol_send(cmd)
         coord_str = self.client.receive()
-        return self.from_response_to_coordinate(coord_str)
+        return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=len(self.joints))
 
 
-class R3Setter:
+class R3Setter(R3SubApi):
     """
     API functions related to setting.
     """
 
-    def __init__(self, client: IClient, digits: int):
+    def __init__(self, client: IClient, digits: int, **kwargs):
         """
         Create an interface object for reading functions.
         :param client: Communication client
         :param digits: Number of digits to be used for float to string conversions.
         """
-        self.client = client
+        super().__init__(client=client, digits=digits, **kwargs)
+        print('Setting up Setter-API.')
         self.digits = digits
-
-    def _protocol_send(self, msg: str):
-        msg = '{}{d}{}{d}{}'.format(ROBOT_NO, PROGRAM_NO, msg, d=DELIMITER)
-        self.client.send(msg)
 
     def set_work_coordinate(self, offset: str) -> None:
         """
@@ -434,14 +420,8 @@ class R3Setter:
         """
         self._set_float_cmd(JOINT_SPEED, speed, lbound=1.0, ubound=100.0)
 
-    def _set_float_cmd(
-            self,
-            cmd: str,
-            val: float,
-            direct=True,
-            lbound: Optional[float] = None,
-            ubound: Optional[float] = None,
-    ):
+    def _set_float_cmd(self, cmd: str, val: float, direct=True, lbound: Optional[float] = None,
+                       ubound: Optional[float] = None, ):
         """
         Sets a float value to a variable.
         :param cmd: Command used to set the variable
@@ -468,9 +448,7 @@ class R3Setter:
             self._protocol_send("{} {:.{d}f}".format(cmd, float(value), d=self.digits))
         self.client.receive()
 
-    def _check_bounds(
-            self, value: float, lbound: Union[float, None], ubound: Union[float, None]
-    ) -> None:
+    def _check_bounds(self, value: float, lbound: Optional[float], ubound: Optional[float]) -> None:
         """
         Check whether a value is within specified bounds.
         :param value: Value to be checked
@@ -488,18 +466,14 @@ class R3Setter:
             raise ValueError("Value must be <= {:.{d}f}.".format(ubound, d=self.digits))
 
 
-class R3Resetter:
+class R3Resetter(R3SubApi):
     """
     API functions related to resets.
     """
 
-    def __init__(self, client, digits):
-        self.client = client
-        self.digits = digits
-
-    def _protocol_send(self, msg: str):
-        msg = '{}{d}{}{d}{}'.format(ROBOT_NO, PROGRAM_NO, msg, d=DELIMITER)
-        self.client.send(msg)
+    def __init__(self, client: IClient, **kwargs):
+        super().__init__(client=client, **kwargs)
+        print('Setting up Resetter-API.')
 
     def reset_base_coordinate_system(self) -> None:
         """
@@ -537,12 +511,10 @@ class R3Resetter:
         self.reset_linear_speed()
         self.reset_joint_speed()
 
-    def _reset_cmd(
-            self, command, *, var_type: str, default_name=None, direct=True
-    ) -> None:
+    def _reset_cmd(self, cmd: str, *, var_type: str, default_name: Optional[str] = None, direct: bool = True) -> None:
         """
         Resets a variable to its default.
-        :param command: Command used to manipulate the variable
+        :param cmd: Command used to manipulate the variable
         :param var_type: Variable type: point, number
         :param default_name: Name of the parameter with the default value, defaults to M_N{command}, e.g. M_NOVRD
         :param direct: Flag to specify whether a direct execution using EXEC is required
@@ -550,13 +522,60 @@ class R3Resetter:
         """
         if default_name is None:
             if var_type == "point":
-                default_name = "P_N{}".format(command)
+                default_name = "P_N{}".format(cmd)
             elif var_type == "number":
-                default_name = "M_N{}".format(command)
+                default_name = "M_N{}".format(cmd)
             else:
                 raise ValueError("Unknown variable type: {}".format(var_type))
         if direct:
-            self._protocol_send("{}{} {}".format(DIRECT_CMD, command, default_name))
+            self._protocol_send("{}{} {}".format(DIRECT_CMD, cmd, default_name))
         else:
-            self._protocol_send("{} {}".format(command, default_name))
+            self._protocol_send("{} {}".format(cmd, default_name))
         self.client.receive()
+
+
+class R3Protocol(R3Resetter, R3Setter, R3Reader, R3Positions, R3Utility):
+    """
+    Mitsubishi robots do not support G-Code natively, hence the protocol for the commands is implemented.
+    Inherits all individual sub-APIs.
+    """
+
+    DIGITS = 2
+
+    def __init__(self, client: IClient, coordinate_adapter: MelfaCoordinateService, joints: List[AnyStr],
+                 digits: int = DIGITS):
+        """
+        Create a protocol object.
+        :param client: Client to be used for the communication.
+        :param coordinate_adapter:
+        :param joints:
+        :param digits: Number of digits to be used for string to float conversions, defaults to 2
+        """
+        # Initialize the individual parts of the API
+        super().__init__(
+            client=client,
+            digits=digits,
+            joints=joints,
+            coordinate2cmd=coordinate_adapter.to_cmd,
+            r2c=coordinate_adapter.from_response
+        )
+
+    @property
+    def reader(self) -> R3Reader:
+        return R3Reader(self.client, self.joints, r2c=self.from_response_to_coordinate, digits=self.digits)
+
+    @property
+    def setter(self) -> R3Setter:
+        return R3Setter(self.client, digits=self.digits)
+
+    @property
+    def resetter(self) -> R3Resetter:
+        return R3Resetter(self.client, digits=self.digits)
+
+    @property
+    def util(self) -> R3Utility:
+        return R3Utility(self.client)
+
+    @property
+    def pos(self) -> R3Positions:
+        return R3Positions(self.client, coordinate2cmd=self.from_coord_to_cmd, digits=self.digits)
