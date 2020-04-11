@@ -382,10 +382,6 @@ class R3Setter(R3SubApi):
         print('Setting up Setter-API.')
         self.digits = digits
 
-    def _protocol_send(self, msg: str):
-        msg = '{}{d}{}{d}{}'.format(ROBOT_NO, PROGRAM_NO, msg, d=DELIMITER)
-        self.client.send(msg)
-
     def set_work_coordinate(self, offset: str) -> None:
         """
         Sets the current coordinate system to the origin specified by the offset
@@ -478,10 +474,6 @@ class R3Resetter(R3SubApi):
     def __init__(self, client: IClient, **kwargs):
         super().__init__(client=client, **kwargs)
         print('Setting up Resetter-API.')
-
-    def _protocol_send(self, msg: str):
-        msg = '{}{d}{}{d}{}'.format(ROBOT_NO, PROGRAM_NO, msg, d=DELIMITER)
-        self.client.send(msg)
 
     def reset_base_coordinate_system(self) -> None:
         """

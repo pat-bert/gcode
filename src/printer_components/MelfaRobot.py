@@ -404,13 +404,7 @@ class MelfaRobot(PrinterComponent):
             self.protocol.reader,
         )
 
-    def linear_move_poll(
-            self,
-            target_pos: Coordinate,
-            speed: float = None,
-            track_speed=False,
-            current_pos=None,
-    ):
+    def linear_move_poll(self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None):
         """
         Moves the robot linearly to a coordinate.
         :param target_pos: Coordinate for the target position.
@@ -543,9 +537,7 @@ class MelfaRobot(PrinterComponent):
                 angle -= 2 * pi
         return angle
 
-    def set_global_positions(
-            self, var_names: List[AnyStr], coordinates: List[Coordinate]
-    ) -> None:
+    def set_global_positions(self, var_names: List[AnyStr], coordinates: List[Coordinate]) -> None:
         """
         Write coordinates to a global variable name in the robot memory.
         :param var_names: List of the variable names
@@ -559,13 +551,6 @@ class MelfaRobot(PrinterComponent):
             raise MelfaBaseException(
                 "Variable names and coordinates must be of same length."
             )
-
-    def get_pos(self) -> Coordinate:
-        """
-        Get the current position.
-        :return: Coordinate object containing the robot coordinates.
-        """
-        return self.protocol.get_current_xyzabc()
 
     def _check_speed_threshold(self, speed_threshold: float):
         """
