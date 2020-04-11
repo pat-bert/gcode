@@ -115,7 +115,7 @@ class MelfaRobot(PrinterComponent):
                 sleep(1)
 
             # Reset all speed factors
-            self.protocol.resetter.reset_all_speeds()
+            self.protocol.reset_all_speeds()
         finally:
             # Servos off
             self._change_servo_state(False)
@@ -132,10 +132,10 @@ class MelfaRobot(PrinterComponent):
         """
         if active:
             # Set coordinate system
-            self.protocol.setter.set_work_coordinate(self.work_coordinate_offset)
+            self.protocol.set_work_coordinate(self.work_coordinate_offset)
         else:
             # Reset coordinate system
-            self.protocol.resetter.reset_base_coordinate_system()
+            self.protocol.reset_base_coordinate_system()
 
         self.work_coordinate_active = active
 
@@ -156,7 +156,7 @@ class MelfaRobot(PrinterComponent):
         """
         if interactive:
             # G-Code is executed directly
-            current_pos = self.protocol.reader.get_current_xyzabc()
+            current_pos = self.protocol.get_current_xyzabc()
             current_pos = current_pos.reduce_to_axes("XYZ")
 
             # Inch conversion
@@ -275,7 +275,7 @@ class MelfaRobot(PrinterComponent):
 
     def declare_position(self, var_name: str) -> None:
         try:
-            self.protocol.pos.define_variable(var_name, var_type="position")
+            self.protocol.define_variable(var_name, var_type="position")
         except ApplicationExceptions.MelfaBaseException as e:
             if str(e.status).startswith(
                     ApplicationExceptions.DuplicateVariableDeclaration
@@ -347,14 +347,14 @@ class MelfaRobot(PrinterComponent):
         :return: None
         :raises: ValueError if mode is unknown.
         """
-        ovrd_speed_factor = self.protocol.reader.get_override()
+        ovrd_speed_factor = self.protocol.get_override()
         speed_val = 100 * speed / ovrd_speed_factor
 
         try:
             if mode == "linear":
-                self.protocol.setter.set_linear_speed(speed_val)
+                self.protocol.set_linear_speed(speed_val)
             elif mode == "joint":
-                self.protocol.setter.set_joint_speed(speed_val)
+                self.protocol.set_joint_speed(speed_val)
             else:
                 raise ValueError("Unknown speed type <{}>".format(mode))
         except ValueError:
@@ -394,10 +394,10 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         # Read safe position
-        safe_pos = self.protocol.reader.get_safe_pos()
+        safe_pos = self.protocol.get_safe_pos()
 
         # Go to safe position
-        self.protocol.pos.go_safe_pos()
+        self.protocol.go_safe_pos()
 
         # Wait until position is reached
         cmp_response(
@@ -430,11 +430,11 @@ class MelfaRobot(PrinterComponent):
             # Fill None values with current position to predict correct response
             if current_pos is None:
                 # No need to do this twice
-                current_pos = self.protocol.reader.get_current_xyzabc()
+                current_pos = self.protocol.get_current_xyzabc()
             target_pos.update_empty(current_pos)
 
             # Send move command
-            self.protocol.pos.linear_move(target_pos)
+            self.protocol.linear_move(target_pos)
 
             # Wait until position is reached
             t, v = cmp_response(
@@ -466,7 +466,7 @@ class MelfaRobot(PrinterComponent):
         """
         # Determine start position
         if start_pos is None:
-            start_pos = self.protocol.reader.get_current_xyzabc()
+            start_pos = self.protocol.get_current_xyzabc()
 
         # Set speed
         if speed is not None:
@@ -506,7 +506,7 @@ class MelfaRobot(PrinterComponent):
                     )
 
                     # Send move command
-                    self.protocol.pos.circular_move_full("P1", "P2", "P3")
+                    self.protocol.circular_move_full("P1", "P2", "P3")
                 else:
                     # Global variables
                     self.set_global_positions(
@@ -514,7 +514,7 @@ class MelfaRobot(PrinterComponent):
                     )
 
                     # Send move command
-                    self.protocol.pos.circular_move_intermediate("P1", "P2", "P3")
+                    self.protocol.circular_move_intermediate("P1", "P2", "P3")
             else:
                 # Global variables
                 self.set_global_positions(
@@ -522,7 +522,7 @@ class MelfaRobot(PrinterComponent):
                 )
 
                 # Send move command
-                self.protocol.pos.circular_move_centre("P1", "P2", "P3")
+                self.protocol.circular_move_centre("P1", "P2", "P3")
 
             # Wait until position is reached
             cmp_response(
@@ -556,7 +556,7 @@ class MelfaRobot(PrinterComponent):
         """
         if len(var_names) == len(coordinates):
             for var_name, coordinate in zip(var_names, coordinates):
-                self.protocol.pos.set_position(var_name, coordinate)
+                self.protocol.set_position(var_name, coordinate)
         else:
             raise MelfaBaseException(
                 "Variable names and coordinates must be of same length."
@@ -567,7 +567,7 @@ class MelfaRobot(PrinterComponent):
         Get the current position.
         :return: Coordinate object containing the robot coordinates.
         """
-        return self.protocol.reader.get_current_xyzabc()
+        return self.protocol.get_current_xyzabc()
 
     def _check_speed_threshold(self, speed_threshold: float):
         """
@@ -576,13 +576,13 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         # Reset all speed factors for clean initial state
-        self.protocol.resetter.reset_all_speeds()
+        self.protocol.reset_all_speeds()
         # Check the override
-        speed = self.protocol.reader.get_override()
+        speed = self.protocol.get_override()
         # Threshold violation
         if speed > speed_threshold:
             try:
-                self.protocol.setter.set_override(speed_threshold)
+                self.protocol.set_override(speed_threshold)
                 print("Reduced speed to threshold value: {}".format(speed_threshold))
             except ApplicationExceptions.MelfaBaseException:
                 raise ApplicationExceptions.MelfaBaseException(

@@ -215,7 +215,7 @@ class TestMelfaRobot:
         :param no_safe_robot:
         :return:
         """
-        with mock.patch.object(no_safe_robot.protocol.reader, "get_override") as ovrd:
+        with mock.patch.object(no_safe_robot.protocol, "get_override") as ovrd:
             # Regular setting
             ovrd.return_value = 100
 
@@ -242,7 +242,7 @@ class TestMelfaRobot:
             mock_func.assert_called_with('1;1;' + R3Protocol.MVS_SPEED + "1000.00")
 
     def test_set_speed_joint(self, no_safe_robot):
-        with mock.patch.object(no_safe_robot.protocol.reader, "get_override") as ovrd:
+        with mock.patch.object(no_safe_robot.protocol, "get_override") as ovrd:
             # Regular setting
             ovrd.return_value = 100
 
