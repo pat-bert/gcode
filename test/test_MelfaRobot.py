@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import src.protocols.R3Protocol as R3Protocol
+import src.protocols.R3Protocol as R3Protocol_Cmd
 from src.Coordinate import Coordinate
 from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
@@ -190,10 +190,10 @@ class TestMelfaRobot:
             ) as mock_func:
                 no_safe_robot._change_servo_state(True)
             assert no_safe_robot.servo
-            mock_func.assert_any_call('1;1;' + R3Protocol.SRV_ON)
+            mock_func.assert_any_call('1;1;' + R3Protocol_Cmd.SRV_ON)
             with pytest.raises(AssertionError):
                 # Switching on the servo must not call servo off
-                mock_func.assert_any_call('1;1;' + R3Protocol.SRV_OFF)
+                mock_func.assert_any_call('1;1;' + R3Protocol_Cmd.SRV_OFF)
 
             # Deactivate
             with mock.patch.object(
@@ -201,10 +201,10 @@ class TestMelfaRobot:
             ) as mock_func:
                 no_safe_robot._change_servo_state(False)
             assert not no_safe_robot.servo
-            mock_func.assert_any_call('1;1;' + R3Protocol.SRV_OFF)
+            mock_func.assert_any_call('1;1;' + R3Protocol_Cmd.SRV_OFF)
             with pytest.raises(AssertionError):
                 # Switching off the servo must not call servo on
-                mock_func.assert_any_call('1;1;' + R3Protocol.SRV_ON)
+                mock_func.assert_any_call('1;1;' + R3Protocol_Cmd.SRV_ON)
 
     def test_read_parameter(self):
         assert True
@@ -231,7 +231,7 @@ class TestMelfaRobot:
                     no_safe_robot.client, "send", spec=mock.Mock()
             ) as mock_func:
                 no_safe_robot.set_speed(1, "linear")
-            mock_func.assert_called_with('1;1;' + R3Protocol.MVS_SPEED + "1.00")
+            mock_func.assert_called_with('1;1;' + R3Protocol_Cmd.MVS_SPEED + "1.00")
 
             # Regular setting with different override
             ovrd.return_value = 10
@@ -239,7 +239,7 @@ class TestMelfaRobot:
                     no_safe_robot.client, "send", spec=mock.Mock()
             ) as mock_func:
                 no_safe_robot.set_speed(100, "linear")
-            mock_func.assert_called_with('1;1;' + R3Protocol.MVS_SPEED + "1000.00")
+            mock_func.assert_called_with('1;1;' + R3Protocol_Cmd.MVS_SPEED + "1000.00")
 
     def test_set_speed_joint(self, no_safe_robot):
         with mock.patch.object(no_safe_robot.protocol, "get_override") as ovrd:
@@ -258,7 +258,7 @@ class TestMelfaRobot:
                     no_safe_robot.client, "send", spec=mock.Mock()
             ) as mock_func:
                 no_safe_robot.set_speed(1, "joint")
-            mock_func.assert_called_with('1;1;' + R3Protocol.MOV_SPEED + "1.00")
+            mock_func.assert_called_with('1;1;' + R3Protocol_Cmd.MOV_SPEED + "1.00")
 
             # Regular setting with different override
             ovrd.return_value = 10
@@ -266,7 +266,7 @@ class TestMelfaRobot:
                     no_safe_robot.client, "send", spec=mock.Mock()
             ) as mock_func:
                 no_safe_robot.set_speed(10, "joint")
-            mock_func.assert_called_with('1;1;' + R3Protocol.MOV_SPEED + "100.00")
+            mock_func.assert_called_with('1;1;' + R3Protocol_Cmd.MOV_SPEED + "100.00")
 
     def test_reset_linear_speed_factor(self):
         assert True

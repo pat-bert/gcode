@@ -1,6 +1,6 @@
 from math import pi
 from time import sleep
-from typing import Sized, AnyStr, Union, List
+from typing import AnyStr, Union, List
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
@@ -49,9 +49,7 @@ class MelfaRobot(PrinterComponent):
 
         self.client: TcpClientR3 = io_client
         self.work_coordinate_offset = "(-500,0,-250,0,0,0)"
-        self.joints: Sized[AnyStr] = list(
-            ["J{}".format(i) for i in range(1, number_axes + 1)]
-        )
+        self.joints = ["J{}".format(i) for i in range(1, number_axes + 1)]
         self.speed_threshold = speed_threshold
         self.protocol = R3Protocol(io_client, MelfaCoordinateService(), self.joints)
 

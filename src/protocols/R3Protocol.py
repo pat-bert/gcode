@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Tuple, Optional, Callable, List, Sized, AnyStr
+from typing import Tuple, Optional, Callable, List, AnyStr
 
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService
@@ -550,7 +550,7 @@ class R3Protocol(R3Resetter, R3Setter, R3Reader, R3Positions, R3Utility):
 
     DIGITS = 2
 
-    def __init__(self, client: IClient, coordinate_adapter: MelfaCoordinateService, joints: Sized[AnyStr],
+    def __init__(self, client: IClient, coordinate_adapter: MelfaCoordinateService, joints: List[AnyStr],
                  digits: int = DIGITS):
         """
         Create a protocol object.
