@@ -88,11 +88,11 @@ class TestTcpClientR3:
         with pytest.raises(TcpError):
             non_existing_tcp_client.connect()
 
-    def test_valid_connection(self, valid_tcp_client, simple_tcp_echo):
+    @pytest.mark.usefixtures('simple_tcp_echo')
+    def test_valid_connection(self, valid_tcp_client):
         """
         Test that the TCP client can connect and close properly to a simple TCP echo server.
         :param valid_tcp_client: TCP-Client configured with a valid server adress
-        :param simple_tcp_echo: Simple TCP-Servo echoing back all messages
         :return:
         """
         # Try the connection
@@ -107,13 +107,13 @@ class TestTcpClientR3:
         assert not tcp_client.is_connected
 
     @pytest.mark.timeout(10)
+    @pytest.mark.usefixtures('simple_tcp_echo')
     @pytest.mark.parametrize("msg_list", [['Test', 'message']])
-    def test_send_and_receive(self, msg_list, valid_tcp_client, simple_tcp_echo):
+    def test_send_and_receive(self, msg_list, valid_tcp_client):
         """
         Test that multiple messages and their responses can be sent and received one by one.
         :param msg_list: List of messages to be sent
         :param valid_tcp_client: TCP-Client configured with a valid server adress
-        :param simple_tcp_echo: Simple TCP-Servo echoing back all messages
         :return:
         """
         # Check the connection
@@ -133,11 +133,11 @@ class TestTcpClientR3:
             valid_tcp_client.send('Test')
 
     @pytest.mark.timeout(10)
-    def test_send_message_too_long(self, valid_tcp_client, simple_tcp_echo):
+    @pytest.mark.usefixtures('simple_tcp_echo')
+    def test_send_message_too_long(self, valid_tcp_client):
         """
         Test that messages longer than 128 characters are refused but that the client remains alive.
         :param valid_tcp_client:
-        :param simple_tcp_echo:
         :return:
         """
         with valid_tcp_client as tcp_client:

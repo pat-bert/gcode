@@ -61,7 +61,6 @@ class R3Utility(R3SubApi):
 
     def __init__(self, client: IClient, **kwargs):
         super().__init__(client=client, **kwargs)
-        print('Setting up Utility-API.')
 
     def reset_alarm(self) -> None:
         """
@@ -127,7 +126,6 @@ class R3Positions(R3SubApi):
 
     def __init__(self, client: IClient, *, coordinate2cmd: Callable, digits: int, **kwargs):
         super().__init__(client=client, digits=digits, **kwargs)
-        print('Setting up Position-API.')
         self.from_coord_to_cmd = coordinate2cmd
         self.digits = digits
 
@@ -183,9 +181,9 @@ class R3Positions(R3SubApi):
     def circular_move_centre(self, start: str, target: str, center: str) -> None:
         """
         Move to a position using circular interpolation.
-        :param start: Start position of the arc
-        :param target: End position of the arc
-        :param center: Center position of the arc
+        :param start: Start position of the arc (variable name)
+        :param target: End position of the arc (variable name)
+        :param center: Center position of the arc (variable name)
         :return: None
         """
         self._protocol_send("{}MVR3 {},{},{}".format(DIRECT_CMD, start, target, center))
@@ -194,9 +192,9 @@ class R3Positions(R3SubApi):
     def circular_move_intermediate(self, start: str, intermediate: str, target: str) -> None:
         """
         Move to a position using circular interpolation.
-        :param start: Start position of the arc
-        :param intermediate: Intermediate position of the arc
-        :param target: End position of the arc
+        :param start: Start position of the arc (variable name)
+        :param intermediate: Intermediate position of the arc (variable name)
+        :param target: End position of the arc (variable name)
         :return: None
         """
         self._protocol_send(
@@ -207,9 +205,9 @@ class R3Positions(R3SubApi):
     def circular_move_full(self, start: str, intermediate1: str, intermediate2: str) -> None:
         """
         Move to a position using circular interpolation.
-        :param start: Start position of the arc
-        :param intermediate1: First intermediate position of the arc
-        :param intermediate2: Second intermediate position of the arc
+        :param start: Start position of the arc (variable name)
+        :param intermediate1: First intermediate position of the arc (variable name)
+        :param intermediate2: Second intermediate position of the arc (variable name)
         :return: None
         """
         self._protocol_send(
@@ -240,7 +238,6 @@ class R3Reader(R3SubApi):
         :param digits: Number of digits to be used for float to string conversions.
         """
         super().__init__(client=client, digits=digits, **kwargs)
-        print('Setting up Reader-API.')
         self.joints = joints
         self.from_response_to_coordinate = r2c
         self.digits = digits
@@ -379,7 +376,6 @@ class R3Setter(R3SubApi):
         :param digits: Number of digits to be used for float to string conversions.
         """
         super().__init__(client=client, digits=digits, **kwargs)
-        print('Setting up Setter-API.')
         self.digits = digits
 
     def set_work_coordinate(self, offset: str) -> None:
@@ -473,7 +469,6 @@ class R3Resetter(R3SubApi):
 
     def __init__(self, client: IClient, **kwargs):
         super().__init__(client=client, **kwargs)
-        print('Setting up Resetter-API.')
 
     def reset_base_coordinate_system(self) -> None:
         """
