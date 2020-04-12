@@ -165,8 +165,8 @@ class TestTcpClientR3:
         with valid_tcp_client as tcp_client:
             # Iterate over all possible exceptions
             for prefix, exc in ErrorDispatch.items():
-                # Configure the server to send the current error prefix
-                simple_tcp_echo.reconfigure(prefix=prefix)
+                # Configure the server to send the current error _prefix
+                simple_tcp_echo.reconfigure(pre=prefix)
                 tcp_client.send(message)
 
                 if exc is not None:
@@ -174,6 +174,6 @@ class TestTcpClientR3:
                     with pytest.raises(exc, match=message):
                         tcp_client.receive()
                 else:
-                    # Check that the response is equal to the message without the prefix
+                    # Check that the response is equal to the message without the _prefix
                     response = tcp_client.receive()
                     assert response == message

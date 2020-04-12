@@ -202,6 +202,13 @@ class ComClient(IClient):
             # Closing should always be done
             self.close()
 
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
 
 if __name__ == '__main__':
     client = ComClient((0x0403, 0x6001))

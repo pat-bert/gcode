@@ -95,15 +95,15 @@ class TestR3ProtocolPositions:
 @pytest.mark.usefixtures('echo_server')
 class TestR3ProtocolReader:
     @staticmethod
-    def float_value(simple_echo_server, func, prefix, exc, *, response):
+    def float_value(echo_server, func, prefix, exc, *, response):
         """
         Test macro for getting float responses
         """
         if exc is None:
-            simple_echo_server.reconfigure(prefix=prefix, msg=response)
+            echo_server.reconfigure(pre=prefix, msg=response)
             assert func() == float(response)
         else:
-            simple_echo_server.reconfigure(prefix=prefix, msg='')
+            echo_server.reconfigure(pre=prefix, msg='')
             with pytest.raises(exc):
                 func()
 
@@ -138,11 +138,11 @@ class TestR3ProtocolReader:
 
         # Test
         if exc is None:
-            echo_server.reconfigure(prefix=prefix, msg=response)
+            echo_server.reconfigure(pre=prefix, msg=response)
             actual = protocol.get_current_xyzabc()
             assert str(actual) == str(expected)
         else:
-            echo_server.reconfigure(prefix=prefix, msg='')
+            echo_server.reconfigure(pre=prefix, msg='')
             with pytest.raises(exc):
                 protocol.get_current_xyzabc()
 
@@ -160,11 +160,11 @@ class TestR3ProtocolReader:
 
         # Test
         if exc is None:
-            echo_server.reconfigure(prefix=prefix, msg=response)
+            echo_server.reconfigure(pre=prefix, msg=response)
             actual = protocol.get_current_joint()
             assert str(actual) == str(expected)
         else:
-            echo_server.reconfigure(prefix=prefix, msg='')
+            echo_server.reconfigure(pre=prefix, msg='')
             with pytest.raises(exc):
                 protocol.get_current_joint()
 
@@ -186,10 +186,10 @@ class TestR3ProtocolReader:
 @pytest.mark.usefixtures('echo_server')
 class TestR3ProtocolSetter:
     @staticmethod
-    def limited_set(simple_echo_server, func, *, prefix, exc, lbound, ubound):
+    def limited_set(echo_server, func, *, prefix, exc, lbound, ubound):
         """
         Test macro
-        :param simple_echo_server:
+        :param echo_server:
         :param func:
         :param prefix:
         :param exc:
@@ -202,7 +202,7 @@ class TestR3ProtocolSetter:
 
         if exc is None:
             # Valid return configured, return value is not checked
-            simple_echo_server.reconfigure(prefix=prefix, msg='garbage')
+            echo_server.reconfigure(pre=prefix, msg='garbage')
 
             # Should be possible to set
             for i in valid_interval:
@@ -214,7 +214,7 @@ class TestR3ProtocolSetter:
                     func(i)
         else:
             # Error return configured
-            simple_echo_server.reconfigure(prefix=prefix, msg='more garbage')
+            echo_server.reconfigure(pre=prefix, msg='more garbage')
 
             # Impossible to set due to server error
             for i in valid_interval:

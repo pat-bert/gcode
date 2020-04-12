@@ -1,6 +1,6 @@
 import socket
 import threading
-from typing import Union
+from typing import Union, Optional
 
 
 class TcpEchoServer:
@@ -199,33 +199,34 @@ class ConfigurableEchoServer(TcpEchoServer):
         self.prefix = None
         self.postfix = None
         self.replace_msg = None
+        self.lock = threading.RLock()
 
-    def reconfigure(self, prefix: Union[None, str] = None,
-                    postfix: Union[None, str] = None,
-                    msg: Union[None, str] = None) -> None:
+    def reconfigure(self, pre: Optional[str] = None, post: Optional[str] = None, msg: Optional[str] = None) -> None:
         """
         Adjust the calculation of the server response.
-        :param prefix: String to be inserted before each actual message
-        :param postfix: String to be inserted before each actual message
+        :param pre: String to be inserted before each actual message
+        :param post: String to be inserted before each actual message
         :param msg: String to replace the actual message with
         :return: None
         """
-        # Set the prefix as bytes
-        if prefix is not None:
-            self.prefix = bytes(prefix, encoding=self.encoding)
-        else:
-            self.prefix = prefix
+        # Ensure that the parameters are not accessed
+        with self.lock:
+            # Set the _prefix as bytes
+            if pre is not None:
+                self.prefix = bytes(pre, encoding=self.encoding) or None
+            else:
+                self.prefix = pre
 
-        # Set the postfix as bytes
-        if postfix is not None:
-            self.postfix = bytes(postfix, encoding=self.encoding)
-        else:
-            self.postfix = postfix
+            # Set the _postfix as bytes
+            if post is not None:
+                self.postfix = bytes(post, encoding=self.encoding)
+            else:
+                self.postfix = post
 
-        if msg is not None:
-            self.replace_msg = bytes(msg, encoding=self.encoding)
-        else:
-            self.replace_msg = msg
+            if msg is not None:
+                self.replace_msg = bytes(msg, encoding=self.encoding)
+            else:
+                self.replace_msg = msg
 
     def determine_response(self, msg: bytes) -> bytes:
         """
@@ -233,12 +234,15 @@ class ConfigurableEchoServer(TcpEchoServer):
         :param msg: Message received by the server in bytes
         :return: Message to be responded by the server in bytes
         """
-        if self.replace_msg is not None:
-            msg = self.replace_msg
-        if self.prefix is not None:
-            msg = self.prefix + msg
-        if self.postfix is not None:
-            msg = msg + self.postfix
+        # Ensure that the parameters are not accessed
+        with self.lock:
+            # Do the manipulation
+            if self.replace_msg is not None:
+                msg = self.replace_msg
+            if self.prefix is not None:
+                msg = self.prefix + msg
+            if self.postfix is not None:
+                msg = msg + self.postfix
         return msg
 
     def __enter__(self):
