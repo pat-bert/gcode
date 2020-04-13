@@ -17,7 +17,7 @@ from src.clients.SerialEcho import ConfigurableEcho
         pytest.param(
             # On Windows Test Systems com0com should be installed to use virtual ports COM5 and COM6
             ('port', 'COM5', 'COM6'),
-            marks=[pytest.mark.skipif(sys.platform != 'win32', reason='com0com required'), pytest.mark.xfail]
+            marks=pytest.mark.skipif(sys.platform == 'win32', reason='com0com required')
         ),
         pytest.param(
             ('port', 'Lin1', 'Lin2'),
@@ -42,6 +42,7 @@ def valid_com_client(request):
     elif request.param[0] == 'port':
         # Validate ports first
         if sys.platform == 'win32':
+            # Windows platform using com0com
             echo_valid = validate_virtual_port_win(request.param[1])
             client_valid = validate_virtual_port_win(request.param[2])
 

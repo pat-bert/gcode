@@ -1,3 +1,4 @@
+import threading
 from threading import RLock
 from time import sleep
 from typing import Optional
@@ -16,17 +17,21 @@ class SerialEcho:
         :param port: String of the port name to connect to
         """
         self.client = ComClient(port=port)
+        self.t: Optional[threading.Thread] = None
+        self._is_running = threading.Event()
 
-    def run(self) -> None:
+    def mainloop(self) -> None:
         """
         Run the echo client.
         :return: None
         """
         # Connect to the client
         with self.client:
-            incoming_msg = self.client.receive()
-            outgoing_msg = self.resolve_msg(incoming_msg)
-            self.client.send(outgoing_msg)
+            while self._is_running.isSet():
+                # TODO This needs to be rewritten to use non-blocking operations
+                incoming_msg = self.client.receive()
+                outgoing_msg = self.resolve_msg(incoming_msg)
+                self.client.send(outgoing_msg)
 
     @staticmethod
     def resolve_msg(msg: str) -> str:
@@ -36,6 +41,23 @@ class SerialEcho:
         :return: Outgoing message string (identical)
         """
         return msg
+
+    def start(self):
+        self._is_running.set()
+        self.t = threading.Thread(target=self.mainloop, name='Serial Echo ({})'.format(self.client.port))
+        self.t.start()
+
+    def shutdown(self):
+        if self._is_running.isSet():
+            self._is_running.clear()
+            self.t.join()
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.shutdown()
 
 
 class ConfigurableEcho(SerialEcho):
@@ -91,3 +113,10 @@ class ConfigurableEcho(SerialEcho):
             # Delay the return of the message to simulate processing time at the responding end
             sleep(self._delay)
         return msg
+
+    def __enter__(self):
+        super().__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        super().__exit__(exc_type, exc_val, exc_tb)
