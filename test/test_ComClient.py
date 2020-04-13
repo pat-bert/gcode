@@ -1,16 +1,56 @@
+import os
+import sys
 import unittest.mock as mock
 from time import sleep
 
 import pytest
+import serial.tools.list_ports
 
 import src.clients.IClient as IClient
 from src.clients.ComClient import ComClient, validate_id
-from test.util import SkipIfNotConditionWrapper
+from src.clients.SerialEcho import ConfigurableEcho
 
 
-@pytest.fixture
-def valid_com_client():
-    return ComClient((0x0403, 0x6001))
+@pytest.fixture(
+    params=[
+        ('ids', 0x0403, 0x6001),
+        pytest.param(
+            # On Windows Test Systems com0com should be installed to use virtual ports COM5 and COM6
+            ('port', 'COM5', 'COM6'),
+            marks=[pytest.mark.skipif(sys.platform != 'win32', reason='com0com required'), pytest.mark.xfail]
+        ),
+        pytest.param(
+            ('port', 'Lin1', 'Lin2'),
+            marks=pytest.mark.skipif(os.environ.get('HAS_SOCAT') != 'True', reason='socat required')
+        )
+    ],
+    ids=[
+        'Physical Hardware',
+        'Virtual Ports (Windows)',
+        'Virtual Ports (Linux)'
+    ]
+)
+def valid_com_client(request):
+    # Parametrizable COM client
+    if request.param[0] == 'ids':
+        # Client is identified by USB Vendor ID and Product ID (physical hardware)
+        com = ComClient(ids=request.param[1:])
+        if com.is_available():
+            yield com
+        else:
+            pytest.skip('Physical device is not connected.')
+    elif request.param[0] == 'port':
+        # Validate ports first
+        if sys.platform == 'win32':
+            echo_valid = validate_virtual_port_win(request.param[1])
+            client_valid = validate_virtual_port_win(request.param[2])
+
+            if not echo_valid or not client_valid:
+                pytest.skip('Configured ports for windows where either not present or not virtual.')
+
+        # Client is identified by port name (virtual ports)
+        with ConfigurableEcho(port=request.param[1]):
+            yield ComClient(port=request.param[2])
 
 
 @pytest.fixture
@@ -23,9 +63,16 @@ def non_existing_com_client():
     return ComClient((-1, -1))
 
 
-# TODO Use this for integration tests
-hardware = SkipIfNotConditionWrapper(lambda: ComClient((0x0403, 0x6001)).is_available(),
-                                     'For now this requires a physical port.')
+def validate_virtual_port_win(port_name) -> bool:
+    """
+    Ensure that a virtual port is present and has com0com signature.
+    :param port_name: String of the port name to be checked
+    :return: Flag to indicate whether the specified port is valid.
+    """
+    for device in serial.tools.list_ports.comports():
+        if port_name == device.device and 'com0com' in device.description:
+            return True
+    return False
 
 
 class TestComClient:
@@ -46,7 +93,6 @@ class TestComClient:
                 # In case the test fails release the COM client immediately
                 non_existing_com_client.close()
 
-    @hardware.required
     def test_connect_twice(self, valid_com_client):
         """
         Test that an exception is raised on subsequent connection attempts.
@@ -95,19 +141,20 @@ class TestComClient:
                 finally:
                     duplicate_com_client.close()
 
-    @hardware.required
     def test_connect_properly(self, valid_com_client):
         """
         Test that no exception is raised on a valid connect.
         :param valid_com_client: Fixture object for an available client.
         :return: None
         """
-        try:
-            valid_com_client.connect()
-        finally:
-            valid_com_client.close()
+        # Regular function calls
+        valid_com_client.connect()
+        valid_com_client.close()
 
-    @hardware.required
+        # Same with context manager
+        with valid_com_client:
+            pass
+
     def test_close(self, valid_com_client):
         """
         Test that closing does not raise an exception and closes the COM client properly.
@@ -133,7 +180,7 @@ class TestComClient:
         valid_com_client.close()
         non_existing_com_client.close()
 
-    @hardware.required
+    @pytest.mark.timeout(15)
     def test_receive(self, valid_com_client):
         valid_com_client.connect()
         sleep(8)
@@ -147,7 +194,6 @@ class TestComClient:
 
         valid_com_client.close()
 
-    @hardware.required
     def test_send(self, valid_com_client, capsys):
         msg = 'This is a message.'
 
@@ -174,7 +220,6 @@ class TestComClient:
         """
         assert not non_existing_com_client.is_available()
 
-    @hardware.required
     def test_is_available(self, valid_com_client):
         """
         Test that the valid COM client is available.
