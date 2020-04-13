@@ -22,7 +22,7 @@ more-itertools==8.2.0
 mutmut==2.0.0
 numpy==1.18.2
 packaging==20.3
-parso==0.6.2
+parso==0.7.0
 pip-tools==4.5.1
 pipdeptree==0.13.2
 pluggy==0.13.1
