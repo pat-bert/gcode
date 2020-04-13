@@ -6,7 +6,7 @@ Content:    Implement TCP/IP communication to robot
 import socket
 import threading
 from queue import Queue, Empty
-from typing import AnyStr, Union
+from typing import AnyStr, Union, Optional
 
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
@@ -59,14 +59,11 @@ class TcpClientR3(IClient):
         self.timeout = timeout
 
         # Queues and thread for communication from and to worker tread
-        self.t: Union[threading.Thread, None] = None
+        self.t: Optional[threading.Thread] = None
         self.send_q = Queue()
         self.recv_q = Queue()
         self.alive = threading.Event()
         self._cnt_conn = 0
-
-        # Status Flags
-        self._is_connected = False
 
     def connect(self) -> None:
         """
@@ -116,17 +113,20 @@ class TcpClientR3(IClient):
         Close the client cleanly.
         :return: None
         """
-        # Put close object
-        self.send_q.put(None)
-        # Wait for queues to finish
-        self.recv_q.join()
-        self.send_q.join()
-        # Wait for task to finish, this can be done multiple times
-        self.alive.clear()
-        self.t.join()
-        # Close socket, no mutex required since the worker thread will be closed
-        self.s.close()
-        print('Closed communication.')
+        if self.is_connected:
+            # Put close object
+            self.send_q.put(None)
+            # Wait for queues to finish
+            self.recv_q.join()
+            self.send_q.join()
+            # Wait for task to finish, this can be done multiple times
+            self.alive.clear()
+            self.t.join()
+            # Close socket, no mutex required since the worker thread will be closed
+            self.s.close()
+            print('Closed communication.')
+        else:
+            print('Communication was never open.')
 
     def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False) -> None:
         """

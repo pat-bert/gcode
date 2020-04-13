@@ -87,6 +87,7 @@ class TestTcpClientR3:
         """
         with pytest.raises(TcpError):
             non_existing_tcp_client.connect()
+        non_existing_tcp_client.close()
 
     @pytest.mark.usefixtures('simple_tcp_echo')
     def test_valid_connection(self, valid_tcp_client):

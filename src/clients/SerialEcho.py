@@ -10,24 +10,45 @@ class SerialEcho:
     Test class to fake responses from a serial device
     """
 
-    def __init__(self):
-        # Create a COM-Client for mutual testing
-        self.client = ComClient((2, 3))
+    def __init__(self, port: str):
+        """
+        Create an echoing COM-client.
+        :param port: String of the port name to connect to
+        """
+        self.client = ComClient(port=port)
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Run the echo client.
+        :return: None
+        """
+        # Connect to the client
         with self.client:
             incoming_msg = self.client.receive()
             outgoing_msg = self.resolve_msg(incoming_msg)
             self.client.send(outgoing_msg)
 
     @staticmethod
-    def resolve_msg(msg):
+    def resolve_msg(msg: str) -> str:
+        """
+        Map each incoming message to an outgoing message. Here they are identical but this can be overriden.
+        :param msg: Incoming message string
+        :return: Outgoing message string (identical)
+        """
         return msg
 
 
 class ConfigurableEcho(SerialEcho):
-    def __init__(self):
-        super().__init__()
+    """
+    Responding COM-Client with configurable response.
+    """
+
+    def __init__(self, port: str):
+        """
+        Create a COM-client with configrable echo.
+        :param port: String of the port name to connect to
+        """
+        super().__init__(port)
         self._prefix = None
         self._postfix = None
         self._replace_msg = None
@@ -53,6 +74,11 @@ class ConfigurableEcho(SerialEcho):
             self._delay = dly or 0
 
     def resolve_msg(self, msg: str) -> str:
+        """
+        Map each incoming message to an outgoing message. Manipulators defined by reconfigure are applied one by one.
+        :param msg: Incoming message string
+        :return: Outgoing message string
+        """
         # Ensure that the parameters are not changed in the mean time
         with self.lock:
             # Do the manipulations
