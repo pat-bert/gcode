@@ -61,7 +61,13 @@ class ThreadedClient(IClient):
         # Start thread
         print('Connected.')
         self.alive.set()
-        self.t = threading.Thread(target=self.mainloop, name=thread_name)
+
+        # Just in case..
+        if thread_name is not None:
+            self.t = threading.Thread(target=self.mainloop, name=thread_name)
+        else:
+            self.t = threading.Thread(target=self.mainloop)
+
         self.t.start()
 
     def mainloop(self) -> None:
@@ -157,6 +163,8 @@ class ThreadedClient(IClient):
                 processed_msg = self.hook_pre_send(msg)
                 packed_message = Msg(processed_msg, silent_send, silent_recv)
                 self.send_q.put(packed_message)
+            else:
+                self.send_q.put(None)
         else:
             raise TcpError('Client needs to be connected before sending since this could lead to unexpected behavior.')
 
@@ -199,7 +207,6 @@ class ThreadedClient(IClient):
         Client-specific connection. Needs to be overriden.
         :return: None
         """
-        pass
 
     @abc.abstractmethod
     def hook_close(self) -> None:
@@ -207,7 +214,6 @@ class ThreadedClient(IClient):
         Client-specific closing. Needs to be overriden.
         :return: None
         """
-        pass
 
     @abc.abstractmethod
     def hook_handle_msg(self, msg: str) -> str:
@@ -216,23 +222,23 @@ class ThreadedClient(IClient):
         :param msg: Message string to be sent
         :return: Response string received
         """
-        pass
 
-    def hook_thread_name(self) -> Optional[str]:
+    @staticmethod
+    def hook_thread_name() -> Optional[str]:
         """
         Client-specific thread-naming. Can be overriden. Defaults to standard thread naming.
         :return: None
         """
-        return None
 
-    def hook_pre_connect(self) -> None:
+    @staticmethod
+    def hook_pre_connect() -> None:
         """
         Client-specific hook to be executed right before connecting. Can be overriden.
         :return: None
         """
-        pass
 
-    def hook_pre_send(self, msg: str) -> str:
+    @staticmethod
+    def hook_pre_send(msg: str) -> str:
         """
         Client-specific hook for pre-processing outgoing messages from the user. Can be overriden.
         :param msg: Message to be sent.
@@ -240,7 +246,8 @@ class ThreadedClient(IClient):
         """
         return msg
 
-    def hook_post_receive(self, response: str, silence_errors: bool) -> str:
+    @staticmethod
+    def hook_post_receive(response: str, silence_errors: bool) -> str:
         """
         Client-specific hook for handling incoming messages queued by the worker thread. Can be overriden.
         :return: Processed response string
