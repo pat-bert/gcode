@@ -1,13 +1,11 @@
-import threading
-from queue import Queue
 from time import sleep
 from typing import Tuple, Optional
 
 import serial
 import serial.tools.list_ports
 
-from src.clients.IClient import IClient, ClientNotAvailableError, ClientOpenError, ClientError, AmbiguousHardwareError, \
-    ClientCloseError
+from clients.ThreadedClient import ThreadedClient
+from src.clients.IClient import ClientNotAvailableError, ClientOpenError, ClientError, AmbiguousHardwareError
 
 
 def validate_id(id_number: int) -> bool:
@@ -19,10 +17,11 @@ def validate_id(id_number: int) -> bool:
     return 0 <= id_number < 65536
 
 
-class ComClient(IClient):
+class ComClient(ThreadedClient):
     """
-    Implements the client side of the serial communication.
+    Implements a reusable client side for serial communication.
     """
+
     BAUD_RATE = 115200
     PARITY = serial.PARITY_NONE
     STOP_BIT = serial.STOPBITS_ONE
@@ -45,11 +44,14 @@ class ComClient(IClient):
         :param port: Pass the actual port if it is known and static.
         :raises: ValueError if the IDs cannot be converted to int.
         """
-        # Create port object but do not connect
+        # Get features of threaded client
+        super().__init__()
+
+        # Serial port parameters
         # TODO Check timeout setting, for sockets blocking is used when it is accessed in a separate thread
         self._ser = serial.Serial(baudrate=baud, parity=parity, stopbits=stopbits, bytesize=byte, timeout=1)
-
         self.port = port
+        self.send_encoding, self.read_encoding = encodings or (self.DEFAULT_WRITE_ENCODING, self.DEFAULT_READ_ENCODING)
 
         # Unpack and transform IDs (port has precedence)
         if self.port is None:
@@ -60,19 +62,17 @@ class ComClient(IClient):
             else:
                 self.vid, self.pid = ids
 
-        self.send_encoding, self.read_encoding = encodings or (self.DEFAULT_WRITE_ENCODING, self.DEFAULT_READ_ENCODING)
-
-        # Queues and thread for communication from and to worker tread
-        self.t: Optional[threading.Thread] = None
-        self.alive = threading.Event()
-        self.send_q = Queue()
-        self.recv_q = Queue()
-
-    def connect(self) -> None:
+    def hook_thread_name(self) -> Optional[str]:
         """
-        Attempt to open the serial port connected to the device with the specified IDs.
+        Client-specific thread-naming. Can be overriden. Defaults to standard thread naming.
+        :return: Thread name mentioning the port and the client type
+        """
+        return f'Serial Client ({self._ser.port})'
+
+    def hook_pre_connect(self) -> None:
+        """
+        Identify the port to be used.
         :return: None
-        :raises: ClientOpenError if there was any error while opening the port, e.g. port already open
         """
         # Choose manner of port identification
         if self.port is not None:
@@ -81,20 +81,17 @@ class ComClient(IClient):
         else:
             self._resolve_ids()
 
+    def hook_connect(self) -> None:
+        """
+        Attempt to open the serial port connected to the device.
+        :return: None
+        :raises: ClientOpenError if there was any error while opening the port, e.g. port already open
+        """
         # Attempt to open the port
         try:
             self._ser.open()
         except serial.SerialException as e:
             raise ClientOpenError(e) from e
-        else:
-            # Create thread
-            thread_name = 'Serial Client ({})'.format(self._ser.port)
-            self.t = threading.Thread(target=self.mainloop, name=thread_name)
-
-            # Successful attempt, worker thread can now be started and the search for the port is done
-            print('Connected.')
-            self.alive.set()
-            self.t.start()
 
     def _resolve_ids(self) -> None:
         """
@@ -117,31 +114,21 @@ class ComClient(IClient):
             # Found multiple clients
             raise AmbiguousHardwareError
 
-    def close(self) -> None:
+    def hook_close(self) -> None:
         """
-        Attempt to close the serial port.
+        Close the serial port.
         :return: None
-        :raises: ClientCloseError if port could not be closed.
         """
-        if self.is_connected:
-            # Wait for thread to finish
-            self.alive.clear()
-            self.t.join()
+        # Client specific closing
+        self._ser.close()
 
-            # Just call it. This should not raise an exception.
-            self._ser.close()
+    def hook_handle_msg(self, msg: str) -> str:
+        self._send(msg)
+        return self._receive()
 
-            # Ensure that the port is closed
-            if self._ser.is_open:
-                raise ClientCloseError('Could not close serial port {}.'.format(self._ser.port))
-            print('Closed communication.')
-        else:
-            print('Communication was never open.')
-
-    def receive(self, silence_errors=False) -> str:
+    def _receive(self) -> str:
         """
         Receive data sent on the serial port.
-        :param silence_errors:
         :return: Message string
         :raises:
         """
@@ -185,20 +172,14 @@ class ComClient(IClient):
 
         return response
 
-    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False):
+    def _send(self, msg: str):
         """
         Sends data on the serial port.
         :param msg: Message to be sent, will be terminated by newline character if not present.
-        :param silent_recv:
-        :param silent_send:
         :return: Number of bytes written
         :raises: IOError when a specified timeout occurs
         :raises: UnicodeError if the message cannot be encoded in the specified encoding
         """
-        # Display the message to the user
-        if not silent_send:
-            print('>>: {}'.format(msg.strip()))
-
         # Ensure that the message is terminated properly
         if not msg.endswith('\n'):
             msg += '\n'
@@ -214,54 +195,17 @@ class ComClient(IClient):
             sent_bytes = self._ser.write(data[total_sent_bytes:])
             total_sent_bytes += sent_bytes
 
-    def mainloop(self):
-        while self.alive.isSet():
-            sleep(0.1)
-
-    def is_available(self) -> bool:
-        """
-        Check whether a serial port can currently be opened.
-        :return: Boolean to indicate whether it can be opened.
-        """
-        # Check whether it is open currently
-        if self._ser.isOpen():
-            return True
-        # Otherwise check whether it can be opened
-        try:
-            self.connect()
-        except ClientError:
-            return False
-        else:
-            return True
-        finally:
-            # Closing should always be done
-            self.close()
-
-    @property
-    def is_connected(self):
-        return self.alive.isSet()
-
-    def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
 
 if __name__ == '__main__':
-    client = ComClient((0x0403, 0x6001))
-    client.connect()
-    sleep(10)
-    client.receive()
+    with ComClient((0x0403, 0x6001)) as client:
+        sleep(10)
+        # client.receive()
 
-    while True:
-        cmd = input('Command: ')
+        while True:
+            cmd = input('Command: ')
 
-        if cmd == 'quit':
-            break
+            if cmd == 'quit':
+                break
 
-        client.send(cmd)
-        client.receive()
-
-    client.close()
+            client.send(cmd)
+            client.receive()
