@@ -107,6 +107,7 @@ class IClient(metaclass=abc.ABCMeta):
     def receive(self, silence_errors=False):
         pass
 
+    @property
     @abc.abstractmethod
     def is_connected(self) -> bool:
         pass

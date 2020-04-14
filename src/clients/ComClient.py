@@ -52,6 +52,7 @@ class ComClient(ThreadedClient):
         self._ser = serial.Serial(baudrate=baud, parity=parity, stopbits=stopbits, bytesize=byte, timeout=1)
         self.port = port
         self.send_encoding, self.read_encoding = encodings or (self.DEFAULT_WRITE_ENCODING, self.DEFAULT_READ_ENCODING)
+        self.terminator = '\n'
 
         # Unpack and transform IDs (port has precedence)
         if self.port is None:
@@ -180,12 +181,8 @@ class ComClient(ThreadedClient):
         :raises: IOError when a specified timeout occurs
         :raises: UnicodeError if the message cannot be encoded in the specified encoding
         """
-        # Ensure that the message is terminated properly
-        if not msg.endswith('\n'):
-            msg += '\n'
-        data = msg.encode(encoding=self.send_encoding)
-
         # Send the message
+        data = msg.encode(encoding=self.send_encoding)
         total_sent_bytes = 0
         total_bytes = len(data)
 
@@ -194,6 +191,13 @@ class ComClient(ThreadedClient):
             # Send only the remaining data
             sent_bytes = self._ser.write(data[total_sent_bytes:])
             total_sent_bytes += sent_bytes
+
+    def hook_pre_send(self, msg: str) -> str:
+        """
+        Ensure that the message is terminated properly
+        :return: Processed response string
+        """
+        return msg if msg.endswith(self.terminator) else (msg + self.terminator)
 
 
 if __name__ == '__main__':

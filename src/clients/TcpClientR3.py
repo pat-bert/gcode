@@ -104,7 +104,8 @@ class TcpClientR3(ThreadedClient):
         # Close socket, no mutex required since the worker thread will be closed already
         self.s.close()
 
-    def hook_pre_send(self, msg: Optional[str]) -> Optional[str]:
+    @staticmethod
+    def hook_pre_send(msg: Optional[str]) -> Optional[str]:
         """
         Pre-processes the message before sending.
         :param msg: Message to be sent. Needs to be shorter than 128 characters.
@@ -114,10 +115,10 @@ class TcpClientR3(ThreadedClient):
         # Valid message can be queued
         if len(msg) <= 127:
             return msg
-        else:
-            raise ValueError("The message cannot be longer than 127 characters.")
+        raise ValueError("The message cannot be longer than 127 characters.")
 
-    def hook_post_receive(self, response: str, silence_errors: bool) -> str:
+    @staticmethod
+    def hook_post_receive(response: str, silence_errors: bool) -> str:
         """
         Pre-processes the message after receving.
         :param response:
