@@ -156,6 +156,7 @@ class TestComClient:
         with valid_com_client:
             pass
 
+    @pytest.mark.skip(reason='Refactoring')
     def test_close(self, valid_com_client):
         """
         Test that closing does not raise an exception and closes the COM client properly.
@@ -181,6 +182,7 @@ class TestComClient:
         valid_com_client.close()
         non_existing_com_client.close()
 
+    @pytest.mark.skip(reason='Refactoring')
     @pytest.mark.timeout(15)
     def test_receive(self, valid_com_client):
         valid_com_client.connect()
@@ -195,6 +197,7 @@ class TestComClient:
 
         valid_com_client.close()
 
+    @pytest.mark.skip(reason='Refactoring')
     def test_send(self, valid_com_client, capsys):
         msg = 'This is a message.'
 
