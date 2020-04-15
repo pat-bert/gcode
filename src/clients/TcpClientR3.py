@@ -65,12 +65,12 @@ class TcpClientR3(ThreadedClient):
         self._cnt_conn += 1
         return 'TCP-Client ({}:{}) #{}'.format(self.host, self.port, self._cnt_conn)
 
-    def hook_connect(self) -> None:
+    def hook_connect(self) -> Optional[str]:
         """
         Connect to the robot via a worker thread for the protocol communication
         :raises: ValueError if invalid connection parameters are passed.
         :raises: TcpError for network related issues.
-        :return: None
+        :return: Peer name string (host:port) if successful
         """
         # Create new socket (unusable after closed)
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -79,12 +79,15 @@ class TcpClientR3(ThreadedClient):
         try:
             # Set a timeout to make this deterministic and testable on all machines
             self.s.settimeout(self.timeout)
-            print('Attempting TCP connection to {}:{}.'.format(self.host, self.port))
+
+            peer_name = f'{self.host}:{self.port}'
+            print(f'Attempting TCP connection to {peer_name}')
             self.s.connect((self.host, self.port))
-            print('Connected.')
 
             # Reset the socket to blocking mode
             self.s.settimeout(None)
+
+            return peer_name
         except socket.gaierror as e:
             # Specifically bad connection parameters
             raise TcpError('Invalid connection parameters.') from e

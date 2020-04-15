@@ -78,11 +78,11 @@ class ComClient(ThreadedClient):
         # Choose manner of port identification
         if self.port is not None:
             self._ser.setPort(self.port)
-            print('Attempting connection to port {}.'.format(self.port))
+            print(f'Attempting connection to port {self.port}...')
         else:
             self._resolve_ids()
 
-    def hook_connect(self) -> None:
+    def hook_connect(self) -> Optional[str]:
         """
         Attempt to open the serial port connected to the device.
         :return: None
@@ -91,7 +91,9 @@ class ComClient(ThreadedClient):
         # Attempt to open the port
         try:
             self._ser.open()
+            return self._ser.port
         except serial.SerialException as e:
+            print(e)
             raise ClientOpenError(e) from e
 
     def hook_post_successful_connect(self) -> None:
@@ -135,7 +137,7 @@ class ComClient(ThreadedClient):
         if len(matches) == 1:
             # Configure the serial port accordingly
             self._ser.port = matches[0].device
-            print('Attempting connection to {} - {}.'.format(matches[0].description, matches[0].hwid))
+            print(f'Attempting connection to {matches[0].description} - {matches[0].hwid}...')
         else:
             # Found multiple clients
             raise AmbiguousHardwareError

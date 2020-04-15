@@ -55,8 +55,12 @@ class ThreadedClient(IClient):
         thread_name = self.hook_thread_name()
 
         # Attemp to open a connection
-        self.hook_connect()
-        print('Connected.')
+        peer_name = self.hook_connect()
+
+        if peer_name is not None:
+            print(f'Connected to {peer_name}.')
+        else:
+            print('Connected.')
 
         # Post-connect procedure (read initial message)
         self.hook_post_successful_connect()
@@ -217,10 +221,10 @@ class ThreadedClient(IClient):
         return self.alive.isSet()
 
     @abc.abstractmethod
-    def hook_connect(self) -> None:
+    def hook_connect(self) -> Optional[str]:
         """
         Client-specific connection. Needs to be overriden.
-        :return: None
+        :return: Name of the peer
         """
 
     @abc.abstractmethod

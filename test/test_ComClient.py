@@ -13,7 +13,10 @@ from src.clients.SerialEcho import ConfigurableEcho
 
 @pytest.fixture(
     params=[
-        ('ids', 0x0403, 0x6001),
+        pytest.param(
+            ('ids', 0x0403, 0x6001),
+            marks=pytest.mark.slow
+        ),
         pytest.param(
             # On Windows Test Systems com0com should be installed to use virtual ports COM5 and COM6
             ('port', 'COM5', 'COM6'),
@@ -136,18 +139,6 @@ class TestComClient:
                 finally:
                     duplicate_com_client.close()
 
-    def test_close(self, valid_com_client):
-        """
-        Test that closing does not raise an exception and closes the COM client properly.
-        :param valid_com_client:
-        :return:
-        """
-        try:
-            valid_com_client.connect()
-            # TODO Actual sending or receiving once the host is clean
-        finally:
-            valid_com_client.close()
-
     def test_close_without_open(self, valid_com_client, non_existing_com_client):
         """
         Test that repeatedly closing does not cause an issue.
@@ -169,9 +160,11 @@ class TestComClient:
         with pytest.raises(IClient.ClientError):
             valid_com_client.receive()
 
-    @pytest.mark.timeout(20)
+    # @pytest.mark.timeout(20)
     def test_send(self, valid_com_client, capsys):
         msg = 'M114'
+        # Mock out this annoying wait for startup message
+        valid_com_client.hook_post_successful_connect = mock.Mock()
 
         with valid_com_client:
             # This time it should not be logged

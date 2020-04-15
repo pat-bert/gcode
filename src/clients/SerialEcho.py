@@ -1,7 +1,9 @@
 import threading
+from queue import Empty
 from threading import RLock
 from time import sleep
 from typing import Optional
+from unittest.mock import Mock
 
 from src.clients.ComClient import ComClient
 
@@ -17,8 +19,10 @@ class SerialEcho:
         :param port: String of the port name to connect to
         """
         self.client = ComClient(port=port)
+        self.client.hook_post_successful_connect = Mock()
         self.t: Optional[threading.Thread] = None
         self._is_running = threading.Event()
+        self.client_opened = threading.Event()
 
     def mainloop(self) -> None:
         """
@@ -27,11 +31,18 @@ class SerialEcho:
         """
         # Connect to the client
         with self.client:
+            self.client_opened.set()
             while self._is_running.isSet():
-                # TODO This needs to be rewritten to use non-blocking operations
-                incoming_msg = self.client.receive()
-                outgoing_msg = self.resolve_msg(incoming_msg)
-                self.client.send(outgoing_msg)
+                try:
+                    incoming_msg = self.client.recv_q.get(timeout=0.1)
+                    self.client.recv_q.task_done()
+                except Empty:
+                    continue
+                else:
+                    outgoing_msg = self.resolve_msg(incoming_msg)
+                    self.client.send(outgoing_msg)
+        self.client_opened.set()
+        self.client_opened.clear()
 
     @staticmethod
     def resolve_msg(msg: str) -> str:
@@ -43,14 +54,20 @@ class SerialEcho:
         return msg
 
     def start(self):
+        print(f'Starting server on {self.client.port}...')
         self._is_running.set()
-        self.t = threading.Thread(target=self.mainloop, name='Serial Echo ({})'.format(self.client.port))
+        self.t = threading.Thread(target=self.mainloop, name=f'Serial Echo ({self.client.port})')
         self.t.start()
+
+        # Block until client connection attempt is done
+        while not self.client_opened.isSet():
+            pass
 
     def shutdown(self):
         if self._is_running.isSet():
             self._is_running.clear()
             self.t.join()
+            print('Server is shutdown.')
 
     def __enter__(self):
         self.start()
@@ -114,9 +131,7 @@ class ConfigurableEcho(SerialEcho):
             sleep(self._delay)
         return msg
 
-    def __enter__(self):
-        super().__enter__()
-        return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        super().__exit__(exc_type, exc_val, exc_tb)
+if __name__ == '__main__':
+    with ConfigurableEcho(port='COM5'):
+        pass
