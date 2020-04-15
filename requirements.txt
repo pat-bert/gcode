@@ -5,7 +5,7 @@ attrs==19.3.0
 Click==7.1.1
 colorama==0.4.3
 contextlib2==0.6.0.post1
-git+git://github.com/keleshev/schema/@0e7e6846e8e13280361d8f312e7336e6b0330339#egg=schema
+schema==0.7.1
 coverage==5.0.4
 cycler==0.10.0
 distlib==0.3.0

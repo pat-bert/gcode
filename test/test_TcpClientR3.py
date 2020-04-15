@@ -1,5 +1,6 @@
 import pytest
 
+from src.clients.IClient import ClientError
 from src.ApplicationExceptions import ErrorDispatch
 from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
 from src.clients.TcpEchoServer import ConfigurableEchoServer
@@ -130,7 +131,7 @@ class TestTcpClientR3:
         :param valid_tcp_client:
         :return:
         """
-        with pytest.raises(TcpError):
+        with pytest.raises(ClientError):
             valid_tcp_client.send('Test')
 
     @pytest.mark.timeout(10)

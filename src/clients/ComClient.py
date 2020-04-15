@@ -1,4 +1,4 @@
-from time import sleep
+from time import sleep, time
 from typing import Tuple, Optional
 
 import serial
@@ -23,6 +23,7 @@ class ComClient(ThreadedClient):
     """
 
     BAUD_RATE = 115200
+    BOOT_TIME_SECONDS = 8.0
     PARITY = serial.PARITY_NONE
     STOP_BIT = serial.STOPBITS_ONE
     BYTE_SIZE = serial.EIGHTBITS
@@ -47,9 +48,8 @@ class ComClient(ThreadedClient):
         # Get features of threaded client
         super().__init__()
 
-        # Serial port parameters
-        # TODO Check timeout setting, for sockets blocking is used when it is accessed in a separate thread
-        self._ser = serial.Serial(baudrate=baud, parity=parity, stopbits=stopbits, bytesize=byte, timeout=1)
+        # Serial port parameters (blocking)
+        self._ser = serial.Serial(baudrate=baud, parity=parity, stopbits=stopbits, bytesize=byte, dsrdtr=None)
         self.port = port
         self.send_encoding, self.read_encoding = encodings or (self.DEFAULT_WRITE_ENCODING, self.DEFAULT_READ_ENCODING)
         self.terminator = '\n'
@@ -94,6 +94,31 @@ class ComClient(ThreadedClient):
         except serial.SerialException as e:
             raise ClientOpenError(e) from e
 
+    def hook_post_successful_connect(self) -> None:
+        """
+        Ensure that the hardware is setup right after connection was established.
+        :return: None
+        :raises: ClientOpenError if an error occurred or the startup message is not as expected.
+        """
+        # Wait for device to start up (measured was ~5.5 seconds)
+        sleep(self.BOOT_TIME_SECONDS)
+
+        if self._ser.in_waiting > 0:
+            # Attempt to read the current byte buffer
+            try:
+                startup_message = self._ser.read_all()
+                startup_message = startup_message.decode(encoding=self.read_encoding)
+            except serial.SerialException as e:
+                raise ClientOpenError from e
+
+            # Verify message
+            if startup_message.endswith(self.terminator):
+                print('Startup message:')
+                for line in startup_message.split(self.terminator):
+                    print(line)
+            else:
+                raise ClientOpenError('Message was not terminated correctly.')
+
     def _resolve_ids(self) -> None:
         """
         Attempts to find the correct device by given PID and VID. On success the serial port is configured accordingly.
@@ -124,6 +149,11 @@ class ComClient(ThreadedClient):
         self._ser.close()
 
     def hook_handle_msg(self, msg: str) -> str:
+        """
+        Hook for execution in the worker thread for each message queued.
+        :param msg: Message string to be sent
+        :return: Response string
+        """
         self._send(msg)
         return self._receive()
 
@@ -168,8 +198,6 @@ class ComClient(ThreadedClient):
 
         # Combine the response buffer and show each line on stdout
         response = ''.join(response_buffer)
-        response_lines = ['<<: {}'.format(i) for i in response.splitlines()]
-        print('\n'.join(response_lines))
 
         return response
 
@@ -201,9 +229,11 @@ class ComClient(ThreadedClient):
 
 
 if __name__ == '__main__':
+    elapsed_times = []
+    start = time()
     with ComClient((0x0403, 0x6001)) as client:
-        sleep(10)
-        # client.receive()
+        elapsed_times.append(time() - start)
+        print(f'Finished after {elapsed_times[-1]} seconds.')
 
         while True:
             cmd = input('Command: ')

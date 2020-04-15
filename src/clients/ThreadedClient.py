@@ -3,8 +3,7 @@ import threading
 from queue import Queue, Empty
 from typing import Optional
 
-from src.ApplicationExceptions import TcpError
-from src.clients.IClient import IClient, Msg
+from src.clients.IClient import IClient, Msg, ClientError
 
 
 class ThreadedClient(IClient):
@@ -57,9 +56,12 @@ class ThreadedClient(IClient):
 
         # Attemp to open a connection
         self.hook_connect()
+        print('Connected.')
+
+        # Post-connect procedure (read initial message)
+        self.hook_post_successful_connect()
 
         # Start thread
-        print('Connected.')
         self.alive.set()
 
         # Just in case..
@@ -133,13 +135,26 @@ class ThreadedClient(IClient):
             # Put close object
             self.send_q.put(None)
 
-            # Wait for queues to finish
-            self.recv_q.join()
+            # Wait for send queue to finish, not all messages need to be received
             self.send_q.join()
 
             # Wait for task to finish, this can be done multiple times
             self.alive.clear()
             self.t.join()
+
+            # Emptying queue
+            if not self.recv_q.empty():
+                print('Not all responses were received:')
+                print('============================')
+                for i in range(self.recv_q.unfinished_tasks):
+                    try:
+                        response = self.recv_q.get_nowait()
+                    except Empty:
+                        print('Queue empty.')
+                    else:
+                        print(f'{i + 1}.) response:\n{response}')
+                        print('============================')
+                        self.recv_q.task_done()
 
             # Client specific closing
             self.hook_close()
@@ -154,7 +169,7 @@ class ThreadedClient(IClient):
         :param silent_send: Flag to specify whether the outgoing message should be logged.
         :param silent_recv: Flag to specify whether the incoming response should be logged.
         :return: None
-        :raises: TcpError if the client is not connected
+        :raises: ClientError if the client is not connected
         """
         # Put the message to the outgoing queue of the protocol, None is used to end the communication
         if self.is_connected:
@@ -165,8 +180,8 @@ class ThreadedClient(IClient):
                 self.send_q.put(packed_message)
             else:
                 self.send_q.put(None)
-        else:
-            raise TcpError('Client needs to be connected before sending since this could lead to unexpected behavior.')
+            return
+        raise ClientError('Client needs to be connected before sending since this could lead to unexpected behavior.')
 
     def wait_send(self, msg: str) -> None:
         """
@@ -182,7 +197,7 @@ class ThreadedClient(IClient):
         Get the last response received by the worker thread.
         :param silence_errors: Specify whether exceptions should be silenced.
         :return: Message string without status code
-        :raises: TcpError if the client is not connected
+        :raises: ClientError if the client is not connected
         """
         # Thread needs to be running or this will block indefinetly
         if self.is_connected:
@@ -191,7 +206,7 @@ class ThreadedClient(IClient):
             self.recv_q.task_done()
             # Call hook
             return self.hook_post_receive(response, silence_errors)
-        raise TcpError('Client needs to be connected before sending since this could lead to unexpected behavior.')
+        raise ClientError('Client needs to be connected before sending since this could lead to unexpected behavior.')
 
     @property
     def is_connected(self) -> bool:
@@ -234,6 +249,13 @@ class ThreadedClient(IClient):
     def hook_pre_connect() -> None:
         """
         Client-specific hook to be executed right before connecting. Can be overriden.
+        :return: None
+        """
+
+    @staticmethod
+    def hook_post_successful_connect() -> None:
+        """
+        Client-specific hook to be executed right after connecting. Can be overriden.
         :return: None
         """
 
