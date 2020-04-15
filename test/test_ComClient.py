@@ -88,11 +88,8 @@ class TestComClient:
         :return: None
         """
         with pytest.raises(IClient.ClientNotAvailableError):
-            try:
-                non_existing_com_client.connect()
-            finally:
-                # In case the test fails release the COM client immediately
-                non_existing_com_client.close()
+            with non_existing_com_client:
+                pass
 
     def test_connect_twice(self, valid_com_client):
         """
@@ -100,13 +97,10 @@ class TestComClient:
         :param valid_com_client: Fixture object for an available client.
         :return: None
         """
-        try:
-            valid_com_client.connect()
+        with valid_com_client:
             with pytest.raises(IClient.ClientOpenError):
                 # Second try should not work
                 valid_com_client.connect()
-        finally:
-            valid_com_client.close()
 
     def test_connect_duplicate(self, duplicate_com_client):
         """
@@ -142,21 +136,6 @@ class TestComClient:
                 finally:
                     duplicate_com_client.close()
 
-    def test_connect_properly(self, valid_com_client):
-        """
-        Test that no exception is raised on a valid connect.
-        :param valid_com_client: Fixture object for an available client.
-        :return: None
-        """
-        # Regular function calls
-        valid_com_client.connect()
-        valid_com_client.close()
-
-        # Same with context manager
-        with valid_com_client:
-            pass
-
-    @pytest.mark.skip(reason='Refactoring')
     def test_close(self, valid_com_client):
         """
         Test that closing does not raise an exception and closes the COM client properly.
@@ -169,10 +148,6 @@ class TestComClient:
         finally:
             valid_com_client.close()
 
-        # Receiving is not possible afterwards
-        with pytest.raises(IClient.ClientError):
-            valid_com_client.receive()
-
     def test_close_without_open(self, valid_com_client, non_existing_com_client):
         """
         Test that repeatedly closing does not cause an issue.
@@ -182,39 +157,34 @@ class TestComClient:
         valid_com_client.close()
         non_existing_com_client.close()
 
-    @pytest.mark.skip(reason='Refactoring')
-    @pytest.mark.timeout(15)
+    @pytest.mark.timeout(20)
     def test_receive(self, valid_com_client):
-        valid_com_client.connect()
-        sleep(8)
-        # Get startup message
-        valid_com_client.receive()
+        # Responses can be received
+        with valid_com_client:
+            valid_com_client.send('M114')
+            response = valid_com_client.receive()
+            assert 'ok' in response
 
-        valid_com_client.send('M114')
-        response = valid_com_client.receive()
+        # Receiving is not possible afterwards
+        with pytest.raises(IClient.ClientError):
+            valid_com_client.receive()
 
-        assert 'ok' in response
-
-        valid_com_client.close()
-
-    @pytest.mark.skip(reason='Refactoring')
+    @pytest.mark.timeout(20)
     def test_send(self, valid_com_client, capsys):
-        msg = 'This is a message.'
+        msg = 'M114'
 
-        valid_com_client.connect()
-
-        try:
+        with valid_com_client:
             # This time it should not be logged
             valid_com_client.send(msg, silent_send=True)
+            sleep(1)
             captured = capsys.readouterr()
             assert msg not in captured.out and msg not in captured.err
 
             # This time it should be logged somehow
             valid_com_client.send(msg, silent_send=False)
+            sleep(1)
             captured = capsys.readouterr()
             assert msg in captured.out or msg in captured.err
-        finally:
-            valid_com_client.close()
 
     def test_is_available_not(self, non_existing_com_client):
         """
