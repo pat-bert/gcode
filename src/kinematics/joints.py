@@ -1,7 +1,18 @@
 import abc
+from enum import Enum, unique
 from math import cos, sin
 
 import numpy as np
+
+
+@unique
+class JointType(Enum):
+    """
+    Define enums for each available plane.
+    """
+
+    ROTATIONAL = 1
+    TRANSLATIONAL = 2
 
 
 class BaseJoint(metaclass=abc.ABCMeta):
@@ -12,10 +23,10 @@ class BaseJoint(metaclass=abc.ABCMeta):
     def __init__(self, a=0, alpha=0, d=None, theta=None):
         """
         Saves all the parameters and creates the initial matrix.
-        :param a: link length
-        :param alpha: twist angle
-        :param d: joint distance
-        :param theta: joint angle
+        :param a: link length in m
+        :param alpha: twist angle in rad
+        :param d: joint distance in m
+        :param theta: joint angle in radS
         """
         # Save parameters
         self.a = a
@@ -38,15 +49,23 @@ class BaseJoint(metaclass=abc.ABCMeta):
         )
 
     @abc.abstractmethod
-    def mul(self, **kwargs):
+    def mul(self, *, joint_value):
         """
         Abstract method with arbitrary interface
-        :param kwargs: Denavit-Hartenberg parameters
+        :param joint_value: Can be either angle (rad) or translation (m)
         :return:
         """
 
+    @property
+    @abc.abstractmethod
+    def joint_type(self) -> JointType:
+        """
+        Give the joint type of the joint.
+        :return: Joint Type Enumeration Value
+        """
 
-class BaseRotationalJoint(BaseJoint, metaclass=abc.ABCMeta):
+
+class BaseRotationalJoint(BaseJoint):
     """
     Interface: Denavit-Hartenberg representation for any 1DOF rotational joint.
     """
@@ -54,20 +73,28 @@ class BaseRotationalJoint(BaseJoint, metaclass=abc.ABCMeta):
     def __init__(self, *, a, alpha, d):
         """
         Common initialisation for all rotational joints.
-        :param a: link length
-        :param alpha: twist angle
-        :param d: Constant joint distance
+        :param a: link length in m
+        :param alpha: twist angle in rad
+        :param d: Constant joint distance in m
         """
         super().__init__(a=a, alpha=alpha, d=d)
         self.matrix[2][-1] = d
 
     @abc.abstractmethod
-    def mul(self, *, theta, **kwargs):
+    def mul(self, *, joint_value):
         """
         Abstract method with more specific interface
-        :param theta: Current joint angle
+        :param joint_value: Current joint angle in rad
         :return:
         """
+
+    @property
+    def joint_type(self) -> JointType:
+        """
+        Specifies the joint type for all rotational joints.
+        :return: Rotational Joint
+        """
+        return JointType.ROTATIONAL
 
 
 class GeneralRotationalJoint(BaseRotationalJoint):
@@ -76,14 +103,21 @@ class GeneralRotationalJoint(BaseRotationalJoint):
     """
 
     def __init__(self, *, a, alpha, d):
+        """
+        Initialize the general joint
+        :param a: link length in m
+        :param alpha: twist angle in rad
+        :param d: joint distance in m
+        """
         super().__init__(a=a, alpha=alpha, d=d)
 
-    def mul(self, *, theta, **kwargs):
+    def mul(self, *, joint_value):
         """
         Sets the variable elements of the matrix.
-        :param theta: Current joint angle
+        :param joint_value: Current joint angle (rad or m)
         :return:
         """
+        theta = joint_value
         s_theta = sin(theta)
         c_theta = cos(theta)
 
@@ -102,17 +136,18 @@ class NoOffsetRotationalJoint(BaseRotationalJoint):
     def __init__(self, *, alpha, d):
         """
         Creates a rotational joint with zero link length
-        :param alpha: Joint twist
-        :param d: Joint distance
+        :param alpha: twist angle in rad
+        :param d: joint distance in m
         """
         super().__init__(alpha=alpha, d=d, a=0)
 
-    def mul(self, *, theta, **kwargs):
+    def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param theta: Current joint angle
-        :return:
+        :param joint_value: Current joint angle (rad or m)
+        :return: None
         """
+        theta = joint_value
         s_theta = sin(theta)
         c_theta = cos(theta)
 
@@ -128,13 +163,13 @@ class ParallelRotationalJoint(BaseRotationalJoint):
     alpha = 0 => sin(alpha) = 0
     """
 
-    def mul(self, *, theta, **kwargs):
+    def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param theta: Current joint angle
-        :return:
+        :param joint_value: Current joint angle (rad or m)
+        :return: None
         """
-        # Calculate common values
+        theta = joint_value
         s_theta = sin(theta)
         c_theta = cos(theta)
 
@@ -146,13 +181,14 @@ class ParallelRotationalJoint(BaseRotationalJoint):
 
 
 class ParallelNoOffsetRotationalJoint(NoOffsetRotationalJoint):
-    def mul(self, *, theta, **kwargs):
+    def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param theta: Current joint angle
-        :return:
+        :param joint_value: Current joint angle (rad or m)
+        :return: None
         """
         # Calculate common values
+        theta = joint_value
         s_theta = sin(theta)
         c_theta = cos(theta)
 
@@ -168,13 +204,14 @@ class PerpendicularRotationalJoint(BaseRotationalJoint):
     alpha = +- 90° => cos(alpha) = 0
     """
 
-    def mul(self, *, theta, **kwargs):
+    def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param theta: Current joint angle
-        :return:
+        :param joint_value: Current joint angle (rad or m)
+        :return: None
         """
         # Calculate common values
+        theta = joint_value
         s_theta = sin(theta)
         c_theta = cos(theta)
 
@@ -186,12 +223,13 @@ class PerpendicularRotationalJoint(BaseRotationalJoint):
 
 
 class PerpendicularNoOffsetRotationalJoint(NoOffsetRotationalJoint):
-    def mul(self, *, theta, **kwargs):
+    def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param theta: Current joint angle
-        :return:
+        :param joint_value: Current joint angle (rad or m)
+        :return: None
         """
+        theta = joint_value
         s_theta = sin(theta)
         c_theta = cos(theta)
 
@@ -203,12 +241,16 @@ class PerpendicularNoOffsetRotationalJoint(NoOffsetRotationalJoint):
 
 
 class TranslationalJoint(BaseJoint):
+    """
+    Representation of a purely translational joint.
+    """
+
     def __init__(self, a, alpha, theta):
         """
         Creates a matrix with constant elements.
-        :param a: link length
-        :param alpha: twist angle
-        :param theta: joint angle
+        :param a: link length in m
+        :param alpha: twist angle in rad
+        :param theta: joint angle in radS
         """
         super().__init__(a=a, alpha=alpha, theta=theta)
 
@@ -222,11 +264,19 @@ class TranslationalJoint(BaseJoint):
             [s_theta, c_theta * self.c_alpha, -c_theta * self.s_alpha, a * s_theta]
         ]
 
-    def mul(self, *, d, **kwargs):
+    def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param d: Current joint distance
+        :param joint_value: Current joint distance (rad or m)
         :return:
         """
         # Override the 4th element of the third row
-        self.matrix[2][3] = d
+        self.matrix[2][3] = joint_value
+
+    @property
+    def joint_type(self) -> JointType:
+        """
+        Specifies the joint type for all translational joints.
+        :return: Translational Joint
+        """
+        return JointType.TRANSLATIONAL

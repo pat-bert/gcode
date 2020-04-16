@@ -1,8 +1,10 @@
 from math import cos, sin, pi
 
+import numpy as np
 import pytest
 
 from src.kinematics.joint_factories import BaseJointFactory, BASE_TOLERANCE
+from src.kinematics.joints import JointType
 
 # Factor schemes (1 = field should be calculated upon init, 0 = field needs to be determined at runtime/multiplication)
 translational_joint_schema = [[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 0], [1, 1, 1, 1]]
@@ -63,7 +65,8 @@ class TestBaseJointFactory:
     @pytest.mark.parametrize("a,alpha,d,theta,actual_val,const_matrix_factors",
                              [
                                  # Translational joints:
-                                 (30, 2.7, None, 0, 10, translational_joint_schema),
+                                 (1, pi / 2, None, 0, 10, translational_joint_schema),
+                                 (1, pi / 2, None, 2.7, 10, translational_joint_schema),
                                  # Rotational joints:
                                  (30, 2.7, -15, None, 2.7, general_rotational_joint_schema),
                                  (0, 2.7, -15, None, 2.7, no_offset_schema),
@@ -81,8 +84,11 @@ class TestBaseJointFactory:
         # Construct a joint
         joint = BaseJointFactory.new(a=a, alpha=alpha, d=d, theta=theta)
 
-        # Print the class
-        print(type(joint))
+        # Check the joint type
+        if d is None:
+            assert joint.joint_type is JointType.TRANSLATIONAL
+        elif theta is None:
+            assert joint.joint_type is JointType.ROTATIONAL
 
         # Check that all the parameters have been set
         assert joint.a == a
@@ -90,33 +96,25 @@ class TestBaseJointFactory:
         assert joint.d == d
         assert joint.theta == theta
 
-        # Set correct values
+        # Calculate the whole matrix (using boolean to take the first not-None value
         if d is None:
             d = actual_val
         if theta is None:
             theta = actual_val
-
-        # Calculate the whole matrix
         expected_full_matrix = reference_dh(a, alpha, d, theta)
 
         # Calculate expected constant matrix (apply factors)
         expected_const_matrix = []
         for row_factors, row in zip(const_matrix_factors, expected_full_matrix):
             expected_const_matrix.append([i * factor for i, factor in zip(row, row_factors)])
-
         actual_const_matrix = [list(i) for i in joint.matrix]
 
         # Test that the full matrix is calculated correctly
-        for expected_row, actual_row in zip(expected_const_matrix, actual_const_matrix):
-            for expected, actual in zip(expected_row, actual_row):
-                assert pytest.approx(expected, abs=BASE_TOLERANCE) == actual
+        np.testing.assert_allclose(expected_const_matrix, actual_const_matrix, atol=BASE_TOLERANCE)
 
         # Calculate full matrix
-        joint.mul(theta=theta, d=d)
-
+        joint.mul(joint_value=actual_val)
         actual_full_matrix = [list(i) for i in joint.matrix]
 
         # Test that the full matrix is calculated correctly
-        for expected_row, actual_row in zip(expected_full_matrix, actual_full_matrix):
-            for expected, actual in zip(expected_row, actual_row):
-                assert pytest.approx(expected, abs=BASE_TOLERANCE) == actual
+        np.testing.assert_allclose(expected_full_matrix, actual_full_matrix, atol=BASE_TOLERANCE)
