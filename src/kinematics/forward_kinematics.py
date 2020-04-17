@@ -1,10 +1,10 @@
 from typing import List
 
-from numpy import ones
+import numpy as np
 from numpy.core.multiarray import ndarray
 from numpy.linalg import multi_dot
 
-from kinematics.joints import BaseJoint
+from src.kinematics.joints import BaseJoint
 
 
 def forward_kinematics(config: List[BaseJoint], joint_coordinates: List[float]) -> ndarray:
@@ -25,6 +25,5 @@ def forward_kinematics(config: List[BaseJoint], joint_coordinates: List[float]) 
     if len(config) > 1:
         # Do an optimized calculation of the product of all matrices
         return multi_dot([joint.matrix for joint in config])
-    else:
-        # Create a copy
-        return multi_dot(config[0].matrix, ones(4))
+    # Create a copy
+    return np.array(config[0].matrix)

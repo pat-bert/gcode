@@ -24,17 +24,17 @@ def idfn(val):
     """
     if val == translational_joint_schema:
         return '<Simple TransJoint>'
-    elif val == general_rotational_joint_schema:
+    if val == general_rotational_joint_schema:
         return '<GeneralRotJoint>'
-    elif val == zero_twist_schema:
+    if val == zero_twist_schema:
         return '<NoTwistRotJoint>'
-    elif val == perpendicular_twist_schema:
+    if val == perpendicular_twist_schema:
         return '<PerpTwistRotJoint>'
-    elif val == no_offset_schema:
+    if val == no_offset_schema:
         return '<NoOffsetRotJoint>'
-    elif val == zero_twist_no_offset_schema:
+    if val == zero_twist_no_offset_schema:
         return '<NoTwistNoOffsetRotJoint>'
-    elif val == perpendicular_twist_no_offset_schema:
+    if val == perpendicular_twist_no_offset_schema:
         return '<PerpTwistNoOffsetRotJoint>'
 
 

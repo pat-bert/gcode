@@ -8,8 +8,7 @@ BASE_TOLERANCE = 1e-6
 
 
 class BaseJointFactory:
-    """
-    Build the correct joint type.
+    """ Build the correct joint type.
     """
 
     @staticmethod
@@ -27,16 +26,14 @@ class BaseJointFactory:
             if theta is None:
                 raise ValueError("Cannot specify combined joint.")
             return TranslationalJoint(a=a, alpha=alpha, theta=theta)
-        elif theta is None:
+        if theta is None:
             # theta is variable -> rotational joint
             return RotationalJointFactory.new(a=a, alpha=alpha, d=d)
-        else:
-            raise ValueError("Cannot specify combined joint.")
+        raise ValueError("Cannot specify combined joint.")
 
 
 class RotationalJointFactory:
-    """
-    Build optimized rotational joints.
+    """ Build optimized rotational joints.
     """
     tol = BASE_TOLERANCE
 
@@ -56,13 +53,11 @@ class RotationalJointFactory:
         if no_offset:
             if parallel:
                 return ParallelNoOffsetRotationalJoint(alpha=alpha, d=d)
-            elif perpendicular:
+            if perpendicular:
                 return PerpendicularNoOffsetRotationalJoint(alpha=alpha, d=d)
-            else:
-                return NoOffsetRotationalJoint(alpha=alpha, d=d)
-        elif parallel:
+            return NoOffsetRotationalJoint(alpha=alpha, d=d)
+        if parallel:
             return ParallelRotationalJoint(alpha=alpha, a=a, d=d)
-        elif perpendicular:
+        if perpendicular:
             return PerpendicularRotationalJoint(a=a, alpha=alpha, d=d)
-        else:
-            return GeneralRotationalJoint(a=a, alpha=alpha, d=d)
+        return GeneralRotationalJoint(a=a, alpha=alpha, d=d)

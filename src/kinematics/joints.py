@@ -7,8 +7,7 @@ import numpy as np
 
 @unique
 class JointType(Enum):
-    """
-    Define enums for each available plane.
+    """ Define enums for each available plane.
     """
 
     ROTATIONAL = 1
@@ -16,8 +15,7 @@ class JointType(Enum):
 
 
 class BaseJoint(metaclass=abc.ABCMeta):
-    """
-    Denavit-Hartenberg representation for any 1DOF joint.
+    """ Denavit-Hartenberg representation for any 1DOF joint.
     """
 
     def __init__(self, a=0, alpha=0, d=None, theta=None):
@@ -66,8 +64,7 @@ class BaseJoint(metaclass=abc.ABCMeta):
 
 
 class BaseRotationalJoint(BaseJoint):
-    """
-    Interface: Denavit-Hartenberg representation for any 1DOF rotational joint.
+    """ Interface: Denavit-Hartenberg representation for any 1DOF rotational joint.
     """
 
     def __init__(self, *, a, alpha, d):
@@ -98,8 +95,7 @@ class BaseRotationalJoint(BaseJoint):
 
 
 class GeneralRotationalJoint(BaseRotationalJoint):
-    """
-    Denavit-Hartenberg representation for 1DOF rotational joint without simplifications.
+    """ Denavit-Hartenberg representation for 1DOF rotational joint without simplifications.
     """
 
     def __init__(self, *, a, alpha, d):
@@ -129,8 +125,7 @@ class GeneralRotationalJoint(BaseRotationalJoint):
 
 
 class NoOffsetRotationalJoint(BaseRotationalJoint):
-    """
-    Denavit-Hartenberg representation for 1DOF rotational joint with simplified link length
+    """ Denavit-Hartenberg representation for 1DOF rotational joint with simplified link length
     """
 
     def __init__(self, *, alpha, d):
@@ -159,8 +154,7 @@ class NoOffsetRotationalJoint(BaseRotationalJoint):
 
 
 class ParallelRotationalJoint(BaseRotationalJoint):
-    """
-    alpha = 0 => sin(alpha) = 0
+    """ alpha = 0 => sin(alpha) = 0
     """
 
     def mul(self, *, joint_value) -> None:
@@ -200,8 +194,7 @@ class ParallelNoOffsetRotationalJoint(NoOffsetRotationalJoint):
 
 
 class PerpendicularRotationalJoint(BaseRotationalJoint):
-    """
-    alpha = +- 90° => cos(alpha) = 0
+    """ alpha = +- 90° => cos(alpha) = 0
     """
 
     def mul(self, *, joint_value) -> None:
@@ -241,8 +234,7 @@ class PerpendicularNoOffsetRotationalJoint(NoOffsetRotationalJoint):
 
 
 class TranslationalJoint(BaseJoint):
-    """
-    Representation of a purely translational joint.
+    """ Representation of a purely translational joint.
     """
 
     def __init__(self, a, alpha, theta):
