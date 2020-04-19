@@ -33,6 +33,7 @@ LINEAR_INTRP = DIRECT_CMD + "MVS "
 STANDARD_TOOL_COORD = "MEXTL"
 CURRENT_TOOL_NO = "M_TOOL"
 CURRENT_BASE = "MEXBS"
+TOOL_OFFSET_CMD = "TOOL"
 
 # Parameters for R3 protocol
 ROBOT_NO = 1
@@ -44,13 +45,13 @@ class R3SubApi:
     All R3 APIs need to inherit from this to ensure that the root (object) is initialized correctly.
     """
 
-    def __init__(self, *_, **kwargs):
+    def __init__(self, *, client, **kwargs):
         # Discard any further optional parameters
         super().__init__()
-        self.client = kwargs['client']
+        self.client = client
 
     def _protocol_send(self, msg: str):
-        msg = '{}{d}{}{d}{}'.format(ROBOT_NO, PROGRAM_NO, msg, d=DELIMITER)
+        msg = f'{ROBOT_NO}{DELIMITER}{PROGRAM_NO}{DELIMITER}{msg}'
         self.client.send(msg)
 
 
@@ -138,7 +139,7 @@ class R3Positions(R3SubApi):
         :param pos: Coordinate to be set
         :return: None
         """
-        self._protocol_send("{}{}={}".format(DIRECT_CMD, name, pos.to_melfa_point()))
+        self._protocol_send(f"{DIRECT_CMD}{name}={pos.to_melfa_point()}")
         self.client.receive()
         sleep(0.01)
 
@@ -156,7 +157,7 @@ class R3Positions(R3SubApi):
         else:
             raise ValueError("Unknown variable type.")
 
-        self._protocol_send("{}DEF {} {}".format(DIRECT_CMD, var_cmd, name))
+        self._protocol_send(f"{DIRECT_CMD}DEF {var_cmd} {name}")
         self.client.receive()
         sleep(0.01)
 
@@ -167,7 +168,7 @@ class R3Positions(R3SubApi):
         :return: None
         """
         coord_str = self.from_coord_to_cmd(target)
-        self._protocol_send("{}MVS{}".format(DIRECT_CMD, coord_str))
+        self._protocol_send(f"{DIRECT_CMD}MVS{coord_str}")
         self.client.receive()
 
     def joint_move(self, target: Coordinate) -> None:
@@ -177,7 +178,7 @@ class R3Positions(R3SubApi):
         :return: None
         """
         coord_str = self.from_coord_to_cmd(target)
-        self._protocol_send("{}MOV{}".format(DIRECT_CMD, coord_str))
+        self._protocol_send(f"{DIRECT_CMD}MOV{coord_str}")
         self.client.receive()
 
     def circular_move_centre(self, start: str, target: str, center: str) -> None:
@@ -188,7 +189,7 @@ class R3Positions(R3SubApi):
         :param center: Center position of the arc
         :return: None
         """
-        self._protocol_send("{}MVR3 {},{},{}".format(DIRECT_CMD, start, target, center))
+        self._protocol_send(f"{DIRECT_CMD}MVR3 {start},{target},{center}")
         self.client.receive()
 
     def circular_move_intermediate(self, start: str, intermediate: str, target: str) -> None:
@@ -199,9 +200,7 @@ class R3Positions(R3SubApi):
         :param target: End position of the arc
         :return: None
         """
-        self._protocol_send(
-            "{}MVR {},{},{}".format(DIRECT_CMD, start, intermediate, target)
-        )
+        self._protocol_send(f"{DIRECT_CMD}MVR {start},{intermediate},{target}")
         self.client.receive()
 
     def circular_move_full(self, start: str, intermediate1: str, intermediate2: str) -> None:
@@ -212,9 +211,7 @@ class R3Positions(R3SubApi):
         :param intermediate2: Second intermediate position of the arc
         :return: None
         """
-        self._protocol_send(
-            "{}MVC {},{},{}".format(DIRECT_CMD, start, intermediate1, intermediate2)
-        )
+        self._protocol_send(f"{DIRECT_CMD}MVC {start},{intermediate1},{intermediate2}")
         self.client.receive()
 
     def go_safe_pos(self) -> None:
@@ -244,6 +241,20 @@ class R3Reader(R3SubApi):
         self.joints = joints
         self.from_response_to_coordinate = r2c
         self.digits = digits
+
+    def get_current_tool_number(self) -> int:
+        """
+        Get the current tool number
+        :return: Current tool number as integer
+        """
+        tool_no = self.read_variable(CURRENT_TOOL_NO)
+        # TODO Verify response with actual hardware
+        return int(tool_no.split("=")[-1])
+
+    def get_current_tool_data(self) -> str:
+        # TODO Do conversion to Coordinate
+        tool_data = self.read_variable('P_TOOL')
+        return tool_data
 
     def get_override(self) -> float:
         """
@@ -328,7 +339,7 @@ class R3Reader(R3SubApi):
         :param parameter: String representation of the paramter
         :return: Client response excluding status
         """
-        self._protocol_send("PNR{}".format(parameter))
+        self._protocol_send(f"PNR{parameter}")
         return self.client.receive()
 
     def read_variable(self, variable: str) -> str:
@@ -337,7 +348,7 @@ class R3Reader(R3SubApi):
         :param variable: String representation of the variable
         :return: Client response excluding status
         """
-        self._protocol_send("VAL{}".format(variable))
+        self._protocol_send(f"VAL{variable}")
         return self.client.receive()
 
     def _get_float_cmd(self, cmd: str, direct=True) -> float:
@@ -349,7 +360,7 @@ class R3Reader(R3SubApi):
         """
         # Send cmd
         if direct:
-            self._protocol_send("{}{}".format(DIRECT_CMD, cmd))
+            self._protocol_send(f"{DIRECT_CMD}{cmd}")
         else:
             self._protocol_send(cmd)
         return_val = self.client.receive()
@@ -360,7 +371,7 @@ class R3Reader(R3SubApi):
 
     def _get_coordinate_cmd(self, cmd: str, direct=True) -> float:
         if direct:
-            self._protocol_send("{}{}".format(DIRECT_CMD, cmd))
+            self._protocol_send(f"{DIRECT_CMD}{cmd}")
         else:
             self._protocol_send(cmd)
         coord_str = self.client.receive()
@@ -382,13 +393,36 @@ class R3Setter(R3SubApi):
         print('Setting up Setter-API.')
         self.digits = digits
 
+    def set_current_tool(self, tool_number: int) -> None:
+        """
+        Select the current tool
+        :param tool_number: Number of the tool to be selected
+        :return: None
+        :raises: ValueError if tool number is outside of specified bounds
+        """
+        tool_number = int(tool_number)
+        self._check_bounds(tool_number, lbound=1, ubound=4)
+        self._protocol_send(f"{DIRECT_CMD}{CURRENT_TOOL_NO}={int(tool_number)}")
+        self.client.receive()
+
+    def set_current_tool_data(self, tool_offset: str) -> None:
+        """
+        Set the coordinate transformation for the currently selected tool.
+        :param tool_offset:
+        :return: None
+        """
+        # TODO Check conversion
+        self._protocol_send(f"{DIRECT_CMD}{TOOL_OFFSET_CMD} {tool_offset}")
+        self.client.receive()
+
     def set_work_coordinate(self, offset: str) -> None:
         """
         Sets the current coordinate system to the origin specified by the offset
         :param offset:
         :return: None
         """
-        self._protocol_send("{}{} {}".format(DIRECT_CMD, BASE_COORDINATE_CMD, offset))
+        # TODO Check conversion
+        self._protocol_send(f"{DIRECT_CMD}{BASE_COORDINATE_CMD} {offset}")
         self.client.receive()
 
     def set_override(self, factor: float) -> None:
@@ -482,6 +516,13 @@ class R3Resetter(R3SubApi):
         """
         self._reset_cmd(BASE_COORDINATE_CMD, var_type="point")
 
+    def reset_tool_data(self) -> None:
+        """
+        Reset the current tool to the default tool offset
+        :return: None
+        """
+        self._reset_cmd(TOOL_OFFSET_CMD, var_type="point")
+
     def reset_override(self) -> None:
         """
         Reset the override factor to its maximum..
@@ -522,15 +563,15 @@ class R3Resetter(R3SubApi):
         """
         if default_name is None:
             if var_type == "point":
-                default_name = "P_N{}".format(cmd)
+                default_name = f"P_N{cmd}"
             elif var_type == "number":
-                default_name = "M_N{}".format(cmd)
+                default_name = f"M_N{cmd}"
             else:
-                raise ValueError("Unknown variable type: {}".format(var_type))
+                raise ValueError(f"Unknown variable type: {var_type}")
         if direct:
-            self._protocol_send("{}{} {}".format(DIRECT_CMD, cmd, default_name))
+            self._protocol_send(f"{DIRECT_CMD}{cmd} {default_name}")
         else:
-            self._protocol_send("{} {}".format(cmd, default_name))
+            self._protocol_send(f"{cmd} {default_name}")
         self.client.receive()
 
 
@@ -548,7 +589,7 @@ class R3Protocol(R3Resetter, R3Setter, R3Reader, R3Positions, R3Utility):
         Create a protocol object.
         :param client: Client to be used for the communication.
         :param coordinate_adapter:
-        :param joints:
+        :param joints: List of joint strings
         :param digits: Number of digits to be used for string to float conversions, defaults to 2
         """
         # Initialize the individual parts of the API
@@ -562,20 +603,40 @@ class R3Protocol(R3Resetter, R3Setter, R3Reader, R3Positions, R3Utility):
 
     @property
     def reader(self) -> R3Reader:
+        """
+        Extract the Sub-API for reading
+        :return: Sub-API element
+        """
         return R3Reader(self.client, self.joints, r2c=self.from_response_to_coordinate, digits=self.digits)
 
     @property
     def setter(self) -> R3Setter:
+        """
+        Extract the Sub-API for setting
+        :return: Sub-API element
+        """
         return R3Setter(self.client, digits=self.digits)
 
     @property
     def resetter(self) -> R3Resetter:
+        """
+        Extract the Sub-API for resetting
+        :return: Sub-API element
+        """
         return R3Resetter(self.client, digits=self.digits)
 
     @property
     def util(self) -> R3Utility:
+        """
+        Extract the Sub-API for utilities
+        :return: Sub-API element
+        """
         return R3Utility(self.client)
 
     @property
     def pos(self) -> R3Positions:
+        """
+        Extract the Sub-API for positions
+        :return: Sub-API element
+        """
         return R3Positions(self.client, coordinate2cmd=self.from_coord_to_cmd, digits=self.digits)

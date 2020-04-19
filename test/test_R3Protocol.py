@@ -42,6 +42,12 @@ class TestR3ProtocolResetter:
             agent.reset_linear_speed()
         mock_func.assert_called_with('1;1;EXECSPD M_NSPD')
 
+    def test_reset_tool(self, agent: R3Resetter, fake_tcp):
+        agent.client = fake_tcp
+        with mock.patch.object(agent.client, "send", spec=mock.Mock()) as mock_func:
+            agent.reset_tool_data()
+        mock_func.assert_called_with('1;1;EXECTOOL P_NTOOL')
+
     def test_reset_joint_speed(self, agent: R3Resetter, fake_tcp):
         agent.client = fake_tcp
         with mock.patch.object(agent.client, "send", spec=mock.Mock()) as mock_func:
@@ -84,3 +90,9 @@ class TestR3ProtocolSetter:
         with mock.patch.object(agent.client, "send", spec=mock.Mock()) as mock_func:
             agent.set_joint_speed(val)
         mock_func.assert_called_with('1;1;EXECJOVRD {:.{d}f}'.format(val, d=agent.digits))
+
+    @pytest.mark.parametrize("val", [1, 2, 4])
+    def test_set_current_tool(self, agent: R3Setter, fake_tcp, val: int):
+        with mock.patch.object(agent.client, "send", spec=mock.Mock()) as mock_func:
+            agent.set_current_tool(val)
+        mock_func.assert_called_with(f'1;1;EXECM_TOOL={int(val)}')
