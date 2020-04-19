@@ -43,7 +43,7 @@ class BaseJoint(metaclass=abc.ABCMeta):
                 [0, 0, 0, 0],
                 [0, self.s_alpha, self.c_alpha, 0],
                 [0, 0, 0, 1]
-            ]
+            ], dtype=np.float64
         )
 
     @abc.abstractmethod
