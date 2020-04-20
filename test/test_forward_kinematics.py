@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from src.kinematics.forward_kinematics import forward_kinematics
+from src.kinematics.forward_kinematics import forward_kinematics, tform2quat
 from src.kinematics.joint_factories import BaseJointFactory
 
 
@@ -144,6 +144,10 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz):
     xyz = [i / 1000 for i in xyz]
 
     print(tcp_pose)
+
+    # Calculate quaternion
+    quat = tform2quat(tcp_pose)
+    print(f'Quaternion: {quat}')
 
     # Compare position vector in homogeneous matrix with expected value
     validate_vec('pos', tcp_pose, xyz)
