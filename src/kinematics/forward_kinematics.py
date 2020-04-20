@@ -1,3 +1,4 @@
+from math import sqrt
 from typing import List
 
 import numpy as np
@@ -27,3 +28,16 @@ def forward_kinematics(config: List[BaseJoint], joint_coordinates: List[float]) 
         return multi_dot([joint.matrix for joint in config])
     # Create a copy
     return np.array(config[0].matrix)
+
+
+def tform2quat(tform: ndarray) -> List[float]:
+    """
+    Convert a homogenous matrix (4x4) to a quaternion (w, x, y, z)
+    :param tform: Homogenous matrix (4x4)
+    :return: Quaternion as list of floats
+    """
+    w = sqrt(tform[1, 1] + tform[2, 2] + tform[3, 3] + 1) / 2
+    x = (tform[3, 2] - tform[2, 3]) / (4 * w)
+    y = (tform[1, 3] - tform[3, 1]) / (4 * w)
+    z = (tform[2, 1] - tform[1, 2]) / (4 * w)
+    return [w, x, y, z]

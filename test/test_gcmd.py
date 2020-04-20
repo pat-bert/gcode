@@ -6,7 +6,7 @@ from src.gcode.GCmd import GCmd
 class TestGCmd:
     @pytest.mark.parametrize(
         "test_input",
-        ["G28 X Y", "G02 I5.0 K5.3", "G01", "G28", "G28 X Y Z", "M104 S3.0"],
+        ["G28 X Y", "G02 I5.0 K5.3", "G01", "G28", "G28 X Y Z", "M104 S3.0", "T0", "T1"],
     )
     def test_str_recurrent(self, test_input):
         """

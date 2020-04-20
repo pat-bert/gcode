@@ -211,6 +211,12 @@ class MelfaRobot(PrinterComponent):
                     )
             elif gcode.id in ["G04", "G4"]:
                 self.wait(gcode.time_ms)
+
+            elif gcode.id in ["G04", "G4"]:
+                # Adjust the offsets for the current tool
+                # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
+                pass
+
             # Plane selection
             elif gcode.id == "G17":
                 self.active_plane = Plane.XY
@@ -234,6 +240,12 @@ class MelfaRobot(PrinterComponent):
                 self.absolute_coordinates = True
             elif gcode.id == "G91":
                 self.absolute_coordinates = False
+
+            # Tools
+            elif gcode.id.startswith('T'):
+                # Tool commands start with T followed by the tool number.
+                # G-Code starts counting at zero, Mitsubishi starts at one
+                self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
 
             # Unsupported G-code
             else:
