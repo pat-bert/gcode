@@ -65,9 +65,9 @@ jobs:
           # Activate it to install the requirements
           name: install python and create venv
           command: |
-            nuget install python -Version 3.6.4 -ExcludeVersion -OutputDirectory .
-            nuget install python -Version 3.7.6 -ExcludeVersion -OutputDirectory .
-            nuget install python -Version 3.8.1 -ExcludeVersion -OutputDirectory .
+            nuget install python -Version 3.6.4 -ExcludeVersion -OutputDirectory .\python36
+            nuget install python -Version 3.7.6 -ExcludeVersion -OutputDirectory .\python37
+            nuget install python -Version 3.8.1 -ExcludeVersion -OutputDirectory .\python38
             where python
             .\python\tools\python.exe --version
             .\python\tools\python.exe -m pip install virtualenv
