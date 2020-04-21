@@ -57,6 +57,12 @@ jobs:
       # Use the executor from the windows orb
       name: win/default
     steps:
+      - run:
+          name: Check path
+          command: |
+            cd /
+            dir
+            echo %WINDIR%
       - checkout
       - restore_cache: *restore-cache-template
       - run:
