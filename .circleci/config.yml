@@ -73,7 +73,6 @@ jobs:
             .\python36\python\tools\python.exe -m pip install virtualenv
             .\python36\python\tools\python.exe -m virtualenv venv
             venv\Scripts\activate.ps1
-            python --version
             pip install -r requirements.txt
       - save_cache: *save-cache-template
       - run:
