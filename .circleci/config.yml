@@ -65,8 +65,6 @@ jobs:
           # Activate it to install the requirements
           name: install python and create venv
           command: |
-            $env:windir
-            nuget install msttcorefonts
             nuget install python -Version 3.6.4 -ExcludeVersion -OutputDirectory .
             nuget install python -Version 3.7.6 -ExcludeVersion -OutputDirectory .
             nuget install python -Version 3.8.1 -ExcludeVersion -OutputDirectory .
@@ -91,6 +89,7 @@ jobs:
           name: Run tests with tox
           command: |
             venv\Scripts\activate.ps1
+            python os_check.py
             tox
       - run: *codecov-template
       # Upload results for CI insights
