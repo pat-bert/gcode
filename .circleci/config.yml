@@ -52,16 +52,9 @@ jobs:
 
   # Windows job
   test-win:
-    parameters:
-      # Python version is parametrizable
-      python-version:
-        type: string
     executor:
       # Use the executor from the windows orb
       name: win/default
-    environment:
-      # Plug in the python version parameter
-      PYTHON: << parameters.python-version >>
     steps:
       - checkout
       - run:
