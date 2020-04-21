@@ -70,7 +70,9 @@ jobs:
           # Activate it to install the requirements
           name: install python and create venv
           command: |
-            nuget install python -Version $env:PYTHON -ExcludeVersion -OutputDirectory .
+            nuget install python -Version 3.6.4 -ExcludeVersion -OutputDirectory .
+            nuget install python -Version 3.7.6 -ExcludeVersion -OutputDirectory .
+            nuget install python -Version 3.8.1 -ExcludeVersion -OutputDirectory .
             .\python\tools\python.exe --version
             .\python\tools\python.exe -m pip install virtualenv
             .\python\tools\python.exe -m virtualenv venv
@@ -102,10 +104,6 @@ workflows:
   main:
     jobs:
       # Run the tests on windows (requires separate installation of python to be done)
-      - test-win:
-          matrix:
-            parameters:
-              # Specify the python versions to be run
-              python-version: ["3.6.4", "3.7.6", "3.8.1"]
+      - test-win
       # Run the tests on linux
       - test-linux
