@@ -5,15 +5,17 @@ orbs:
   win: circleci/windows@2.2.0
 
 jobs:
-# Linux job
+  # Linux job
   test-linux:
     docker:
+      # Image containing all the required python versions, enables tox to do matrix testing
       - image: themattrix/tox
     steps:
       - checkout
       - restore_cache:
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
+          # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
           command: |
             python3 -m venv venv
@@ -24,16 +26,21 @@ jobs:
           paths:
             - "venv"
       - run:
+          # Verify that no cyclic or otherwise invalid dependencies are present
+          # This is extraordinarily useful to verify automatic module update proposals
           name: Dependency check
           command: |
             . venv/bin/activate
             pipdeptree -w fail
       - run:
+          # Run the tests across all python versions specified in the setup.cfg
+          # Missing interpreters will be skipped
           name: Run tests with tox
           command: |
             . venv/bin/activate
             tox
       - run:
+          # Use the CLI of code coverage to upload the reports
           name: Upload coverage reports to CodeCov
           command: |
             bash <(curl -s https://codecov.io/bash)
@@ -44,13 +51,22 @@ jobs:
 
   # Windows job
   test-win:
+    parameters:
+      # Python version is parametrizable
+      python-version:
+        type: string
     executor:
+      # Use the executor from the windows orb
       name: win/default
     environment:
-      PYTHON: 3.8.0
+      # Plug in the python version parameter
+      PYTHON: << parameters.python-version >>
     steps:
       - checkout
       - run:
+          # Python needs to be installed
+          # Install a virtual environment using the installed python interpreter
+          # Activate it to install the requirements
           name: install python and create venv
           command: |
             nuget install python -Version $env:PYTHON -ExcludeVersion -OutputDirectory .
@@ -59,10 +75,29 @@ jobs:
             venv\Scripts\activate.ps1
             python --version
             pip install -r requirements.txt
+      - run:
+          # Verify that no cyclic or otherwise invalid dependencies are present
+          # This is extraordinarily useful to verify automatic module update proposals
+          name: Dependency check
+          command: |
+            venv\Scripts\activate.ps1
+            pipdeptree -w fail
+      - run:
+          # Run the tests across all python versions specified in the setup.cfg
+          # Missing interpreters will be skipped
+          name: Run tests with tox
+          command: |
+            venv\Scripts\activate.ps1
+            tox
 
-# Combine the jobs into workflow
+# Combine the jobs into a workflow
 workflows:
   version: 2
   main:
     jobs:
-      - test-win
+      # Run the tests on windows (requires separate installation of python to be done)
+      - test-win:
+          matrix:
+            parameters:
+              # Specify the python versions to be run
+              python-version: ["3.6", "3.7", "3.8"]
