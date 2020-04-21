@@ -62,7 +62,7 @@ jobs:
           command: |
             cd /
             dir
-            echo %WINDIR%
+            $env:windir
       - checkout
       - restore_cache: *restore-cache-template
       - run:
