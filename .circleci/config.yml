@@ -57,12 +57,6 @@ jobs:
       # Use the executor from the windows orb
       name: win/default
     steps:
-      - run:
-          name: Check path
-          command: |
-            cd /
-            dir
-            $env:windir
       - checkout
       - restore_cache: *restore-cache-template
       - run:
@@ -71,6 +65,10 @@ jobs:
           # Activate it to install the requirements
           name: install python and create venv
           command: |
+            find . -name \*.pyc -delete
+            cd /
+            dir
+            $env:windir
             nuget install python -Version 3.6.4 -ExcludeVersion -OutputDirectory .
             nuget install python -Version 3.7.6 -ExcludeVersion -OutputDirectory .
             nuget install python -Version 3.8.1 -ExcludeVersion -OutputDirectory .
