@@ -74,7 +74,7 @@ jobs:
             .\python\tools\python.exe -m virtualenv venv
             venv\Scripts\activate.ps1
             python --version
-            pip install -r requirements.txt
+            python -m pip install -r requirements.txt
       - save_cache: *save-cache-template
       - run:
           # Verify that no cyclic or otherwise invalid dependencies are present
