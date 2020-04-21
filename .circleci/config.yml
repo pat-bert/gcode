@@ -53,6 +53,9 @@ jobs:
 
   # Windows job
   test-win:
+    parameters:
+      python-version:
+        type: string
     executor:
       # Use the executor from the windows orb
       name: win/default
@@ -65,14 +68,12 @@ jobs:
           # Activate it to install the requirements
           name: install python and create venv
           command: |
-            nuget install python -Version 3.6.4 -ExcludeVersion -OutputDirectory .\python36
-            nuget install python -Version 3.7.6 -ExcludeVersion -OutputDirectory .\python37
-            nuget install python -Version 3.8.1 -ExcludeVersion -OutputDirectory .\python38
-            where python
-            .\python36\python\tools\python.exe --version
-            .\python36\python\tools\python.exe -m pip install virtualenv
-            .\python36\python\tools\python.exe -m virtualenv venv
+            nuget install python -Version << parameters.python-version >> -ExcludeVersion -OutputDirectory .
+            .\python\tools\python.exe --version
+            .\python\tools\python.exe -m pip install virtualenv
+            .\python\tools\python.exe -m virtualenv venv
             venv\Scripts\activate.ps1
+            python --version
             pip install -r requirements.txt
       - save_cache: *save-cache-template
       - run:
@@ -89,6 +90,7 @@ jobs:
           command: |
             venv\Scripts\activate.ps1
             tox
+      # Codecov merges all reports automatically
       - run: *codecov-template
       # Upload results for CI insights
       - store_test_results:
@@ -102,6 +104,10 @@ workflows:
   main:
     jobs:
       # Run the tests on windows (requires separate installation of python to be done)
-      - test-win
+      - test-win:
+          # Run the tests as matrix for easier setup
+          matrix:
+            parameters:
+              python-version: ["3.6.4", "3.7.6", "3.8.1"]
       # Run the tests on linux
       - test-linux
