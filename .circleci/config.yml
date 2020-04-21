@@ -18,6 +18,7 @@ jobs:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
           command: |
+            python3 --version
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
@@ -70,6 +71,7 @@ jobs:
           name: install python and create venv
           command: |
             nuget install python -Version $env:PYTHON -ExcludeVersion -OutputDirectory .
+            .\python\tools\python.exe --version
             .\python\tools\python.exe -m pip install virtualenv
             .\python\tools\python.exe -m virtualenv venv
             venv\Scripts\activate.ps1
@@ -89,6 +91,10 @@ jobs:
           command: |
             venv\Scripts\activate.ps1
             tox
+      - store_test_results:
+          path: ~/test-results/pytest/
+      - store_artifacts:
+          path: ~/test-results/pytest/
 
 # Combine the jobs into a workflow
 workflows:
@@ -100,4 +106,6 @@ workflows:
           matrix:
             parameters:
               # Specify the python versions to be run
-              python-version: ["3.6", "3.7", "3.8"]
+              python-version: ["3.6.4", "3.7.6", "3.8.1"]
+      # Run the tests on linux
+      - test-linux
