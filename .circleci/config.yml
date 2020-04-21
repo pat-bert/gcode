@@ -2,9 +2,10 @@ version: 2.1
 
 orbs:
   python: circleci/python@0.2.1
+  win: circleci/windows@2.2.0
 
 jobs:
-  test:
+  test-linux:
     docker:
       - image: themattrix/tox
     steps:
@@ -39,8 +40,26 @@ jobs:
           path: ~/test-results/pytest/
       - store_artifacts:
           path: ~/test-results/pytest/
+  test-win:
+    executor:
+      name: win/default
+      
+    environment:
+      PYTHON: 3.8.0
+      
+     steps:
+       - checkout
+       - run:
+          name: install python and create venv
+          command: |
+            nuget install python -Version $env:PYTHON -ExcludeVersion -OutputDirectory .
+            .\python\tools\python.exe -m pip install virtualenv
+            .\python\tools\python.exe -m virtualenv venv        
+            venv\Scripts\activate.ps1
+            python --version
+            pip install -r requirements.txt
 workflows:
   version: 2
   main:
     jobs:
-      - test
+      - test-win
