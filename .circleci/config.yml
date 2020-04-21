@@ -89,7 +89,6 @@ jobs:
           name: Run tests with tox
           command: |
             venv\Scripts\activate.ps1
-            python os_check.py
             tox
       - run: *codecov-template
       # Upload results for CI insights
