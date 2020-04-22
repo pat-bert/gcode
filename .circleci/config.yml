@@ -89,7 +89,7 @@ jobs:
           name: Run tests with tox
           command: |
             venv\Scripts\activate.ps1
-            tox
+            tox --skip-missing-interpreters
       # Codecov merges all reports automatically
       - run: *codecov-template
       # Upload results for CI insights
