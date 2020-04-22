@@ -44,7 +44,7 @@ jobs:
           # Use the CLI of code coverage to upload the reports
           name: Upload coverage reports to CodeCov
           command: |
-            bash <(curl -s https://codecov.io/bash)
+            curl -s https://codecov.io/bash | bash
       # Upload results for CI insights
       - store_test_results:
           path: ~/test-results/pytest/
