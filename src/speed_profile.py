@@ -1,5 +1,7 @@
 from typing import List
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
 

@@ -2,45 +2,113 @@ version: 2.1
 
 orbs:
   python: circleci/python@0.2.1
+  win: circleci/windows@2.2.0
 
 jobs:
-  test:
+  # Linux job
+  test-linux:
     docker:
+      # Image containing all the required python versions, enables tox to do matrix testing
       - image: themattrix/tox
     steps:
       - checkout
-      - restore_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - restore_cache: &restore-cache-template
+          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
       - run:
+          # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
           command: |
+            python3 --version
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
-      - save_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - save_cache: &save-cache-template
+          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
           paths:
             - "venv"
       - run:
+          # Verify that no cyclic or otherwise invalid dependencies are present
+          # This is extraordinarily useful to verify automatic module update proposals
           name: Dependency check
           command: |
             . venv/bin/activate
             pipdeptree -w fail
       - run:
+          # Run the tests across all python versions specified in the setup.cfg
+          # Missing interpreters will be skipped
           name: Run tests with tox
           command: |
             . venv/bin/activate
             tox
-      - run:
+      - run: &codecov-template
+          # Use the CLI of code coverage to upload the reports
           name: Upload coverage reports to CodeCov
+          shell: bash --login -eo pipefail
           command: |
             bash <(curl -s https://codecov.io/bash)
+      # Upload results for CI insights
       - store_test_results:
           path: ~/test-results/pytest/
       - store_artifacts:
           path: ~/test-results/pytest/
+
+  # Windows job
+  test-win:
+    parameters:
+      python-version:
+        type: string
+    executor:
+      # Use the executor from the windows orb
+      name: win/default
+    steps:
+      - checkout
+      - restore_cache: *restore-cache-template
+      - run:
+          # Python needs to be installed
+          # Install a virtual environment using the installed python interpreter
+          # Activate it to install the requirements
+          name: install python and create venv
+          command: |
+            nuget install python -Version << parameters.python-version >> -ExcludeVersion -OutputDirectory .
+            .\python\tools\python.exe --version
+            .\python\tools\python.exe -m pip install virtualenv
+            .\python\tools\python.exe -m virtualenv venv
+            venv\Scripts\activate.ps1
+            python --version
+            python -m pip install -r requirements.txt
+      - save_cache: *save-cache-template
+      - run:
+          # Verify that no cyclic or otherwise invalid dependencies are present
+          # This is extraordinarily useful to verify automatic module update proposals
+          name: Dependency check
+          command: |
+            venv\Scripts\activate.ps1
+            pipdeptree -w fail
+      - run:
+          # Run the tests across all python versions specified in the setup.cfg
+          # Missing interpreters will be skipped
+          name: Run tests with tox
+          command: |
+            venv\Scripts\activate.ps1
+            tox --skip-missing-interpreters
+      # Codecov merges all reports automatically
+      - run: *codecov-template
+      # Upload results for CI insights
+      - store_test_results:
+          path: ~/test-results/pytest/
+      - store_artifacts:
+          path: ~/test-results/pytest/
+
+# Combine the jobs into a workflow
 workflows:
   version: 2
   main:
     jobs:
-      - test
+      # Run the tests on windows (requires separate installation of python to be done)
+      - test-win:
+          # Run the tests as matrix for easier setup
+          matrix:
+            parameters:
+              python-version: ["3.6.4", "3.7.6", "3.8.1"]
+      # Run the tests on linux
+      - test-linux
