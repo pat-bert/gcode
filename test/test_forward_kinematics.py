@@ -27,17 +27,18 @@ def dh_melfa_rv_4a():
     rtoff = 0.0  # radial tool offset
     atoff = 0.0  # axial tool offset
 
-    # Denavit-Hartenberg parameters: a - alpha - d
+    # Denavit-Hartenberg parameters: a - alpha - d - zero offset
+    # Mitsubishi defines axis origins differently than resulting from DH-convention
     dh_parameters = [
-        [0.100, -pi / 2, 0.350],
-        [0.250, 0.00000, 0.000],
-        [0.135, -pi / 2, 0.000],
-        [0.000, +pi / 2, 0.250],
-        [0.000, -pi / 2, 0.000],
-        [rtoff, 0.00000, 0.090 + atoff]
+        [0.100, -pi / 2, 0.350, 0],
+        [0.250, 0.00000, 0.000, -pi / 2],
+        [0.135, -pi / 2, 0.000, -pi / 2],
+        [0.000, +pi / 2, 0.250, 0],
+        [0.000, -pi / 2, 0.000, 0],
+        [rtoff, 0.00000, 0.090 + atoff, pi]
     ]
 
-    config = [BaseJointFactory.new(a=a, alpha=alpha, d=d, theta=None) for a, alpha, d in dh_parameters]
+    config = [BaseJointFactory.new(a=a, alpha=alpha, d=d, theta=None, offset=z) for a, alpha, d, z in dh_parameters]
     return config
 
 
@@ -96,41 +97,56 @@ def test_forward_kinematics_rotational_joint(simple_rotational_joint, joint_coor
     validate_vec('pos', transformation, [0, 0, 0])
 
 
-@pytest.mark.parametrize("joints_deg, abcxyz",
+@pytest.mark.parametrize("joints_deg,abcxyz,tcp_cs",
                          [
                              # Adjusted home position
                              (
-                                     [0, 0, 90, 0, 0, 180],
-                                     [-180.000, +90.000, +180.000, +439.641, +0.000, +734.911]
+                                     [0, 0, 90, 0, 0, 0],
+                                     [-180.000, +90.000, +180.000, +439.641, +0.000, +734.911],
+                                     # TCP coordinate system: x down, y left, z front
+                                     [
+                                         [0, 0, -1],
+                                         [0, 1, 0],
+                                         [1, 0, 0]
+                                     ]
                              ),
                              # Adjusted home position moved to left end-stop of J1
                              (
                                      [-160, 0, 90, 0, 0, 0],
-                                     [-180.000, +90.000, +20.000, -413.127, -150.366, +734.911]
+                                     [-180.000, +90.000, +20.000, -413.127, -150.366, +734.911],
+                                     # TCP coordinate system:
+                                     [
+                                         [0, 0, -1],
+                                         [sin(160 / 180 * pi), cos(160 / 180 * pi), 0],
+                                         [cos(160 / 180 * pi), -sin(160 / 180 * pi), 0]
+                                     ]
                              ),
                              # Adjusted home position moved to right end-stop of J1
                              (
                                      [+160, 0, 90, 0, 0, 0],
-                                     [+0.000, +90.000, +160.000, -413.127, 150.366, +734.911]
+                                     [+0.000, +90.000, +160.000, -413.127, 150.366, +734.911],
+                                     # TCP coordinate system:
+                                     [
+                                         [0, 0, -1],
+                                         [-sin(160 / 180 * pi), cos(160 / 180 * pi), 0],
+                                         [cos(160 / 180 * pi), sin(160 / 180 * pi), 0]
+                                     ]
                              ),
                              # Arbitrary position
                              (
                                      [52.550, -42.990, 131.910, -43.210, 93.720, -103.650],
-                                     [165.438, -41.185, -20.204, 153.391, 99.003, 606.813]
+                                     [165.438, -41.185, -20.204, 153.391, 99.003, 606.813],
+                                     None
                              )
                          ]
                          )
-def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz):
+def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz, tcp_cs):
     """
     Validate some positions by XYZ-values obtained from the Mitsubishi simulator
     :param dh_melfa_rv_4a: Joint configurations based on DH-parameters for Mitsubishi Melfa RV-4A
     :param joints_deg: Joint angles in degrees
     :param abcxyz: Expected values for X,Y,Z and Euler-angles A, B, C
     """
-    # TODO Figure out the cause of this offset and whether it affects the euler angles
-    joints_deg[1] -= 90
-    joints_deg[2] -= 90
-
     # Convert to radian
     joints_rad = [np.deg2rad(i) for i in joints_deg]
 
@@ -151,3 +167,10 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz):
 
     # Compare position vector in homogeneous matrix with expected value
     validate_vec('pos', tcp_pose, xyz)
+
+    # Check TCP coordinate system
+    if tcp_cs is not None:
+        tcp_x, tcp_y, tcp_z = tcp_cs
+        validate_vec('X', tcp_pose, tcp_x)
+        validate_vec('Y', tcp_pose, tcp_y)
+        validate_vec('Z', tcp_pose, tcp_z)
