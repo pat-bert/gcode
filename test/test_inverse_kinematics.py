@@ -60,6 +60,7 @@ def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, dh_melfa_rv_
     actual_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform)
 
     # Test the solution
+    expected_joints = np.deg2rad(expected_joints)
     np.testing.assert_allclose(actual_joints, expected_joints, atol=0.001)
 
     # Reconvert the joint angles to a pose
