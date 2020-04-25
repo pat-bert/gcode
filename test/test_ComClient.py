@@ -24,7 +24,7 @@ from src.clients.SerialEcho import ConfigurableEcho
         ),
         pytest.param(
             ('port', 'ttyV0', 'ttyV1'),
-            marks=pytest.mark.skipif(os.environ.get('HAS_SOCAT') != 'True', reason='socat required')
+            marks=pytest.mark.skipif(os.system('socat -h') != 0, reason='socat required')
         )
     ],
     ids=[

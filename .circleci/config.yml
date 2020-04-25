@@ -16,13 +16,11 @@ jobs:
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
       - run:
           # Install socat to simulate serial ports
-          name: Install virtual serial port
+          name: Install socat to create virtual serial ports
           command: |
             apt-get update && apt-get install socat -y
             socat -V
-            socat -d -d pty,raw,nonblock,echo=0,link=ttyV0 pty,raw,nonblock,echo=0,link=ttyV1
-            echo 'export HAS_SOCAT='True' >> $BASH_ENV
-            source $BASH_ENV
+            socat -d -d pty,raw,nonblock,echo=0,link=ttyV0 pty,raw,nonblock,echo=0,link=ttyV1 &
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
