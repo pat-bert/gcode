@@ -66,12 +66,15 @@ jobs:
       - run:
           name: Install com0com for virtual serial ports
           command: |
-            Start-FileDownload https://github.com/pat-bert/SupportingFiles/raw/master/appveyor/serial/com0com.cer
+            $wc = New-Object System.Net.WebClient
+            $certificate_url = "https://github.com/pat-bert/SupportingFiles/raw/master/appveyor/serial/com0com.cer"
+            $setup_url = "https://github.com/pat-bert/SupportingFiles/raw/master/appveyor/serial/setup_com0com_W7_x64_signed.exe"
+            $wc.DownloadFile($certificate_url, "com0com.cer")
             C:\"Program Files"\"Microsoft SDKs"\Windows\v7.1\Bin\CertMgr.exe /add com0com.cer /s /r localMachine root
             C:\"Program Files"\"Microsoft SDKs"\Windows\v7.1\Bin\CertMgr.exe /add com0com.cer /s /r localMachine trustedpublisher
-            Start-FileDownload https://github.com/pat-bert/SupportingFiles/raw/master/appveyor/serial/setup_com0com_W7_x64_signed.exe
+            $wc.DownloadFile($setup_url, "setup_com0com_W7_x64_signed.exe")
             $env:CNC_INSTALL_COMX_COMX_PORTS='YES'
-            .\setup_com0com_v3.0.0.0_W7_x64_signed.exe /S
+            .\setup_com0com_W7_x64_signed.exe /S
             sleep 60
       - run:
           # Python needs to be installed
