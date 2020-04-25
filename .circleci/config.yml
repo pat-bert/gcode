@@ -77,8 +77,9 @@ jobs:
 
             $wc = New-Object System.Net.WebClient
             $wc.DownloadFile($certificate_url, "com0com.cer")
-            $cert_mgr /add com0com.cer /s /r localMachine root
-            $cert_mgr /add com0com.cer /s /r localMachine trustedpublisher
+            "$cert_mgr" /?
+            "$cert_mgr" /add com0com.cer /s /r localMachine root
+            "$cert_mgr" /add com0com.cer /s /r localMachine trustedpublisher
             $wc.DownloadFile($setup_url, "setup_com0com_W7_x64_signed.exe")
             $env:CNC_INSTALL_COMX_COMX_PORTS='YES'
             .\setup_com0com_W7_x64_signed.exe /S
