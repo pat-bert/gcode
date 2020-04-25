@@ -23,7 +23,7 @@ from src.clients.SerialEcho import ConfigurableEcho
             marks=pytest.mark.skipif(sys.platform != 'win32', reason='com0com required')
         ),
         pytest.param(
-            ('port', 'Lin1', 'Lin2'),
+            ('port', 'ttyV0', 'ttyV1'),
             marks=pytest.mark.skipif(os.environ.get('HAS_SOCAT') != 'True', reason='socat required')
         )
     ],
