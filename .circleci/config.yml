@@ -52,17 +52,11 @@ jobs:
       - store_artifacts:
           path: ~/test-results/pytest/
 
-  # Windows job
-  test-win:
-    parameters:
-      python-version:
-        type: string
+  # Virtual serial ports on windows
+  virtual-serial-win:
     executor:
-      # Use the executor from the windows orb
       name: win/default
     steps:
-      - checkout
-      - restore_cache: *restore-cache-template
       - run:
           # Com0Com can be used to install virtual serial ports
           # An auxiliary repo is used to save the installation files and the certificate
@@ -76,13 +70,25 @@ jobs:
 
             $wc = New-Object System.Net.WebClient
             $wc.DownloadFile($certificate_url, "com0com.cer")
-            C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\CertMgr.exe /?
-            C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\CertMgr.exe /add com0com.cer /s /r localMachine root
-            C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\CertMgr.exe /add com0com.cer /s /r localMachine trustedpublisher
+            C:\"Program Files"\"Microsoft SDKs"\Windows\v7.1\Bin\CertMgr.exe /?
+            C:\"Program Files"\"Microsoft SDKs"\Windows\v7.1\Bin\CertMgr.exe /add com0com.cer /s /r localMachine root
+            C:\"Program Files"\"Microsoft SDKs"\Windows\v7.1\Bin\CertMgr.exe /add com0com.cer /s /r localMachine trustedpublisher
             $wc.DownloadFile($setup_url, "setup_com0com_W7_x64_signed.exe")
             $env:CNC_INSTALL_COMX_COMX_PORTS='YES'
             .\setup_com0com_W7_x64_signed.exe /S
             sleep 60
+
+  # Windows job
+  test-win:
+    parameters:
+      python-version:
+        type: string
+    executor:
+      # Use the executor from the windows orb
+      name: win/default
+    steps:
+      - checkout
+      - restore_cache: *restore-cache-template
       - run:
           # Python needs to be installed
           # Install a virtual environment using the installed python interpreter
@@ -125,7 +131,10 @@ workflows:
   main:
     jobs:
       # Run the tests on windows (requires separate installation of python to be done)
+      - virtual-serial-win
       - test-win:
+          requires:
+            - virtual-serial-win
           # Run the tests as matrix for easier setup
           matrix:
             parameters:
