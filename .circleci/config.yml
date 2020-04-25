@@ -52,11 +52,17 @@ jobs:
       - store_artifacts:
           path: ~/test-results/pytest/
 
-  # Virtual serial ports on windows
-  virtual-serial-win:
+  # Windows job
+  test-win:
+    parameters:
+      python-version:
+        type: string
     executor:
+      # Use the executor from the windows orb
       name: win/default
     steps:
+      - checkout
+      - restore_cache: *restore-cache-template
       - run:
           # Com0Com can be used to install virtual serial ports
           # An auxiliary repo is used to save the installation files and the certificate
@@ -70,25 +76,16 @@ jobs:
 
             $wc = New-Object System.Net.WebClient
             $wc.DownloadFile($certificate_url, "com0com.cer")
+            echo "Downloaded com0com certificate."
             C:\"Program Files (x86)"\"Windows Kits"\10\bin\10.0.16299.0\x86\certmgr.exe /?
             C:\"Program Files (x86)"\"Windows Kits"\10\bin\10.0.16299.0\x86\certmgr.exe /add com0com.cer /s /r localMachine root
             C:\"Program Files (x86)"\"Windows Kits"\10\bin\10.0.16299.0\x86\certmgr.exe /add com0com.cer /s /r localMachine trustedpublisher
             $wc.DownloadFile($setup_url, "setup_com0com_W7_x64_signed.exe")
+            echo "Downloaded com0com installation file."
             $env:CNC_INSTALL_COMX_COMX_PORTS='YES'
             .\setup_com0com_W7_x64_signed.exe /S
+            echo "Done setting up com0com with COM#-ports."
             sleep 60
-
-  # Windows job
-  test-win:
-    parameters:
-      python-version:
-        type: string
-    executor:
-      # Use the executor from the windows orb
-      name: win/default
-    steps:
-      - checkout
-      - restore_cache: *restore-cache-template
       - run:
           # Python needs to be installed
           # Install a virtual environment using the installed python interpreter
@@ -133,8 +130,6 @@ workflows:
       # Run the tests on windows (requires separate installation of python to be done)
       - virtual-serial-win
       - test-win:
-          requires:
-            - virtual-serial-win
           # Run the tests as matrix for easier setup
           matrix:
             parameters:

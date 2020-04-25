@@ -20,7 +20,7 @@ from src.clients.SerialEcho import ConfigurableEcho
         pytest.param(
             # On Windows Test Systems com0com should be installed to use virtual ports COM5 and COM6
             ('port', 'COM5', 'COM6'),
-            marks=pytest.mark.skipif(sys.platform != 'win32' or sys.platform == 'win32', reason='com0com required')
+            marks=pytest.mark.skipif(sys.platform != 'win32', reason='com0com required')
         ),
         pytest.param(
             ('port', 'Lin1', 'Lin2'),
@@ -34,7 +34,7 @@ from src.clients.SerialEcho import ConfigurableEcho
     ]
 )
 def valid_com_client(request):
-    # Parametrizable COM client
+    # Parameterizable COM client
     if request.param[0] == 'ids':
         # Client is identified by USB Vendor ID and Product ID (physical hardware)
         com = ComClient(ids=request.param[1:])
@@ -149,6 +149,7 @@ class TestComClient:
         non_existing_com_client.close()
 
     @pytest.mark.timeout(20)
+    @pytest.mark.skip
     def test_receive(self, valid_com_client):
         # Responses can be received
         with valid_com_client:
@@ -161,6 +162,7 @@ class TestComClient:
             valid_com_client.receive()
 
     # @pytest.mark.timeout(20)
+    @pytest.mark.skip
     def test_send(self, valid_com_client, capsys):
         msg = 'M114'
         # Mock out this annoying wait for startup message
