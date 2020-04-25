@@ -128,7 +128,6 @@ workflows:
   main:
     jobs:
       # Run the tests on windows (requires separate installation of python to be done)
-      - virtual-serial-win
       - test-win:
           # Run the tests as matrix for easier setup
           matrix:
