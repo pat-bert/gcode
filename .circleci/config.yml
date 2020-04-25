@@ -66,16 +66,11 @@ jobs:
       - run:
           name: Install com0com for virtual serial ports
           command: |
-          # Add the certificates
             Start-FileDownload https://github.com/pat-bert/SupportingFiles/raw/master/appveyor/serial/com0com.cer
             C:\"Program Files"\"Microsoft SDKs"\Windows\v7.1\Bin\CertMgr.exe /add com0com.cer /s /r localMachine root
             C:\"Program Files"\"Microsoft SDKs"\Windows\v7.1\Bin\CertMgr.exe /add com0com.cer /s /r localMachine trustedpublisher
             Start-FileDownload https://github.com/pat-bert/SupportingFiles/raw/master/appveyor/serial/setup_com0com_W7_x64_signed.exe
-
-          # Set the environment variable to install COM#<->COM#-like serial ports
             $env:CNC_INSTALL_COMX_COMX_PORTS='YES'
-
-          # Install the software silently (requires administrator)
             .\setup_com0com_v3.0.0.0_W7_x64_signed.exe /S
             sleep 60
       - run:
