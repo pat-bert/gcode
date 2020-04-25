@@ -18,7 +18,7 @@ jobs:
           # Install socat to simulate serial ports
           name: Install virtual serial port
           command: |
-            apt-get install socat
+            sudo apt-get update && sudo apt-get install socat
             socat -d -d pty,raw,nonblock,echo=0,link=ttyV0 pty,raw,nonblock,echo=0,link=ttyV1
             echo 'export HAS_SOCAT='True' >> $BASH_ENV
             source $BASH_ENV
