@@ -12,7 +12,7 @@ def forward_kinematics(config: List[BaseJoint], joint_coordinates: List[float]) 
     """
     Calculate the forward kinematics for a given configuration of joints and joint coordinates.
     :param config: Tuple of joints
-    :param joint_coordinates: Tuple of joint coordinate values (either m or radian)
+    :param joint_coordinates: Tuple of joint coordinate values (either mm or radian)
     :return: 4x4 Transformation matrix (vectors for TCP coordinate system and vector for TCP position)
 
     T = | xx yx zx x |

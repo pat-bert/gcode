@@ -23,10 +23,10 @@ class BaseJoint(metaclass=abc.ABCMeta):
                  offset: float = 0):
         """
         Saves all the parameters and creates the initial matrix.
-        :param a: link length in m
+        :param a: link length in mm
         :param alpha: twist angle in rad
-        :param d: joint distance in m
-        :param theta: joint angle in radS
+        :param d: joint distance in mm
+        :param theta: joint angle in rad
         :param offset: Specifies an offset for the zero position of the joint coordinate to be applied to each joint
         coordinate given, defaults to zero.
         """
@@ -55,7 +55,7 @@ class BaseJoint(metaclass=abc.ABCMeta):
     def mul(self, *, joint_value):
         """
         Abstract method with arbitrary interface
-        :param joint_value: Can be either angle (rad) or translation (m)
+        :param joint_value: Can be either angle (rad) or translation (mm)
         :return:
         """
 
@@ -75,9 +75,9 @@ class BaseRotationalJoint(BaseJoint):
     def __init__(self, *, a, alpha, d, offset=0):
         """
         Common initialisation for all rotational joints.
-        :param a: link length in m
+        :param a: link length in mm
         :param alpha: twist angle in rad
-        :param d: Constant joint distance in m
+        :param d: Constant joint distance in mm
         :param offset: Specifies an offset for the zero position of the joint coordinate to be applied to each joint
         coordinate given, defaults to zero.
         """
@@ -108,9 +108,9 @@ class GeneralRotationalJoint(BaseRotationalJoint):
     def __init__(self, *, a, alpha, d, offset=0):
         """
         Initialize the general joint
-        :param a: link length in m
+        :param a: link length in mm
         :param alpha: twist angle in rad
-        :param d: joint distance in m
+        :param d: joint distance in mm
         :param offset: Specifies an offset for the zero position of the joint coordinate to be applied to each joint
         coordinate given, defaults to zero.
         """
@@ -119,7 +119,7 @@ class GeneralRotationalJoint(BaseRotationalJoint):
     def mul(self, *, joint_value):
         """
         Sets the variable elements of the matrix.
-        :param joint_value: Current joint angle (rad or m)
+        :param joint_value: Current joint angle (rad or mm)
         :return:
         """
         theta = joint_value + self.zero_offset
@@ -141,7 +141,7 @@ class NoOffsetRotationalJoint(BaseRotationalJoint):
         """
         Creates a rotational joint with zero link length
         :param alpha: twist angle in rad
-        :param d: joint distance in m
+        :param d: joint distance in mm
         :param offset: Specifies an offset for the zero position of the joint coordinate to be applied to each joint
         coordinate given, defaults to zero.
         """
@@ -150,7 +150,7 @@ class NoOffsetRotationalJoint(BaseRotationalJoint):
     def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param joint_value: Current joint angle (rad or m)
+        :param joint_value: Current joint angle (rad or mm)
         :return: None
         """
         theta = joint_value + self.zero_offset
@@ -171,7 +171,7 @@ class ParallelRotationalJoint(BaseRotationalJoint):
     def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param joint_value: Current joint angle (rad or m)
+        :param joint_value: Current joint angle (rad or mm)
         :return: None
         """
         theta = joint_value + self.zero_offset
@@ -189,7 +189,7 @@ class ParallelNoOffsetRotationalJoint(NoOffsetRotationalJoint):
     def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param joint_value: Current joint angle (rad or m)
+        :param joint_value: Current joint angle (rad or mm)
         :return: None
         """
         # Calculate common values
@@ -211,7 +211,7 @@ class PerpendicularRotationalJoint(BaseRotationalJoint):
     def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param joint_value: Current joint angle (rad or m)
+        :param joint_value: Current joint angle (rad or mm)
         :return: None
         """
         # Calculate common values
@@ -230,7 +230,7 @@ class PerpendicularNoOffsetRotationalJoint(NoOffsetRotationalJoint):
     def mul(self, *, joint_value) -> None:
         """
         Sets the variable elements of the matrix.
-        :param joint_value: Current joint angle (rad or m)
+        :param joint_value: Current joint angle (rad or mm)
         :return: None
         """
         theta = joint_value + self.zero_offset
@@ -251,9 +251,9 @@ class TranslationalJoint(BaseJoint):
     def __init__(self, a, alpha, theta, offset=0):
         """
         Creates a matrix with constant elements.
-        :param a: link length in m
+        :param a: link length in mm
         :param alpha: twist angle in rad
-        :param theta: joint angle in radS
+        :param theta: joint angle in rad
         :param offset: Specifies an offset for the zero position of the joint coordinate to be applied to each joint
         coordinate given, defaults to zero.
         """
@@ -272,7 +272,7 @@ class TranslationalJoint(BaseJoint):
     def mul(self, *, joint_value: float) -> None:
         """
         Sets the variable elements of the matrix.
-        :param joint_value: Current joint distance (rad or m)
+        :param joint_value: Current joint distance (rad or mm)
         :return:
         """
         # Override the 4th element of the third row

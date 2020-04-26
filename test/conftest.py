@@ -17,12 +17,12 @@ def dh_melfa_rv_4a():
     # Denavit-Hartenberg parameters: a - alpha - d - zero offset
     # Mitsubishi defines axis origins differently than resulting from DH-convention
     dh_parameters = [
-        [0.100, -pi / 2, 0.350, 0],
-        [0.250, 0.00000, 0.000, -pi / 2],
-        [0.135, -pi / 2, 0.000, -pi / 2],
-        [0.000, +pi / 2, 0.250, 0],
-        [0.000, -pi / 2, 0.000, 0],
-        [rtoff, 0.00000, 0.090 + atoff, pi]
+        [100, -pi / 2, 350, 0],
+        [250, 0.00000, 0.0, -pi / 2],
+        [135, -pi / 2, 0.0, -pi / 2],
+        [0.0, +pi / 2, 250, 0],
+        [0.0, -pi / 2, 0.0, 0],
+        [rtoff, 0.00000, 90 + atoff, pi]
     ]
 
     config = [BaseJointFactory.new(a=a, alpha=alpha, d=d, theta=None, offset=z) for a, alpha, d, z in dh_parameters]

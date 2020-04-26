@@ -18,7 +18,7 @@ def simple_rotational_joint():
     return BaseJointFactory.new(a=0, alpha=0, d=0, theta=None)
 
 
-def validate_vec(kind: str, actual, expected: List[float], atol=0.001):
+def validate_vec(kind: str, actual, expected: List[float], atol=1):
     """
     Helper function to validate vectors of a homogenous matrix (4x4)
     :param kind:
@@ -131,9 +131,6 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz, tcp_cs):
 
     # Unpack expected coordinates
     a, b, c, *xyz = abcxyz
-
-    # Convert mm to m
-    xyz = [i / 1000 for i in xyz]
 
     print(tcp_pose)
 
