@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from src.kinematics.forward_kinematics import forward_kinematics, tform2quat
+from src.kinematics.forward_kinematics import forward_kinematics, tform2quat, tform2euler
 from src.kinematics.joint_factories import BaseJointFactory
 
 
@@ -147,3 +147,62 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz, tcp_cs):
         validate_vec('X', tcp_pose, tcp_x)
         validate_vec('Y', tcp_pose, tcp_y)
         validate_vec('Z', tcp_pose, tcp_z)
+
+
+@pytest.mark.parametrize("joints_deg,a,b,c",
+                         [
+                             # Home position
+                             ([0, 0, 90, 0, 90, 0], 180, 0, 180),
+                             ([-110, 0, 90, 0, 90, 0], -180, 0, 70),
+                             # Arbitrary positions
+                             ([5.951, -23.864, 139.059, -153.690, 65.113, -51.627], 30, -50, 120),
+                             ([37.200, 14.850, 74.505, -20.107, 88.542, -177.127], 160, -3, 35),
+                             ([0, -54.748, 141.102, 0, 3.646, 42.34], 90, 47.66, 90),
+                             # Degenerate beta = +90 deg
+                             ([0, -54.748, 141.102, 0, 3.646, 0], -180, 90, 180),
+                             ([-63.008, -18.080, 124.879, 98.374, 64.246, -108.716], 138.009, 89.999, 138.009),
+                             ([22.835, -34.309, 134.587, -87.672, 102.626, 100.536], 95.896, 90, 15.896),
+                             ([0, 29.017, 57.018, 0, 3.965, 0], -180, 90, 180),
+                             # Degenerate beta = -90 deg
+                             ([0, 52.521, 98.176, 0, 119.303, 0], 0, -90, 0),
+                         ]
+                         )
+def test_tform2euler(dh_melfa_rv_4a, joints_deg, a, b, c):
+    # Convert to radian
+    joints_rad = [np.deg2rad(i) for i in joints_deg]
+
+    # Calculate actual coordinates
+    tcp_pose = forward_kinematics(dh_melfa_rv_4a, joints_rad)
+
+    # Calculate euler angles
+    actual_angles = tform2euler(tcp_pose)
+    actual_angles = np.rad2deg(actual_angles)
+    a_actual, b_actual, c_actual = actual_angles
+
+    digits = 5
+    print(f'Actual: A:{a_actual:.{digits}f}° B:{b_actual:.{digits}f}° C:{c_actual:.{digits}f}°')
+    print(f'Expected: A:{a:.{digits}f}° B:{b:.{digits}f}° C:{c:.{digits}f}°')
+
+    # Check
+    diff_to_gimbal_lock = abs(abs(b) - 90)
+
+    # Different tolerance depending on distance to gimbal lock
+    if diff_to_gimbal_lock == 0.0:
+        # Gimbal lock!
+        assert round(b - b_actual, 3) % 360 == pytest.approx(0, abs=0.01)
+        assert round(a - a_actual + c - c_actual, 3) % 360 == pytest.approx(0, abs=1.5)
+    else:
+        if diff_to_gimbal_lock > 0.1:
+            # Normal
+            atol = 0.01
+        else:
+            # Very close
+            atol = 1.0
+
+        # Rounding to many digits is still necessary to get the modulo right
+        r = 10
+
+        # Angles match or are off by 360 degrees
+        assert (a == pytest.approx(a_actual, abs=atol)) or (round(a - a_actual, r) % 360 == pytest.approx(0, abs=atol))
+        assert (a == pytest.approx(a_actual, abs=atol)) or (round(b - b_actual, r) % 360 == pytest.approx(0, abs=atol))
+        assert (a == pytest.approx(a_actual, abs=atol)) or (round(c - c_actual, r) % 360 == pytest.approx(0, abs=atol))

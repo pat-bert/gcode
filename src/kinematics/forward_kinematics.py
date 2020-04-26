@@ -1,4 +1,4 @@
-from math import sqrt
+from math import sqrt, atan2, cos
 from typing import List
 
 import numpy as np
@@ -41,3 +41,23 @@ def tform2quat(tform: ndarray) -> List[float]:
     y = (tform[1, 3] - tform[3, 1]) / (4 * w)
     z = (tform[2, 1] - tform[1, 2]) / (4 * w)
     return [w, x, y, z]
+
+
+def tform2euler(tform: ndarray) -> List[float]:
+    """
+    Calculates euler angles from a homogeneous matrix.
+    :param tform: Homogenous matrix (4x4)
+    :return: ABC in deg as used by Mitsubishi (ZY'X'', alpha and gamma swapped)
+    """
+    beta = atan2(-tform[2, 0], sqrt(tform[2, 1] ** 2 + tform[2, 2] ** 2))
+    c_b = cos(beta)
+
+    if abs(c_b) > 1e-10:
+        gamma = atan2(tform[1, 0] / c_b, tform[0, 0] / c_b)
+        alpha = atan2(tform[2, 1] / c_b, tform[2, 2] / c_b)
+    else:
+        gamma = 0
+        alpha = atan2(tform[0, 1], tform[1, 1])
+        if beta < 0:
+            alpha *= -1
+    return [alpha, beta, gamma]
