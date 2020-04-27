@@ -14,20 +14,23 @@ def forward_kinematics(config: List[BaseJoint], joint_coordinates: List[float]) 
     :param config: Tuple of joints
     :param joint_coordinates: Tuple of joint coordinate values (either mm or radian)
     :return: 4x4 Transformation matrix (vectors for TCP coordinate system and vector for TCP position)
+    :raises: ValueError if the lengths of config and joint_coordinates are unequal
 
     T = | xx yx zx x |
         | xy yy zy y |
         | xz yz zz z |
         |  0  0  0 1 |
     """
-    for joint, coordinate_value in zip(config, joint_coordinates):
-        # Pass in the joint coordinates to get the complete matrices
-        joint.mul(joint_value=coordinate_value)
-    if len(config) > 1:
-        # Do an optimized calculation of the product of all matrices
-        return multi_dot([joint.matrix for joint in config])
-    # Create a copy
-    return np.array(config[0].matrix)
+    if len(config) == len(joint_coordinates):
+        for joint, coordinate_value in zip(config, joint_coordinates):
+            # Pass in the joint coordinates to get the complete matrices
+            joint.mul(joint_value=coordinate_value)
+        if len(config) > 1:
+            # Do an optimized calculation of the product of all matrices
+            return multi_dot([joint.matrix for joint in config])
+        # Create a copy
+        return np.array(config[0].matrix)
+    raise ValueError('Joint coordinates and joints must be of same length.')
 
 
 def tform2quat(tform: ndarray) -> List[float]:
