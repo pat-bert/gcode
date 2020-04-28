@@ -78,6 +78,10 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     # Theta 1 (Hip) represents the angle when the wrist center is given in polar coordinates
     theta1 = atan2(p04[1], p04[0])
 
+    # TODO Verify theta 1 adaption logic
+    if not joint2_first:
+        theta1 *= -1
+
     # Get origin of joint 2 in base frame
     tjoint12 = forward_kinematics([config[0]], [theta1], subtract_offset=True)
     p01 = tjoint12[0:3, 3]
@@ -103,7 +107,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
         theta6 = 0
     else:
         # Calculate theta 6 (requires theta 1 - 5)
-        theta6, *_ = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
+        theta6, *_ = _ik_spherical_wrist_joint6(config, joint5_non_flip, tjoint12, theta2, theta3, theta4, theta5, xdir)
 
     # Bundle all the angles and apply the offset
     theta = [theta1, theta2, theta3, theta4, theta5, theta6]
@@ -145,8 +149,8 @@ def _ik_spherical_wrist_joint2(config, joint2_first, tjoint12, p14) -> List[floa
         if joint2_first:
             print(f'Theta 2: [x] {theta2_1:+.3f} [ ] {theta2_2:+.3f}')
             return [theta2_1]
-        print(f'Theta 2: [ ] {theta2_1:+.3f} [x] {theta2_2:+.3f}')
-        return [theta2_2]
+        print(f'Theta 2: [x] {theta2_1:+.3f} [ ] {theta2_2:+.3f}')
+        return [theta2_1]
     return [theta2_1, theta2_2]
 
 
@@ -204,9 +208,11 @@ def _ik_spherical_wrist_joint4(config, tjoint12, theta2, theta3, zdir) -> float:
     y3 = tjoint14[0:3, 1]
 
     c = np.cross(zdir, z3)
+    c_vector_len = np.linalg.norm(c)
 
-    if np.linalg.norm(c) > WRIST_SINGULARITY_THRESHOLD:
-        q4 = acos(np.dot(y3, c))
+    if c_vector_len > WRIST_SINGULARITY_THRESHOLD:
+        # c needs to be a unit vector
+        q4 = acos(np.dot(y3, c / c_vector_len))
         return q4
     # Singularity (J4 and J6 are collinear)
     print('Wrist Singularity detected!')
@@ -248,7 +254,7 @@ def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir)
     return [theta5_1, theta5_2]
 
 
-def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir) -> List[float]:
+def _ik_spherical_wrist_joint6(config, non_flip, tjoint12, theta2, theta3, theta4, theta5, xdir) -> List[float]:
     """
     Calculate the sixth joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters
@@ -269,8 +275,11 @@ def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5,
 
     # Theta 6 describes angle between x-dir of joint 5 and joint 6
     theta6_1 = acos(np.dot(x5, xdir))
-    # TODO Check second solution (sign of theta 5?)
     theta6_2 = 2 * pi - theta6_1
 
-    print(f'Theta 6: [x] {theta6_1:+.3f} [ ] {theta6_2:+.3f}')
-    return [theta6_1]
+    # TODO Verify the selection logic for theta 6
+    if (theta5 > 0 and not non_flip) or (theta5 < 0 and non_flip):
+        print(f'Theta 6: [x] {theta6_1:+.3f} [ ] {theta6_2:+.3f}')
+        return [theta6_1]
+    print(f'Theta 6: [ ] {theta6_1:+.3f} [x] {theta6_2:+.3f}')
+    return [theta6_2]

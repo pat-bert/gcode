@@ -101,7 +101,8 @@ def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, dh_me
 
     # Check that the matrices are the same
     print('\nChecking results...')
-    # np.testing.assert_allclose(tform_fk, tform, atol=0.1)
+    np.testing.assert_allclose(tform_fk, tform, atol=0.1)
+    print('All good!')
 
 
 @pytest.mark.parametrize("pose_flag", [-1, 8])
