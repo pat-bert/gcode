@@ -67,6 +67,9 @@ class BaseJoint(metaclass=abc.ABCMeta):
         :return: Joint Type Enumeration Value
         """
 
+    def __len__(self):
+        return 1
+
 
 class BaseRotationalJoint(BaseJoint):
     """ Interface: Denavit-Hartenberg representation for any 1DOF rotational joint.

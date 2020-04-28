@@ -7,6 +7,20 @@ from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
 
 
+class Singularity(ValueError):
+    pass
+
+
+class WristSingularity(Singularity):
+    """
+    Will be raised if J4 and J6 align (infinite solutions)
+    """
+    pass
+
+
+WRIST_SINGULARITY_THRESHOLD = 1e-3
+
+
 def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=None) -> List[float]:
     """
     Calculate the forward kinematics for a given configuration of joints and joint coordinates.
@@ -81,10 +95,15 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     theta5, *_ = _ik_spherical_wrist_joint5(config, joint5_non_flip, tjoint12, theta2, theta3, zdir)
 
     # Calculate theta 4 (requires theta 1 - 3)
-    theta4, *_ = _ik_spherical_wrist_joint4(config, tjoint12, theta2, theta3, zdir)
-
-    # TODO Calculate theta 6 (requires theta 1 - 5)
-    theta6, *_ = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
+    try:
+        theta4 = _ik_spherical_wrist_joint4(config, tjoint12, theta2, theta3, zdir)
+    except WristSingularity:
+        # TODO Determine theta 4 and 6 for wrist singularity
+        theta4 = 0
+        theta6 = 0
+    else:
+        # Calculate theta 6 (requires theta 1 - 5)
+        theta6, *_ = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
 
     # Bundle all the angles and apply the offset
     theta = [theta1, theta2, theta3, theta4, theta5, theta6]
@@ -165,7 +184,7 @@ def _ik_spherical_wrist_joint3(config, joint3_up, p14) -> List[float]:
     return [theta3_1, theta3_2]
 
 
-def _ik_spherical_wrist_joint4(config, tjoint12, theta2, theta3, zdir) -> List[float]:
+def _ik_spherical_wrist_joint4(config, tjoint12, theta2, theta3, zdir) -> float:
     """
     Calculate the fourth joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters
@@ -173,9 +192,8 @@ def _ik_spherical_wrist_joint4(config, tjoint12, theta2, theta3, zdir) -> List[f
     :param theta2: Previously calculated shoulder angle
     :param theta3: Previously calculated elbow angle
     :param zdir: Unit vector for z-axis of flange frame given in base frame
-    :return: List of solutions.
-    If a configuration is given by non_flip only one solutions is returned.
-    Otherwise both solutions are returned.
+    :return: Solution for theta 4
+    :raises: WristSingularity if axes of theta 4 and theta 6 are collinear
     """
     # Get the vector from joint 1 to joint 4 (same plane) based on previous results (neutralize offset)
     tjoint24 = forward_kinematics(config[1:3], [theta2, theta3], subtract_offset=True)
@@ -187,13 +205,12 @@ def _ik_spherical_wrist_joint4(config, tjoint12, theta2, theta3, zdir) -> List[f
 
     c = np.cross(zdir, z3)
 
-    if np.linalg.norm(c) != 0:
+    if np.linalg.norm(c) > WRIST_SINGULARITY_THRESHOLD:
         q4 = acos(np.dot(y3, c))
-    else:
-        # Singularity (J4 and J6 are collinear)
-        q4 = 0
-
-    return [q4]
+        return q4
+    # Singularity (J4 and J6 are collinear)
+    print('Wrist Singularity detected!')
+    raise WristSingularity
 
 
 def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir) -> List[float]:
@@ -218,7 +235,8 @@ def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir)
 
     # Theta 5 describes angle between z-dir of joint 5 and joint 6
     theta5_1 = acos(np.dot(z3, zdir))
-    theta5_2 = 2 * pi - theta5_1
+    # TODO Check second solution theta 5
+    theta5_2 = - theta5_1
 
     # Select the solution based on the pose flag
     if non_flip is not None:
@@ -247,10 +265,11 @@ def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5,
     # Get frame of joint 5
     tjoint26 = forward_kinematics(config[1:5], [theta2, theta3, theta4, theta5], subtract_offset=True)
     tjoint16 = np.dot(tjoint12, tjoint26)
-    x5 = tjoint16[0:3, 1]
+    x5 = tjoint16[0:3, 0]
 
     # Theta 6 describes angle between x-dir of joint 5 and joint 6
     theta6_1 = acos(np.dot(x5, xdir))
+    # TODO Check second solution (sign of theta 5?)
     theta6_2 = 2 * pi - theta6_1
 
     print(f'Theta 6: [x] {theta6_1:+.3f} [ ] {theta6_2:+.3f}')
