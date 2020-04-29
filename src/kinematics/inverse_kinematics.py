@@ -52,7 +52,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     # TODO Correctly determine link between pose flag and solution chosen
     if pose_flags is None:
         # Default pose flags
-        joint2_first = True
+        flag_right = True
         joint3_up = True
         joint5_non_flip = True
     else:
@@ -60,7 +60,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
             # Unpack pose flags and convert to boolean
             joint5_non_flip = True if (pose_flags & 1) == 1 else False
             joint3_up = True if (pose_flags & 2) == 2 else False
-            joint2_first = True if (pose_flags & 4) == 4 else False
+            flag_right = True if (pose_flags & 4) == 4 else False
         else:
             raise ValueError('Pose flag must be 0-7.')
 
@@ -79,7 +79,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     theta1 = atan2(p04[1], p04[0])
 
     # TODO Verify theta 1 adaption logic
-    if not joint2_first:
+    if not flag_right:
         theta1 *= -1
 
     # Get origin of joint 2 in base frame
@@ -93,7 +93,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     theta3, *_ = _ik_spherical_wrist_joint3(config, joint3_up, p14)
 
     # Calculate theta 2
-    theta2, *_ = _ik_spherical_wrist_joint2(config, joint2_first, tjoint12, p14)
+    theta2, *_ = _ik_spherical_wrist_joint2(config, flag_right, tjoint12, p14)
 
     # Calculate theta 5 (requires theta 1 - 3)
     theta5, *_ = _ik_spherical_wrist_joint5(config, joint5_non_flip, tjoint12, theta2, theta3, zdir)
@@ -241,14 +241,19 @@ def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir)
 
     # Theta 5 describes angle between z-dir of joint 5 and joint 6
     theta5_1 = acos(np.dot(z3, zdir))
-    # TODO Check second solution theta 5
     theta5_2 = - theta5_1
+
+    if theta5_1 < theta5_2:
+        # Swap values if first solution is the negative one
+        theta5_1, theta5_2 = theta5_2, theta5_1
 
     # Select the solution based on the pose flag
     if non_flip is not None:
         if non_flip:
+            # Choose the positive solution
             print(f'Theta 5: [x] {theta5_1:+.3f} [ ] {theta5_2:+.3f} (non-flip)')
             return [theta5_1]
+        # Choose the negative solution
         print(f'Theta 5: [ ] {theta5_1:+.3f} [x] {theta5_2:+.3f} (flip)')
         return [theta5_2]
     return [theta5_1, theta5_2]
