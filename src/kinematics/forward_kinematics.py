@@ -1,4 +1,4 @@
-from math import sqrt, atan2, cos
+from math import sqrt, atan2, cos, atan
 from typing import List
 
 import numpy as np
@@ -68,3 +68,52 @@ def tform2euler(tform: ndarray) -> List[float]:
         if beta < 0:
             alpha *= -1
     return [alpha, beta, gamma]
+
+
+def get_tform(xdir, ydir, zdir, pos):
+    """
+    Compose a homogeneous matrix from the individual components
+    :param xdir: Unit vector for x-axis
+    :param ydir: Unit vector for y-axis
+    :param zdir: Unit vector for z-axis
+    :param pos: Position vector
+    :return: Homogeneous 4x4 matrix
+    """
+    tform = np.zeros((4, 4))
+    tform[3, 3] = 1
+    tform[0:3] = np.array([xdir, ydir, zdir, pos]).transpose()
+    return tform
+
+
+def calculate_pose_flags(config, joint_values) -> float:
+    """
+    Calculate the flags of a roboter pose
+    :param config: Tuple of joints
+    :param joint_values: Tuple of joint values in manufacturer coordinates
+    :return: Float number (1-7)
+    """
+    # Calculate wrist center position
+    tjoint12 = forward_kinematics([config[0]], [joint_values[0]])
+    tjoint25 = forward_kinematics(config[1:4], joint_values[1:4])
+    tjoint15 = np.dot(tjoint12, tjoint25)
+    wrist_center_pos = tjoint15[0:3, 3]
+
+    # Calculate vector normal to plane through J1 axis and parallel to J2 axis
+    z_axis_j1 = np.array([0, 0, 1])
+    z_axis_j2 = tjoint12[0:3, 2]
+    normal_vec = np.cross(z_axis_j2, z_axis_j1)
+
+    # TODO Consider singularities
+    # Use dot product to determine side
+    right = 1 if np.dot(normal_vec, wrist_center_pos) > 0 else 0
+
+    # Convert to DH-system
+    joint_values_dh = [joint_val + joint.zero_offset for joint_val, joint in zip(joint_values, config)]
+
+    # Theta 3 determines elbow position (above or below plane of joint 2 and joint 3)
+    above = 1 if joint_values_dh[2] > - atan(config[3].d / config[2].a) else 0
+
+    # Theta 5 determines flip/nonflip
+    non_flip = 1 if joint_values_dh[4] > 0 else 0
+
+    return non_flip + above * 2 + right * 4

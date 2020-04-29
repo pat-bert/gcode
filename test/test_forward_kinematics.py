@@ -4,6 +4,7 @@ from typing import List
 import numpy as np
 import pytest
 
+from kinematics.forward_kinematics import calculate_pose_flags
 from src.kinematics.forward_kinematics import forward_kinematics, tform2quat, tform2euler
 from src.kinematics.joint_factories import BaseJointFactory
 
@@ -206,3 +207,43 @@ def test_tform2euler(dh_melfa_rv_4a, joints_deg, a, b, c):
         assert (a == pytest.approx(a_actual, abs=atol)) or (round(a - a_actual, r) % 360 == pytest.approx(0, abs=atol))
         assert (a == pytest.approx(a_actual, abs=atol)) or (round(b - b_actual, r) % 360 == pytest.approx(0, abs=atol))
         assert (a == pytest.approx(a_actual, abs=atol)) or (round(c - c_actual, r) % 360 == pytest.approx(0, abs=atol))
+
+
+@pytest.mark.parametrize("joints,ex_flags",
+                         [
+                             # RBN
+                             [(-160, 0, 28, 0, 20, 0), 5],
+                             # RAN
+                             [(-160, 0, 29, 0, 20, 0), 7],
+                             # RAF
+                             [(-160, 0, 29, 0, -20, 0), 6],
+                             # RBF
+                             [(-160, 0, 28, 0, -20, 0), 4],
+                             # LAN
+                             [(0, -46, 90, 0, 90, 0), 3],
+                             # RAN
+                             [(0, -45, 90, 0, 90, 0), 7],
+                             # LAF
+                             [(0, -50, 90, 0, -30, 0), 2],
+                             # LBF
+                             [(0, -15, 28, 160, -5, 0), 0],
+                             [(120, -15, 28, 160, -5, 0), 0],
+                             # LBN
+                             [(0, -15, 28, 160, 5, 0), 1]
+                         ]
+                         )
+def test_calculate_pose_flags(joints, ex_flags, dh_melfa_rv_4a):
+    """
+    Test that for given angles the correct flags can be calculated
+    :param joints:
+    :param ex_flags:
+    :param dh_melfa_rv_4a:
+    :return:
+    """
+    # Collect angles
+    joints = np.deg2rad(joints)
+
+    # Calculate flags
+    flags = calculate_pose_flags(dh_melfa_rv_4a, joints)
+
+    assert flags == ex_flags
