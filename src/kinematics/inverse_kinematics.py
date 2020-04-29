@@ -75,12 +75,8 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     # Get the wrist center in base frame from the flange position in base frame
     p04 = tcp_pos - zdir * config[5].d
 
-    # Theta 1 (Hip) represents the angle when the wrist center is given in polar coordinates
-    theta1 = atan2(p04[1], p04[0])
-
-    # TODO Verify theta 1 adaption logic
-    if not flag_right:
-        theta1 *= -1
+    # Calculate theta 1
+    theta1, *_ = _ik_spherical_wrist_joint1(flag_right, p04)
 
     # Get origin of joint 2 in base frame
     tjoint12 = forward_kinematics([config[0]], [theta1], subtract_offset=True)
@@ -115,6 +111,37 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     return [angle - joint.zero_offset for angle, joint in zip(theta, config)]
 
 
+def _ik_spherical_wrist_joint1(flag_right, p04) -> List[float]:
+    """
+    Calculate the first joint for the spherical wrist robot type
+    :param flag_right: Pose flog
+    :param p04: Vector from origin in joint 1 to wrist center
+    :return:List of solutions.
+    If a configuration is given by flag_right only one solutions is returned.
+    Otherwise both solutions are returned.
+    """
+    # Theta 1 (Hip) represents the angle when the wrist center is given in polar coordinates
+    theta1_1 = atan2(p04[1], p04[0])
+
+    # Second solution on opposite side but within [-pi, +pi]
+    if theta1_1 >= 0:
+        theta1_2 = theta1_1 - pi
+    else:
+        theta1_2 = theta1_1 + pi
+
+    # Theta 1 selection logic
+    if flag_right is not None:
+        if flag_right:
+            # Regular solution
+            print(f'Theta 1: [x] {theta1_1:+.3f} [ ] {theta1_2:+.3f}')
+            return [theta1_1]
+        # Second solution is chosen if flag is left
+        # Wrist center behind plane through joint 1 and parallel joint 2
+        print(f'Theta 1: [ ] {theta1_1:+.3f} [x] {theta1_2:+.3f}')
+        return [theta1_2]
+    return [theta1_1, theta1_2]
+
+
 def _ik_spherical_wrist_joint2(config, joint2_first, tjoint12, p14) -> List[float]:
     """
     Calculate the second joint for the spherical wrist robot type
@@ -123,7 +150,7 @@ def _ik_spherical_wrist_joint2(config, joint2_first, tjoint12, p14) -> List[floa
     :param tjoint12: Previously calculated transformation
     :param p14: Vector from frame origin in joint 2 to wrist center
     :return: List of solutions.
-    If a configuration is given by non_flip only one solutions is returned.
+    If a configuration is given by joint2_first only one solutions is returned.
     Otherwise both solutions are returned.
     """
     # Transform vector to wrist center given in frame 2 to frame 1
@@ -161,7 +188,7 @@ def _ik_spherical_wrist_joint3(config, joint3_up, p14) -> List[float]:
     :param joint3_up: Pose flog
     :param p14: Vector from frame origin in joint 2 to wrist center
     :return: List of solutions.
-    If a configuration is given by non_flip only one solutions is returned.
+    If a configuration is given by joint3_up only one solutions is returned.
     Otherwise both solutions are returned.
     """
     # Calculate other sides of triangle from link lengths

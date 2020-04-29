@@ -124,7 +124,7 @@ def test_ik_spherical_wrist_bad_config(dummy_tform, dh_melfa_rv_4a):
 
 
 @pytest.mark.parametrize("theta6", [-200, -100, 0, 100, 200])
-@pytest.mark.parametrize("theta5", [-120, -90, 0, 90, 120])
+@pytest.mark.parametrize("theta5", [-120, -90, 90, 120])
 @pytest.mark.parametrize("theta4", [-160, -90, 0, 90, 160])
 @pytest.mark.parametrize("theta3", [15, 45, 90, 130, 169])
 @pytest.mark.parametrize("theta2", [-90, -45, 0, 60, 140])
