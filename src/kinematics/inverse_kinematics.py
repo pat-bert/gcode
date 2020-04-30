@@ -128,7 +128,7 @@ def _ik_spherical_wrist_joint1(flag_right, p04) -> List[float]:
     If a configuration is given by flag_right only one solutions is returned.
     Otherwise both solutions are returned.
     """
-    # TODO Singularity occurs if the wrist center point is on axis J1 (plane as well?)
+    # Singularity occurs if the wrist center point is on axis J1
     if abs(p04[1]) <= SHOULDER_SINGULARITY_THRESHOLD and abs(p04[0]) <= SHOULDER_SINGULARITY_THRESHOLD:
         raise ShoulderSingularity
 

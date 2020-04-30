@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from src.kinematics.forward_kinematics import forward_kinematics, get_tform, calculate_pose_flags
-from src.kinematics.inverse_kinematics import ik_spherical_wrist
+from src.kinematics.inverse_kinematics import ik_spherical_wrist, WristSingularity
 
 
 def idfn(val):
@@ -20,43 +20,50 @@ def dummy_tform():
     return get_tform([1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 2, 3])
 
 
-@pytest.mark.parametrize("xdir,ydir,zdir,pos,flags,expected_joints",
+@pytest.mark.parametrize("xdir,ydir,zdir,pos,flags,expected_joints,exc",
                          [
                              # Home position (RAN)
                              (
                                      [-1, 0, 0], [0, 1, 0], [0, 0, -1],
                                      [+349.519, +0.000, +644.789], 7,
-                                     [0, 0, 90, 0, 90, 0]
+                                     [0, 0, 90, 0, 90, 0], None
                              ),
-                             # Adjusted home position moved to left end-stop of J1 (RAN)
+                             # Wrist Singularity (theta 5 = 0)
                              pytest.param(
                                  [0, 0, -1],
                                  [sin(160 / 180 * pi), cos(160 / 180 * pi), 0],
                                  [cos(160 / 180 * pi), -sin(160 / 180 * pi), 0],
                                  [-413.127, -150.366, +734.911], 7,
-                                 [-160, 0, 90, 0, 0, 0], marks=pytest.mark.xfail
+                                 [-160, 0, 90, 0, 0, 0], WristSingularity
                              ),
                              # Arbitrary position (RAF)
                              (
                                      [0, 0, 1], [0, -1, 0], [1, 0, 0],
                                      [90.122, 239.937, 709.612], 6,
-                                     [90, -26, 116, 90, -90, 90]
+                                     [90, -26, 116, 90, -90, 90], None
                              ),
                              # Arbitrary position (RAN)
                              (
                                      [0, 0, 1], [0, 1, 0], [-1, 0, 0],
                                      [-90.122, 239.937, 709.612], 7,
-                                     [90, -26, 116, 90, 90, 90]
+                                     [90, -26, 116, 90, 90, 90], None
                              ),
                              # Arbitrary position (LAN)
                              (
                                      [0, 0, -1], [-1, 0, 0], [0, 1, 0],
                                      [0, 41.134, 719.298], 3,
-                                     [90, -67, 112, 0, 45, 0]
+                                     [90, -67, 112, 0, 45, 0], None
                              ),
+                             # LAF
+                             # LBF
+                             # LBN
+                             # RBN
+                             # RBF
+                             # Shoulder Singularity
+                             # Elbow Singularity
                          ], ids=idfn
                          )
-def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, dh_melfa_rv_4a):
+def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, exc, dh_melfa_rv_4a):
     """
     Test that for a given TCP-pose the correct joint angles are determined.
     :param xdir: Unit vector of the x-axis of TCP coordinate system expressed in base system
@@ -72,29 +79,35 @@ def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, dh_me
 
     # Calculate the inverse kinematics
     print('\n\nCalculating inverse kinematics...')
-    actual_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=flags)
+    if exc is None:
+        # Regular solution should be possible
+        actual_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=flags)
 
-    # Test the solution
-    expected_joints = np.deg2rad(expected_joints)
-    print('\nChecking results...')
-    print(f'Actual:  {[f"{actual:+.3f}" for actual in actual_joints]}')
-    print(f'Expect:  {[f"{expect:+.3f}" for expect in expected_joints]}')
+        # Test the solution
+        expected_joints = np.deg2rad(expected_joints)
+        print('\nChecking results...')
+        print(f'Actual:  {[f"{actual:+.3f}" for actual in actual_joints]}')
+        print(f'Expect:  {[f"{expect:+.3f}" for expect in expected_joints]}')
 
-    non_flip = True if (flags & 1) == 1 else False
-    up = True if (flags & 2) == 2 else False
-    right = True if (flags & 4) == 4 else False
+        non_flip = True if (flags & 1) == 1 else False
+        up = True if (flags & 2) == 2 else False
+        right = True if (flags & 4) == 4 else False
 
-    print(f'EFlags:  {"R" if right else "L"},{"A" if up else "B"},{"N" if non_flip else "F"}')
+        print(f'EFlags:  {"R" if right else "L"},{"A" if up else "B"},{"N" if non_flip else "F"}')
 
-    np.testing.assert_allclose(actual_joints, expected_joints, atol=0.01)
+        np.testing.assert_allclose(actual_joints, expected_joints, atol=0.01)
 
-    # Reconvert the joint angles to a pose
-    print('\n\nCalculating forward kinematics from solution...')
-    tform_fk = forward_kinematics(dh_melfa_rv_4a, actual_joints)
+        # Reconvert the joint angles to a pose
+        print('\n\nCalculating forward kinematics from solution...')
+        tform_fk = forward_kinematics(dh_melfa_rv_4a, actual_joints)
 
-    # Check that the matrices are the same
-    print('\nChecking results...')
-    np.testing.assert_allclose(tform_fk, tform, atol=0.1)
+        # Check that the matrices are the same
+        print('\nChecking results...')
+        np.testing.assert_allclose(tform_fk, tform, atol=0.1)
+    else:
+        # Singularity expected
+        with pytest.raises(exc):
+            ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=flags)
     print('All good!')
 
 
