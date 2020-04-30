@@ -293,23 +293,16 @@ def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir)
     z3 = tjoint14[0:3, 2]
 
     # Theta 5 describes angle between z-dir of joint 5 and joint 6
-    theta5_1 = acos_safe(np.dot(z3, zdir))
-    theta5_2 = - theta5_1
-
-    if theta5_1 < theta5_2:
-        # Swap values if first solution is the negative one
-        theta5_1, theta5_2 = theta5_2, theta5_1
+    theta5_abs = acos_safe(np.dot(z3, zdir))
 
     # Select the solution based on the pose flag
     if non_flip is not None:
         if non_flip:
             # Choose the positive solution
-            print(f'Theta 5: [x] {theta5_1:+.3f} [ ] {theta5_2:+.3f} (non-flip)')
-            return [theta5_1]
+            return [theta5_abs]
         # Choose the negative solution
-        print(f'Theta 5: [ ] {theta5_1:+.3f} [x] {theta5_2:+.3f} (flip)')
-        return [theta5_2]
-    return [theta5_1, theta5_2]
+        return [- theta5_abs]
+    return [theta5_abs, - theta5_abs]
 
 
 def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir) -> List[float]:
