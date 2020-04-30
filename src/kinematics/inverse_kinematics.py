@@ -145,11 +145,9 @@ def _ik_spherical_wrist_joint1(flag_right, p04) -> List[float]:
     if flag_right is not None:
         if flag_right:
             # Regular solution
-            print(f'Theta 1: [x] {theta1_1:+.3f} [ ] {theta1_2:+.3f} (right)')
             return [theta1_1]
         # Second solution is chosen if flag is left
         # Wrist center behind plane through joint 1 and parallel joint 2
-        print(f'Theta 1: [ ] {theta1_1:+.3f} [x] {theta1_2:+.3f} (left)')
         return [theta1_2]
     return [theta1_1, theta1_2]
 
@@ -342,9 +340,7 @@ def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5,
 
     # Selection logic for theta 6
     if delta <= pi / 2:
-        print(f'Theta 6: [x] {theta6_abs:+.3f} [ ] {- theta6_abs:+.3f}')
         return [theta6_abs]
-    print(f'Theta 6: [ ] {theta6_abs:+.3f} [x] {- theta6_abs:+.3f}')
     return [- theta6_abs]
 
 
