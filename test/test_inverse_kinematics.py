@@ -136,12 +136,12 @@ def test_ik_spherical_wrist_bad_config(dummy_tform, dh_melfa_rv_4a):
         ik_spherical_wrist(dh_melfa_rv_4a + [dh_melfa_rv_4a[-1]], dummy_tform, pose_flags=7)
 
 
-@pytest.mark.parametrize("theta6", [-160, -100, 0, 100, 160])
-@pytest.mark.parametrize("theta5", [-120, -90, 90, 120])
-@pytest.mark.parametrize("theta4", [-160, -90, 0, 90, 160])
-@pytest.mark.parametrize("theta3", [15, 45, 90, 130, 169])
-@pytest.mark.parametrize("theta2", [-90, -45, 0, 60, 140])
-@pytest.mark.parametrize("theta1", [-160, -90, 0, 90, 160])
+@pytest.mark.parametrize("theta6", list(np.linspace(-160, 160, num=7)))
+@pytest.mark.parametrize("theta5", [i for i in np.linspace(-160, 160, num=7) if i != 0])
+@pytest.mark.parametrize("theta4", list(np.linspace(-160, 160, num=7)))
+@pytest.mark.parametrize("theta3", list(np.linspace(15, 169, num=7)))
+@pytest.mark.parametrize("theta2", list(np.linspace(-90, 140, num=7)))
+@pytest.mark.parametrize("theta1", list(np.linspace(-160, 160, num=7)))
 def test_ik_spherical_wrist_stress(theta1, theta2, theta3, theta4, theta5, theta6, dh_melfa_rv_4a):
     # Collect angles
     expected_joints = [theta1, theta2, theta3, theta4, theta5, theta6]

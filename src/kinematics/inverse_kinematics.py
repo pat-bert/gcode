@@ -109,7 +109,6 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
 
     # Bundle all the angles
     theta = [theta1, theta2, theta3, theta4, theta5, theta6]
-    print(f'Offsets: {[f"{joint.zero_offset:+.3f}" for joint in config]}')
 
     # Apply the offset and wrap to (-pi, pi]
     def wrap_to_pi(angle):
@@ -190,21 +189,17 @@ def _ik_spherical_wrist_joint2(config, flag_right, elbow_up, tjoint12, p14) -> L
     # Clear solutions for right/left
     if flag_right is True:
         # Clear lefty solutions
-        print(f'Theta 2: [x] {theta2_ru:+.3f} [ ] {theta2_lu:+.3f} [x] {theta2_rd:+.3f} [ ] {theta2_ld:+.3f} (right)')
         theta2_all[1], theta2_all[3] = None, None
     elif flag_right is False:
         # Clear righty solutions
-        print(f'Theta 2: [ ] {theta2_ru:+.3f} [x] {theta2_lu:+.3f} [ ] {theta2_rd:+.3f} [x] {theta2_ld:+.3f} (left)')
         theta2_all[0], theta2_all[2] = None, None
 
     # Clear solutions for right/left
     if elbow_up is True:
         # Clear down solutions
-        print(f'Theta 2: [x] {theta2_ru:+.3f} [x] {theta2_lu:+.3f} [ ] {theta2_rd:+.3f} [ ] {theta2_ld:+.3f} (up)')
         theta2_all[2], theta2_all[3] = None, None
     elif elbow_up is False:
         # Clear up solutions
-        print(f'Theta 2: [ ] {theta2_ru:+.3f} [ ] {theta2_lu:+.3f} [x] {theta2_rd:+.3f} [x] {theta2_ld:+.3f} (down)')
         theta2_all[0], theta2_all[1] = None, None
 
     # Remove none values and return remaining solutions
@@ -235,12 +230,10 @@ def _ik_spherical_wrist_joint3(config, elbow_up, p14) -> List[float]:
     theta3_1 = phi_offset - aux_phi_1
     theta3_2 = phi_offset - aux_phi_2
 
-    # TODO Select the solution based on the pose flag
+    # Select the solution based on the pose flag
     if elbow_up is not None:
         if elbow_up:
-            print(f'Theta 3: [x] {theta3_1:+.3f} [ ] {theta3_2:+.3f}')
             return [theta3_1]
-        print(f'Theta 3: [ ] {theta3_1:+.3f} [x] {theta3_2:+.3f}')
         return [theta3_2]
     return [theta3_1, theta3_2]
 
