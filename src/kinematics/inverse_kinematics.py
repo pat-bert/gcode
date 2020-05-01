@@ -174,22 +174,41 @@ def _ik_spherical_wrist_joint2(config, flag_right, elbow_up, tjoint12, p14) -> L
     l2 = config[1].a
 
     # Calculate auxiliary angles beta1 and beta2
-    beta1 = atan2(- wrist_center_pos_f2_f1[1], wrist_center_pos_f2_f1[0])
-    beta2_1 = acos_safe((l2 ** 2 + vector_len_p14 ** 2 - l4 ** 2) / (2 * l2 * vector_len_p14))
-    beta2_2 = 2 * pi - beta2_1
+    beta1_1 = atan2(- wrist_center_pos_f2_f1[1], wrist_center_pos_f2_f1[0])
+    beta1_2 = atan2(- wrist_center_pos_f2_f1[1], - wrist_center_pos_f2_f1[0])
+    beta2 = acos_safe((l2 ** 2 + vector_len_p14 ** 2 - l4 ** 2) / (2 * l2 * vector_len_p14))
 
     # Calculate solutions for theta3 based on beta1 and beta2
-    theta2_1 = -(beta1 + beta2_1)
-    theta2_2 = -(beta1 + beta2_2)
+    theta2_ru = -(beta1_1 + beta2)
+    theta2_lu = (beta1_2 - beta2) - pi
+    theta2_rd = - (beta1_1 - beta2)
+    theta2_ld = beta1_2 + beta2 - pi
 
-    # TODO Select the solution based on the pose flags
-    if flag_right is not None:
-        if flag_right:
-            print(f'Theta 2: [x] {theta2_1:+.3f} [ ] {theta2_2:+.3f}')
-            return [theta2_1]
-        print(f'Theta 2: [x] {theta2_1:+.3f} [ ] {theta2_2:+.3f}')
-        return [theta2_1]
-    return [theta2_1, theta2_2]
+    # Collect all solutions
+    theta2_all = [theta2_ru, theta2_lu, theta2_rd, theta2_ld]
+
+    # Clear solutions for right/left
+    if flag_right is True:
+        # Clear lefty solutions
+        print(f'Theta 2: [x] {theta2_ru:+.3f} [ ] {theta2_lu:+.3f} [x] {theta2_rd:+.3f} [ ] {theta2_ld:+.3f} (right)')
+        theta2_all[1], theta2_all[3] = None, None
+    elif flag_right is False:
+        # Clear righty solutions
+        print(f'Theta 2: [ ] {theta2_ru:+.3f} [x] {theta2_lu:+.3f} [ ] {theta2_rd:+.3f} [x] {theta2_ld:+.3f} (left)')
+        theta2_all[0], theta2_all[2] = None, None
+
+    # Clear solutions for right/left
+    if elbow_up is True:
+        # Clear down solutions
+        print(f'Theta 2: [x] {theta2_ru:+.3f} [x] {theta2_lu:+.3f} [ ] {theta2_rd:+.3f} [ ] {theta2_ld:+.3f} (up)')
+        theta2_all[2], theta2_all[3] = None, None
+    elif elbow_up is False:
+        # Clear up solutions
+        print(f'Theta 2: [ ] {theta2_ru:+.3f} [ ] {theta2_lu:+.3f} [x] {theta2_rd:+.3f} [x] {theta2_ld:+.3f} (down)')
+        theta2_all[0], theta2_all[1] = None, None
+
+    # Remove none values and return remaining solutions
+    return [solution for solution in theta2_all if solution is not None]
 
 
 def _ik_spherical_wrist_joint3(config, elbow_up, p14) -> List[float]:
