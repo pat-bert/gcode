@@ -91,7 +91,7 @@ jobs:
           name: Run tests with tox
           command: |
             venv\Scripts\activate.ps1
-            $major, $minor, $patch = << parameters.python-version >>.Split(".")
+            $major, $minor, $patch = "<< parameters.python-version >>".Split(".")
             if(-Not($major.Equals("3") -And $minor.Equals("7"))){$env:TOX_SKIP_ENV = "py37*"}
             tox --skip-missing-interpreters
       # Codecov merges all reports automatically
