@@ -15,14 +15,12 @@ class ShoulderSingularity(Singularity):
     """
     Will be raised if wrist center point is on J1 axis
     """
-    pass
 
 
 class WristSingularity(Singularity):
     """
     Will be raised if J4 and J6 align (infinite solutions)
     """
-    pass
 
 
 WRIST_SINGULARITY_THRESHOLD = 1e-3
@@ -76,9 +74,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     xdir = tform[0:3, 0]
     zdir = tform[0:3, 2]
 
-    """
-    Calculate theta 1
-    """
+    # Calculate theta 1
     # Get the wrist center in base frame from the flange position in base frame
     p04 = tcp_pos - zdir * config[5].d
 
