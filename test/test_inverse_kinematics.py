@@ -1,3 +1,4 @@
+import sys
 from math import pi, cos, sin
 
 import numpy as np
@@ -136,12 +137,14 @@ def test_ik_spherical_wrist_bad_config(dummy_tform, dh_melfa_rv_4a):
         ik_spherical_wrist(dh_melfa_rv_4a + [dh_melfa_rv_4a[-1]], dummy_tform, pose_flags=7)
 
 
+# TODO Increase coverage of IK by regular tests
 @pytest.mark.parametrize("theta6", [-160, -90, 0, 90, 160])
 @pytest.mark.parametrize("theta5", [-160, -90, 90, 160])
 @pytest.mark.parametrize("theta4", [-160, -90, 0, 90, 160])
 @pytest.mark.parametrize("theta3", [15, 20, 90, 130, 169])
 @pytest.mark.parametrize("theta2", [-90, 0, 30, 140])
 @pytest.mark.parametrize("theta1", [-160, -90, 0, 90, 160])
+@pytest.mark.skipif(sys.platform != 'win32', reason='Crashes CI using docker (~xdist)')
 def test_ik_spherical_wrist_stress(theta1, theta2, theta3, theta4, theta5, theta6, dh_melfa_rv_4a):
     # Collect angles
     expected_joints = [theta1, theta2, theta3, theta4, theta5, theta6]
