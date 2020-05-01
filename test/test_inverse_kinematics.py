@@ -89,9 +89,9 @@ def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, exc, 
         print(f'Actual:  {[f"{actual:+.3f}" for actual in actual_joints]}')
         print(f'Expect:  {[f"{expect:+.3f}" for expect in expected_joints]}')
 
-        non_flip = True if (flags & 1) == 1 else False
-        up = True if (flags & 2) == 2 else False
-        right = True if (flags & 4) == 4 else False
+        non_flip = bool((flags & 1) == 1)
+        up = bool((flags & 2) == 2)
+        right = bool((flags & 4) == 4)
 
         print(f'EFlags:  {"R" if right else "L"},{"A" if up else "B"},{"N" if non_flip else "F"}')
 

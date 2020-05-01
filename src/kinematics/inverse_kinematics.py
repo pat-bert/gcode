@@ -1,4 +1,4 @@
-from math import atan2, pi, acos, sqrt, atan
+from math import atan2, pi, acos, atan, hypot
 from typing import List
 
 import numpy as np
@@ -63,9 +63,9 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     else:
         if 0 <= pose_flags <= 7:
             # Unpack pose flags and convert to boolean
-            flag_non_flip = True if (pose_flags & 1) == 1 else False  # Only affected by J5
-            elbow_up = True if (pose_flags & 2) == 2 else False  # Only affected by J3
-            flag_right = True if (pose_flags & 4) == 4 else False  # Affected by J2, J3, J4
+            flag_non_flip = bool((pose_flags & 1) == 1)  # Only affected by J5
+            elbow_up = bool((pose_flags & 2) == 2)  # Only affected by J3
+            flag_right = bool((pose_flags & 4) == 4)  # Affected by J2, J3, J4
         else:
             raise ValueError('Pose flag must be 0-7.')
 
@@ -165,7 +165,7 @@ def _ik_spherical_wrist_joint2(config, flag_right, elbow_up, tjoint12, p14) -> L
     vector_len_p14 = np.linalg.norm(p14)
 
     # Calculate other sides of triangle from link lengths
-    l4 = sqrt(config[3].d ** 2 + config[2].a ** 2)
+    l4 = hypot(config[3].d, config[2].a)
     l2 = config[1].a
 
     # Calculate auxiliary angles beta1 and beta2
@@ -213,7 +213,7 @@ def _ik_spherical_wrist_joint3(config, elbow_up, p14) -> List[float]:
     Otherwise both solutions are returned.
     """
     # Calculate other sides of triangle from link lengths
-    l4 = sqrt(config[3].d ** 2 + config[2].a ** 2)
+    l4 = hypot(config[3].d, config[2].a)
     l2 = config[1].a
 
     # Get both solutions for the auxiliary angle phi using cosine law

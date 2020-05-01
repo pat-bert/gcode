@@ -1,4 +1,4 @@
-from math import sqrt, atan2, cos, atan
+from math import sqrt, atan2, cos, atan, hypot
 from typing import List
 
 import numpy as np
@@ -56,7 +56,7 @@ def tform2euler(tform: ndarray) -> List[float]:
     :param tform: Homogenous matrix (4x4)
     :return: ABC in deg as used by Mitsubishi (ZY'X'', alpha and gamma swapped)
     """
-    beta = atan2(-tform[2, 0], sqrt(tform[2, 1] ** 2 + tform[2, 2] ** 2))
+    beta = atan2(-tform[2, 0], hypot(tform[2, 1], tform[2, 2]))
     c_b = cos(beta)
 
     if abs(c_b) > 1e-10:
