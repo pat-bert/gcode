@@ -4,8 +4,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from kinematics.forward_kinematics import calculate_pose_flags
-from src.kinematics.forward_kinematics import forward_kinematics, tform2quat, tform2euler
+from src.kinematics.forward_kinematics import forward_kinematics, tform2quat, tform2euler, calculate_pose_flags
 from src.kinematics.joint_factories import BaseJointFactory
 
 

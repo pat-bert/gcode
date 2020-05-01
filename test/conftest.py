@@ -2,7 +2,7 @@ from math import pi
 
 import pytest
 
-from kinematics.joint_factories import BaseJointFactory
+from src.kinematics.joint_factories import BaseJointFactory
 
 
 @pytest.fixture
