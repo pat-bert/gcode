@@ -148,7 +148,7 @@ def test_ik_spherical_wrist_bad_config(dummy_tform, dh_melfa_rv_4a):
                              (30, -90, 120, -50, -30, 30),
                          ]
                          )
-def test_ik_spherical_wrist_fk_based(expected_joints, dh_melfa_rv_4a):
+def test_ik_spherical_wrist_fk_based(expected_joints, dh_melfa_rv_4a, benchmark):
     expected_joints = np.deg2rad(expected_joints)
 
     # Calculate roboter pose
@@ -158,7 +158,7 @@ def test_ik_spherical_wrist_fk_based(expected_joints, dh_melfa_rv_4a):
     flags = calculate_pose_flags(dh_melfa_rv_4a, expected_joints)
 
     # Calculate inverse kinematics
-    actual_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform_under_test, pose_flags=flags)
+    actual_joints = benchmark(ik_spherical_wrist, dh_melfa_rv_4a, tform_under_test, pose_flags=flags)
 
     print(f'Actual:  {[f"{actual:+.3f}" for actual in actual_joints]}')
     print(f'Expect:  {[f"{expect:+.3f}" for expect in expected_joints]} Flags: {flags}')
