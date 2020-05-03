@@ -79,7 +79,8 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     p04 = tcp_pos - zdir * config[5].d
 
     # Calculate theta 1
-    theta1, *_ = _ik_spherical_wrist_joint1(flag_right, p04)
+    theta1_solutions = _ik_spherical_wrist_joint1(flag_right, p04)
+    theta1 = theta1_solutions[0]
 
     # Get origin of joint 2 in base frame
     tjoint12 = forward_kinematics([config[0]], [theta1], subtract_offset=True)
@@ -89,19 +90,22 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     p14 = p04 - p01
 
     # Calculate theta 3
-    theta3, *_ = _ik_spherical_wrist_joint3(config, elbow_up, p14)
+    theta3_solutions = _ik_spherical_wrist_joint3(config, elbow_up, p14)
+    theta3 = theta3_solutions[0]
 
     # Calculate theta 2
-    theta2, *_ = _ik_spherical_wrist_joint2(config, flag_right, elbow_up, tjoint12, p14)
+    theta2_solutions = _ik_spherical_wrist_joint2(config, flag_right, elbow_up, tjoint12, p14)
+    theta2 = theta2_solutions[0]
 
     # Calculate theta 5 (requires theta 1 - 3)
-    theta5, *_ = _ik_spherical_wrist_joint5(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
+    theta5_solutions = _ik_spherical_wrist_joint5(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
+    theta5 = theta5_solutions[0]
 
     # Calculate theta 4 (requires theta 1 - 3)
     theta4 = _ik_spherical_wrist_joint4(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
 
     # Calculate theta 6 (requires theta 1 - 5)
-    theta6, *_ = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
+    theta6 = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
 
     # Bundle all the angles
     theta = [theta1, theta2, theta3, theta4, theta5, theta6]
@@ -313,7 +317,7 @@ def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir)
     return [theta5_abs, - theta5_abs]
 
 
-def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir) -> List[float]:
+def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir) -> float:
     """
     Calculate the sixth joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters
@@ -341,8 +345,8 @@ def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5,
 
     # Selection logic for theta 6
     if delta <= pi / 2:
-        return [theta6_abs]
-    return [- theta6_abs]
+        return theta6_abs
+    return -theta6_abs
 
 
 def acos_safe(arg):
