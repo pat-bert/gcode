@@ -23,6 +23,18 @@ class WristSingularity(Singularity):
     """
 
 
+class ElbowSingularity(Singularity):
+    """
+    Will be raised if the wrist center point is within the plane through J2 and J3
+    """
+
+
+class OutOfReachError(ValueError):
+    """
+    Will be raised if a pose cannot be reached.
+    """
+
+
 WRIST_SINGULARITY_THRESHOLD = 1e-3
 SHOULDER_SINGULARITY_THRESHOLD = 1e-3
 
@@ -349,11 +361,16 @@ def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5,
     return -theta6_abs
 
 
-def acos_safe(arg):
+def acos_safe(arg) -> float:
     """
     Helper function to prevent MathDomainErrors caused by float arithmetic
     :param arg: Argument to be passed to acos
-    :return: acos but argument was clipped to [-1, 1] before
+    :return: acos for angle arg rounded to six digits
+    :raises: OutOfReachError if acos is not defined for the rounded arg
     """
-    arg_clipped = np.clip(arg, -1, 1)
-    return acos(arg_clipped)
+    # Check whether no solution is available (= OutOfReachError)
+    arg_clipped = round(arg, ndigits=6)
+    try:
+        return acos(arg_clipped)
+    except ValueError:
+        raise OutOfReachError

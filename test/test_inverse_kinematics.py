@@ -61,6 +61,7 @@ def dummy_tform():
                              # RBF
                              # Shoulder Singularity
                              # Elbow Singularity
+                             # Point out of reach
                          ], ids=idfn
                          )
 def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, exc, dh_melfa_rv_4a):
