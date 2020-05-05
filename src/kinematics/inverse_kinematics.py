@@ -36,6 +36,7 @@ class OutOfReachError(ValueError):
 
 
 WRIST_SINGULARITY_THRESHOLD = 1e-3
+ELBOW_SINGULARITY_THRESHOLD = 1e-3
 SHOULDER_SINGULARITY_THRESHOLD = 1e-3
 
 
@@ -234,7 +235,10 @@ def _ik_spherical_wrist_joint3(config, elbow_up, p14) -> List[float]:
 
     # Get both solutions for the auxiliary angle phi using cosine law
     vector_len_p14 = np.linalg.norm(p14)
-    aux_phi_1 = acos_safe((l2 ** 2 + l4 ** 2 - vector_len_p14 ** 2) / (2 * l2 * l4))
+
+    phi_arg = (l2 ** 2 + l4 ** 2 - vector_len_p14 ** 2) / (2 * l2 * l4)
+
+    aux_phi_1 = acos_safe(phi_arg)
     aux_phi_2 = 2 * pi - aux_phi_1
 
     # Calculate solutions for theta3 based on phi
