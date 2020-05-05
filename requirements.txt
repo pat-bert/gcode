@@ -23,7 +23,7 @@ mutmut==2.0.0
 numpy==1.18.4
 packaging==20.3
 parso==0.7.0
-pip-tools==5.1.1
+pip-tools==5.1.2
 pipdeptree==0.13.2
 pluggy==0.13.1
 pony==0.7.13
