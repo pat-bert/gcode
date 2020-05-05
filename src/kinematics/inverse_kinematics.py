@@ -1,5 +1,5 @@
 from math import atan2, pi, acos, atan, hypot
-from typing import List
+from typing import List, Optional, Dict
 
 import numpy as np
 
@@ -35,12 +35,17 @@ class OutOfReachError(ValueError):
     """
 
 
+# Apply the offset and wrap to (-pi, pi]
+def wrap_to_pi(angle):
+    return -((- angle + pi) % (2 * pi) - pi)
+
+
 WRIST_SINGULARITY_THRESHOLD = 1e-3
 ELBOW_SINGULARITY_THRESHOLD = 1e-3
 SHOULDER_SINGULARITY_THRESHOLD = 1e-3
 
 
-def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=None) -> List[float]:
+def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=None) -> Dict[float, List[float]]:
     """
     Calculate the forward kinematics for a given configuration of joints and joint coordinates.
     :param config: Tuple of joints, offsets are considered
@@ -70,74 +75,81 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
 
     if pose_flags is None:
         # Default pose flags
-        flag_right = True
-        elbow_up = True
-        flag_non_flip = True
+        flag_right, flag_elbow_up, flag_non_flip = None, None, None
+    elif 0 <= pose_flags <= 7:
+        # Unpack pose flags and convert to boolean
+        flag_non_flip = bool(pose_flags & 1)  # Only affected by J5
+        flag_elbow_up = bool(pose_flags & 2)  # Only affected by J3
+        flag_right = bool(pose_flags & 4)  # Affected by J2, J3, J4
     else:
-        if 0 <= pose_flags <= 7:
-            # Unpack pose flags and convert to boolean
-            flag_non_flip = bool((pose_flags & 1) == 1)  # Only affected by J5
-            elbow_up = bool((pose_flags & 2) == 2)  # Only affected by J3
-            flag_right = bool((pose_flags & 4) == 4)  # Affected by J2, J3, J4
-        else:
-            raise ValueError('Pose flag must be 0-7.')
+        raise ValueError('Pose flag must be 0-7.')
 
     # Extract the relevant data from the matrix
     tcp_pos = tform[0:3, 3]
     xdir = tform[0:3, 0]
     zdir = tform[0:3, 2]
 
-    # Calculate theta 1
     # Get the wrist center in base frame from the flange position in base frame
     p04 = tcp_pos - zdir * config[5].d
+    solutions = {}
 
-    # Calculate theta 1
+    # Attempt to calculate theta1, singularity error will propagate
     theta1_solutions = _ik_spherical_wrist_joint1(flag_right, p04)
-    theta1 = theta1_solutions[0]
 
-    # Get origin of joint 2 in base frame
-    tjoint12 = forward_kinematics([config[0]], [theta1], subtract_offset=True)
-    p01 = tjoint12[0:3, 3]
+    # The solutions of theta 1 contain the corresponding right flag
+    for idx1, (flag_right, theta1) in enumerate(theta1_solutions.items()):
+        # Get the vector from origin of joint 2 (frame 1) to wrist center
+        tjoint12 = forward_kinematics([config[0]], [theta1], subtract_offset=True)
+        p01 = tjoint12[0:3, 3]
+        p14 = p04 - p01
 
-    # Get the vector from origin of joint 2 (frame 1) to wrist center
-    p14 = p04 - p01
+        try:
+            # Calculate theta 2 for the current flag_right value
+            theta2_solutions = _ik_spherical_wrist_joint2(config, flag_right, flag_elbow_up, tjoint12, p14)
+        except ValueError:
+            # This is only an issue if this is the last iteration of theta1 and no solution has been found yet
+            if len(solutions) == 0 and idx1 == len(theta1_solutions) - 1:
+                raise
+            continue
 
-    # Calculate theta 3
-    theta3_solutions = _ik_spherical_wrist_joint3(config, elbow_up, p14)
-    theta3 = theta3_solutions[0]
+        # The solutions of theta 2 contain the corresponding elbow flag
+        for idx2, (flag_elbow_up, theta2) in enumerate(theta2_solutions.items()):
+            try:
+                # Calculate theta 3
+                theta3 = _ik_spherical_wrist_joint3(config, flag_elbow_up, p14)
+            except ValueError:
+                if len(solutions) == 0 and idx2 == len(theta2_solutions) - 1:
+                    raise
+                continue
 
-    # Calculate theta 2
-    theta2_solutions = _ik_spherical_wrist_joint2(config, flag_right, elbow_up, tjoint12, p14)
-    theta2 = theta2_solutions[0]
+            # Calculate theta 5 (requires theta 1 - 3)
+            theta5_solutions = _ik_spherical_wrist_joint5(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
 
-    # Calculate theta 5 (requires theta 1 - 3)
-    theta5_solutions = _ik_spherical_wrist_joint5(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
-    theta5 = theta5_solutions[0]
+            for idx5, (flag_non_flip, theta5) in enumerate(theta5_solutions.items()):
+                # Calculate theta 4 (requires theta 1 - 3)
+                theta4 = _ik_spherical_wrist_joint4(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
 
-    # Calculate theta 4 (requires theta 1 - 3)
-    theta4 = _ik_spherical_wrist_joint4(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
+                # Calculate theta 6 (requires theta 1 - 5)
+                theta6 = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
 
-    # Calculate theta 6 (requires theta 1 - 5)
-    theta6 = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
+                # Bundle all the angles
+                theta = [theta1, theta2, theta3, theta4, theta5, theta6]
+                theta = [wrap_to_pi(angle - joint.zero_offset) for angle, joint in zip(theta, config)]
 
-    # Bundle all the angles
-    theta = [theta1, theta2, theta3, theta4, theta5, theta6]
+                # Append to solutions using the pose flags as key
+                solutions[4 * flag_right + 2 * flag_elbow_up + flag_non_flip] = theta
 
-    # Apply the offset and wrap to (-pi, pi]
-    def wrap_to_pi(angle):
-        return -((- angle + pi) % (2 * pi) - pi)
-
-    theta = [wrap_to_pi(angle - joint.zero_offset) for angle, joint in zip(theta, config)]
-    return theta
+    # Return all successfully calculated solutions
+    return solutions
 
 
-def _ik_spherical_wrist_joint1(flag_right, p04) -> List[float]:
+def _ik_spherical_wrist_joint1(flag_right: Optional[bool], p04: np.ndarray) -> Dict[bool, float]:
     """
     Calculate the first joint for the spherical wrist robot type
     :param flag_right: Pose flog
     :param p04: Vector from origin in joint 1 to wrist center
     :return:List of solutions.
-    If a configuration is given by flag_right only one solutions is returned.
+    If a configuration is given by right only one solutions is returned.
     Otherwise both solutions are returned.
     """
     # Singularity occurs if the wrist center point is on axis J1
@@ -148,78 +160,71 @@ def _ik_spherical_wrist_joint1(flag_right, p04) -> List[float]:
     theta1_1 = atan2(p04[1], p04[0])
 
     # Second solution on opposite side but within [-pi, +pi]
-    if theta1_1 >= 0:
-        theta1_2 = theta1_1 - pi
-    else:
-        theta1_2 = theta1_1 + pi
+    theta1_2 = (theta1_1 - pi) if theta1_1 >= 0 else (theta1_1 + pi)
 
     # Theta 1 selection logic
     if flag_right is not None:
         if flag_right:
             # Regular solution
-            return [theta1_1]
+            return {flag_right: theta1_1}
         # Second solution is chosen if flag is left
         # Wrist center behind plane through joint 1 and parallel joint 2
-        return [theta1_2]
-    return [theta1_1, theta1_2]
+        return {flag_right: theta1_2}
+    return {True: theta1_1, False: theta1_2}
 
 
-def _ik_spherical_wrist_joint2(config, flag_right, elbow_up, tjoint12, p14) -> List[float]:
+def _ik_spherical_wrist_joint2(
+        config: List[BaseJoint],
+        right: bool,
+        elbow_up: Optional[bool],
+        tf12: np.ndarray,
+        p14_f2: np.ndarray) -> Dict[bool, float]:
     """
     Calculate the second joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters
-    :param flag_right: Pose flog
+    :param right: Pose flog (always known because tjoint12 is known)
     :param elbow_up: Pose flog
-    :param tjoint12: Previously calculated transformation
-    :param p14: Vector from frame origin in joint 2 to wrist center
-    :return: List of solutions.
+    :param tf12: Previously calculated transformation
+    :param p14_f2: Vector from frame origin in joint 2 to wrist center
+    :return: Dict of solutions, flag_right is used as key.
     If a configuration is given by flag_right only one solutions is returned.
     Otherwise both solutions are returned.
     """
     # Transform vector to wrist center given in frame 2 to frame 1
-    tjoint21 = tjoint12.transpose()
-    wrist_center_pos_f2_f1 = np.dot(tjoint21[0:3, 0:3], p14)
-    vector_len_p14 = np.linalg.norm(p14)
+    tjoint21 = tf12.transpose()
+    p14_f1 = np.dot(tjoint21[0:3, 0:3], p14_f2)
+    vector_len_p14 = np.linalg.norm(p14_f2)
 
     # Calculate other sides of triangle from link lengths
     l4 = hypot(config[3].d, config[2].a)
     l2 = config[1].a
 
     # Calculate auxiliary angles beta1 and beta2
-    beta1_1 = atan2(- wrist_center_pos_f2_f1[1], wrist_center_pos_f2_f1[0])
-    beta1_2 = atan2(- wrist_center_pos_f2_f1[1], - wrist_center_pos_f2_f1[0])
     beta2 = acos_safe((l2 ** 2 + vector_len_p14 ** 2 - l4 ** 2) / (2 * l2 * vector_len_p14))
 
-    # Calculate solutions for theta3 based on beta1 and beta2
-    theta2_ru = -(beta1_1 + beta2)
-    theta2_lu = (beta1_2 - beta2) - pi
-    theta2_rd = - (beta1_1 - beta2)
-    theta2_ld = beta1_2 + beta2 - pi
+    # Conditional calculation since only one solution of beta1 is ever used
+    if right:
+        # Calculate solutions for theta3 based on beta1 and beta2
+        beta1_1 = atan2(- p14_f1[1], p14_f1[0])
+        theta2_ru = -(beta1_1 + beta2)
+        theta2_rd = - (beta1_1 - beta2)
+        theta2_all = [theta2_rd, theta2_ru]
+    else:
+        # Calculate solutions for theta3 based on beta1 and beta2
+        beta1_2 = atan2(- p14_f1[1], - p14_f1[0])
+        theta2_lu = (beta1_2 - beta2) - pi
+        theta2_ld = beta1_2 + beta2 - pi
+        theta2_all = [theta2_ld, theta2_lu]
 
-    # Collect all solutions
-    theta2_all = [theta2_ru, theta2_lu, theta2_rd, theta2_ld]
-
-    # Clear solutions for right/left
-    if flag_right is True:
-        # Clear lefty solutions
-        theta2_all[1], theta2_all[3] = None, None
-    elif flag_right is False:
-        # Clear righty solutions
-        theta2_all[0], theta2_all[2] = None, None
-
-    # Clear solutions for right/left
-    if elbow_up is True:
-        # Clear down solutions
-        theta2_all[2], theta2_all[3] = None, None
-    elif elbow_up is False:
-        # Clear up solutions
-        theta2_all[0], theta2_all[1] = None, None
-
-    # Remove none values and return remaining solutions
-    return [solution for solution in theta2_all if solution is not None]
+    # Select solutions
+    if elbow_up is not None:
+        # Only one solution (using bool as index)
+        return {elbow_up: theta2_all[elbow_up]}
+    # Both solutions
+    return {False: theta2_all[0], True: theta2_all[1]}
 
 
-def _ik_spherical_wrist_joint3(config, elbow_up, p14) -> List[float]:
+def _ik_spherical_wrist_joint3(config: List[BaseJoint], elbow_up: bool, p14: np.ndarray) -> float:
     """
     Calculate the third joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters
@@ -243,21 +248,24 @@ def _ik_spherical_wrist_joint3(config, elbow_up, p14) -> List[float]:
 
     # Calculate solutions for theta3 based on phi
     phi_offset = (pi - atan(config[3].d / config[2].a))
-    theta3_1 = phi_offset - aux_phi_1
-    theta3_2 = phi_offset - aux_phi_2
 
-    # Select the solution based on the pose flag
-    if elbow_up is not None:
-        if elbow_up:
-            return [theta3_1]
-        return [theta3_2]
-    return [theta3_1, theta3_2]
+    if elbow_up:
+        return phi_offset - aux_phi_1
+    else:
+        return phi_offset - aux_phi_2
 
 
-def _ik_spherical_wrist_joint4(config, non_flip, tjoint12, theta2, theta3, zdir) -> float:
+def _ik_spherical_wrist_joint4(
+        config: List[BaseJoint],
+        non_flip: bool,
+        tjoint12: np.ndarray,
+        theta2: float,
+        theta3: float,
+        zdir) -> float:
     """
     Calculate the fourth joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters
+    :param non_flip: Pose flag
     :param tjoint12: Previously calculated transformation
     :param theta2: Previously calculated shoulder angle
     :param theta3: Previously calculated elbow angle
@@ -274,9 +282,9 @@ def _ik_spherical_wrist_joint4(config, non_flip, tjoint12, theta2, theta3, zdir)
     y3 = tjoint14[0:3, 1]
     x3 = tjoint14[0:3, 0]
 
+    # c needs to be a unit vector
     c = np.cross(zdir, z3)
     c_vector_len = np.linalg.norm(c)
-    # c needs to be a unit vector
     c /= c_vector_len
 
     if c_vector_len <= WRIST_SINGULARITY_THRESHOLD:
@@ -300,7 +308,7 @@ def _ik_spherical_wrist_joint4(config, non_flip, tjoint12, theta2, theta3, zdir)
     return delta_q4
 
 
-def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir) -> List[float]:
+def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir) -> Dict[bool, float]:
     """
     Calculate the fifth joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters
@@ -309,7 +317,7 @@ def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir)
     :param theta2: Previously calculated shoulder angle
     :param theta3: Previously calculated elbow angle
     :param zdir: Unit vector for z-axis of flange frame given in base frame
-    :return: List of solutions.
+    :return:  Dict of solutions, non_flip is used as key.
     If a configuration is given by non_flip only one solutions is returned.
     Otherwise both solutions are returned.
     """
@@ -317,23 +325,26 @@ def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir)
     tjoint24 = forward_kinematics(config[1:3], [theta2, theta3], subtract_offset=True)
     tjoint14 = np.dot(tjoint12, tjoint24)
 
-    # Get z-direction of joint 4 in base frame
+    # Theta 5 describes angle between z-dir of joint 4 and joint 6
     z3 = tjoint14[0:3, 2]
-
-    # Theta 5 describes angle between z-dir of joint 5 and joint 6
     theta5_abs = acos_safe(np.dot(z3, zdir))
 
     # Select the solution based on the pose flag
     if non_flip is not None:
-        if non_flip:
-            # Choose the positive solution
-            return [theta5_abs]
-        # Choose the negative solution
-        return [- theta5_abs]
-    return [theta5_abs, - theta5_abs]
+        # Only one solution is chosen
+        return {non_flip: (theta5_abs if non_flip else - theta5_abs)}
+    # Both solutions are returned
+    return {True: theta5_abs, False: - theta5_abs}
 
 
-def _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir) -> float:
+def _ik_spherical_wrist_joint6(
+        config: List[BaseJoint],
+        tjoint12: np.ndarray,
+        theta2: float,
+        theta3: float,
+        theta4: float,
+        theta5: float,
+        xdir: np.ndarray) -> float:
     """
     Calculate the sixth joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters

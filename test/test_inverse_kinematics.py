@@ -138,7 +138,7 @@ def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, exc, 
     print('\n\nCalculating inverse kinematics...')
     if exc is None:
         # Regular solution should be possible
-        act_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=flags)
+        act_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=flags)[flags]
 
         # Test the solution
         expected_joints = np.deg2rad(expected_joints)
@@ -164,7 +164,7 @@ def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, exc, 
     else:
         # Singularity expected
         with pytest.raises(exc):
-            act_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=flags)
+            act_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=flags)[flags]
             print(f'Actual:  {[f"{actual:+.3f}" for actual in act_joints]}')
     print('All good!')
 
@@ -223,7 +223,7 @@ def test_ik_spherical_wrist_fk_based(expected_joints, dh_melfa_rv_4a, benchmark)
     flags = calculate_pose_flags(dh_melfa_rv_4a, expected_joints)
 
     # Calculate inverse kinematics
-    actual_joints = benchmark(ik_spherical_wrist, dh_melfa_rv_4a, tform_under_test, pose_flags=flags)
+    actual_joints = benchmark(ik_spherical_wrist, dh_melfa_rv_4a, tform_under_test, pose_flags=flags)[flags]
 
     print(f'Actual:  {[f"{actual:+.5f}" for actual in actual_joints]}')
     print(f'Expect:  {[f"{expect:+.5f}" for expect in expected_joints]} Flags: {flags}')
