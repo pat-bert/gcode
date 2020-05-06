@@ -78,9 +78,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
         flag_right, flag_elbow_up, flag_non_flip = None, None, None
     elif 0 <= pose_flags <= 7:
         # Unpack pose flags and convert to boolean
-        flag_non_flip = bool(pose_flags & 1)  # Only affected by J5
-        flag_elbow_up = bool(pose_flags & 2)  # Only affected by J3
-        flag_right = bool(pose_flags & 4)  # Affected by J2, J3, J4
+        flag_right, flag_elbow_up, flag_non_flip = bool(pose_flags & 4), bool(pose_flags & 2), bool(pose_flags & 1)
     else:
         raise ValueError('Pose flag must be 0-7.')
 
@@ -99,17 +97,19 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     return _calc_j1_dependants(config, flag_elbow_up, flag_non_flip, p04, theta1_solutions, xdir, zdir)
 
 
-def _calc_j1_dependants(config, elbow_up, non_flip, p04, j1_solutions, xdir, zdir) -> Dict[float, List[float]]:
+def _calc_j1_dependants(config: List[BaseJoint], elbow_up: Optional[bool], non_flip: Optional[bool], p04: np.ndarray,
+                        j1_solutions: Dict[bool, float], xdir: np.ndarray, zdir: np.ndarray) \
+        -> Dict[float, List[float]]:
     """
     Calculate all dependant angles (2-6) for given j1 solutions
-    :param config:
-    :param elbow_up:
-    :param non_flip:
-    :param p04:
-    :param j1_solutions:
-    :param xdir:
-    :param zdir:
-    :return:
+    :param config: Tuple of joints, offsets are considered
+    :param elbow_up: Elbow-up flag. If None all possible configurations are calculated.
+    :param non_flip: Non-flip flag. If None all possible configurations are calculated.
+    :param p04: Wrist center position given in base frame
+    :param j1_solutions: Dict of J1 solutions. Boolean values of right flag are keys, angles are values.
+    :param xdir: TCP frame x-direction unit vector
+    :param zdir: TCP frame z-direction unit vector
+    :return: Dictionary of complete IK solutions. Pose flags are key, lists of angles are values.
     """
     out = {}
     # The solutions of theta 1 contain the corresponding flag_sum flag
@@ -139,19 +139,21 @@ def _calc_j1_dependants(config, elbow_up, non_flip, p04, j1_solutions, xdir, zdi
     return out
 
 
-def _calc_j2_dependants(conf, non_flip, p14, flag_sum, j1, j2_solutions, tf12, xdir, zdir) -> Dict[float, List[float]]:
+def _calc_j2_dependants(conf: List[BaseJoint], non_flip: Optional[bool], p14: np.ndarray, flag_sum: int, j1: float,
+                        j2_solutions: Dict[bool, float], tf12: np.ndarray, xdir: np.ndarray, zdir: np.ndarray) \
+        -> Dict[float, List[float]]:
     """
     Calculate all dependant angles (3-6) for given j2 solutions
-    :param conf:
-    :param non_flip:
-    :param p14:
-    :param flag_sum:
-    :param j1:
-    :param j2_solutions:
-    :param tf12:
-    :param xdir:
-    :param zdir:
-    :return:
+    :param conf: Tuple of joints, offsets are considered
+    :param non_flip: Non-flip flag. If None all possible configurations are calculated.
+    :param p14: Vector from frame origin in joint 2 to wrist center
+    :param flag_sum: Sum of previous levels. All solutions from here are have flag = flagsum + k, k=0..3
+    :param j1: Value of calculated J1 angle
+    :param j2_solutions: Dict of J2 solutions. Boolean values of right flag are keys, angles are values.
+    :param tf12: Transformation matrix from joint 1 to joint 2
+    :param xdir: TCP frame x-direction unit vector
+    :param zdir: TCP frame z-direction unit vector
+    :return: Dictionary of complete IK solutions. Pose flags are key, lists of angles are values.
     """
     out = {}
 
@@ -162,14 +164,18 @@ def _calc_j2_dependants(conf, non_flip, p14, flag_sum, j1, j2_solutions, tf12, x
             # Calculate theta 3
             j3 = _ik_spherical_wrist_joint3(conf, elbow_up, p14)
 
+            # Calculate transformation from joint 1 to joint 4
+            tf24 = forward_kinematics(conf[1:3], [j2, j3], subtract_offset=True)
+            tf14 = np.dot(tf12, tf24)
+
             # Calculate theta 5 (requires theta 1 - 3)
-            j5_solutions = _ik_spherical_wrist_joint5(conf, non_flip, tf12, j2, j3, zdir)
+            j5_solutions = _ik_spherical_wrist_joint5(non_flip, tf14, zdir)
 
             # Add the flag summand of the current level
             flag_sum += 2 * elbow_up
 
             # Calculate all angles depending on the j5 solutions
-            inner_out = _calc_j5_dependants(conf, flag_sum, [j1, j2, j3], j5_solutions, tf12, xdir, zdir)
+            inner_out = _calc_j5_dependants(conf, flag_sum, [j1, j2, j3], j5_solutions, tf14, xdir, zdir)
 
             # Collect the solutions
             out.update(inner_out)
@@ -180,29 +186,24 @@ def _calc_j2_dependants(conf, non_flip, p14, flag_sum, j1, j2_solutions, tf12, x
     return out
 
 
-def _calc_j5_dependants(conf, flag_sum, theta123, j5_solutions, tf12, xdir, zdir) -> Dict[float, List[float]]:
+def _calc_j5_dependants(conf: List[BaseJoint], flag_sum: int, theta123: List[float], j5_solutions: Dict[bool, float],
+                        tf14: np.ndarray, xdir: np.ndarray, zdir: np.ndarray) -> Dict[float, List[float]]:
     """
     Calculate the dependant last joint for given j5 solutions
-    :param conf:
-    :param flag_sum:
-    :param theta123:
-    :param j5_solutions:
-    :param tf12:
-    :param xdir:
-    :param zdir:
-    :return:
+    :param conf: Tuple of joints, offsets are considered
+    :param flag_sum: Sum of previous levels. All solutions from here are have flag = flagsum + k, k=0..1
+    :param theta123: List of angles j1-j3
+    :param j5_solutions: Dict of J5 solutions. Boolean values of right flag are keys, angles are values.
+    :param tf14: Transformation matrix from joint 1 to joint 4
+    :param xdir: TCP frame x-direction unit vector
+    :param zdir: TCP frame z-direction unit vector
+    :return: Dictionary of complete IK solutions. Pose flags are key, lists of angles are values.
     """
-    # Unpack first three angles
-    theta1, theta2, theta3 = theta123
     out = {}
 
     # The solutions of theta 5 contain the corresponding non flip flag
     for idx5, (non_flip, theta5) in enumerate(j5_solutions.items()):
         try:
-            # Calculate transformation from joint 1 to joint 4
-            tf24 = forward_kinematics(conf[1:3], [theta2, theta3], subtract_offset=True)
-            tf14 = np.dot(tf12, tf24)
-
             # Calculate theta 4
             theta4 = _ik_spherical_wrist_joint4(non_flip, tf14, zdir)
 
@@ -219,7 +220,7 @@ def _calc_j5_dependants(conf, flag_sum, theta123, j5_solutions, tf12, xdir, zdir
                 raise
         else:
             # Bundle all the angles and wrap them to (-pi, pi]
-            theta = [theta1, theta2, theta3, theta4, theta5, theta6]
+            theta = theta123 + [theta4, theta5, theta6]
             theta = [wrap_to_pi(angle - joint.zero_offset) for angle, joint in zip(theta, conf)]
 
             # Append to solutions using the pose flags as key
@@ -257,12 +258,8 @@ def _ik_spherical_wrist_joint1(flag_right: Optional[bool], p04: np.ndarray) -> D
     return {True: theta1_1, False: theta1_2}
 
 
-def _ik_spherical_wrist_joint2(
-        config: List[BaseJoint],
-        right: bool,
-        elbow_up: Optional[bool],
-        tf12: np.ndarray,
-        p14_f2: np.ndarray) -> Dict[bool, float]:
+def _ik_spherical_wrist_joint2(config: List[BaseJoint], right: bool, elbow_up: Optional[bool], tf12: np.ndarray,
+                               p14_f2: np.ndarray) -> Dict[bool, float]:
     """
     Calculate the second joint for the spherical wrist robot type
     :param config: Robot configuration to access DH-parameters
@@ -379,23 +376,16 @@ def _ik_spherical_wrist_joint4(non_flip: bool, tjoint14: np.ndarray, zdir) -> fl
     return delta_q4
 
 
-def _ik_spherical_wrist_joint5(config, non_flip, tjoint12, theta2, theta3, zdir) -> Dict[bool, float]:
+def _ik_spherical_wrist_joint5(non_flip, tjoint14, zdir) -> Dict[bool, float]:
     """
     Calculate the fifth joint for the spherical wrist robot type
-    :param config: Robot configuration to access DH-parameters
     :param non_flip: Pose flog
-    :param tjoint12: Previously calculated transformation
-    :param theta2: Previously calculated shoulder angle
-    :param theta3: Previously calculated elbow angle
+    :param tjoint14: Previously calculated transformation
     :param zdir: Unit vector for z-axis of flange frame given in base frame
     :return:  Dict of solutions, non_flip is used as key.
     If a configuration is given by non_flip only one solutions is returned.
     Otherwise both solutions are returned.
     """
-    # Get the vector from joint 1 to joint 4 (same plane) based on previous results
-    tjoint24 = forward_kinematics(config[1:3], [theta2, theta3], subtract_offset=True)
-    tjoint14 = np.dot(tjoint12, tjoint24)
-
     # Theta 5 describes angle between z-dir of joint 4 and joint 6
     z3 = tjoint14[0:3, 2]
     theta5_abs = acos_safe(np.dot(z3, zdir))
