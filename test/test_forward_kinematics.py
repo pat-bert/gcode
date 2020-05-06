@@ -116,7 +116,7 @@ def test_forward_kinematics_rotational_joint(simple_rotational_joint, joint_coor
                              )
                          ]
                          )
-def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz, tcp_cs):
+def test_forward_melfa_coordinates(dh_melfa_rv_4a, benchmark, joints_deg, abcxyz, tcp_cs):
     """
     Validate some positions by XYZ-values obtained from the Mitsubishi simulator
     :param dh_melfa_rv_4a: Joint configurations based on DH-parameters for Mitsubishi Melfa RV-4A
@@ -127,7 +127,7 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz, tcp_cs):
     joints_rad = [np.deg2rad(i) for i in joints_deg]
 
     # Calculate actual coordinates
-    tcp_pose = forward_kinematics(dh_melfa_rv_4a, joints_rad)
+    tcp_pose = benchmark(forward_kinematics, dh_melfa_rv_4a, joints_rad)
 
     # Unpack expected coordinates
     a, b, c, *xyz = abcxyz
