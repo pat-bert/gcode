@@ -97,7 +97,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     theta1_solutions = _ik_spherical_wrist_joint1(flag_right, p04)
 
     # The solutions of theta 1 contain the corresponding right flag
-    for idx1, (flag_right, theta1) in enumerate(theta1_solutions.items()):
+    for idx1, (right, theta1) in enumerate(theta1_solutions.items()):
         # Get the vector from origin of joint 2 (frame 1) to wrist center
         tjoint12 = forward_kinematics([config[0]], [theta1], subtract_offset=True)
         p01 = tjoint12[0:3, 3]
@@ -105,39 +105,48 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
 
         try:
             # Calculate theta 2 for the current flag_right value
-            theta2_solutions = _ik_spherical_wrist_joint2(config, flag_right, flag_elbow_up, tjoint12, p14)
+            theta2_solutions = _ik_spherical_wrist_joint2(config, right, flag_elbow_up, tjoint12, p14)
+
+            # The solutions of theta 2 contain the corresponding elbow flag
+            for idx2, (elbow_up, theta2) in enumerate(theta2_solutions.items()):
+                # No common setup required
+                try:
+                    # Calculate theta 3
+                    theta3 = _ik_spherical_wrist_joint3(config, elbow_up, p14)
+
+                    # Calculate theta 5 (requires theta 1 - 3)
+                    theta5_solutions = _ik_spherical_wrist_joint5(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
+
+                    # The solutions of theta 5 contain the corresponding non flip flag
+                    for idx5, (non_flip, theta5) in enumerate(theta5_solutions.items()):
+                        # No common setup required
+                        try:
+                            # Calculate theta 4 (requires theta 1 - 3)
+                            theta4 = _ik_spherical_wrist_joint4(config, non_flip, tjoint12, theta2, theta3, zdir)
+
+                            # Calculate theta 6 (requires theta 1 - 5)
+                            theta6 = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
+                        except ValueError:
+                            # Solution failed
+                            if len(solutions) == 0 and idx5 == len(theta5_solutions) - 1:
+                                # IK failed for all theta 5 solutions so failed for current theta 2 only
+                                raise
+                        else:
+                            # Bundle all the angles and wrap them to (-pi, pi]
+                            theta = [theta1, theta2, theta3, theta4, theta5, theta6]
+                            theta = [wrap_to_pi(angle - joint.zero_offset) for angle, joint in zip(theta, config)]
+
+                            # Append to solutions using the pose flags as key
+                            solutions[4 * right + 2 * elbow_up + non_flip] = theta
+                except ValueError:
+                    if len(solutions) == 0 and idx2 == len(theta2_solutions) - 1:
+                        # IK failed for all theta 2 solutions so failed for current theta 1 only
+                        raise
         except ValueError:
             # This is only an issue if this is the last iteration of theta1 and no solution has been found yet
             if len(solutions) == 0 and idx1 == len(theta1_solutions) - 1:
+                # IK failed for all theta 1 solutions so failed completely
                 raise
-            continue
-
-        # The solutions of theta 2 contain the corresponding elbow flag
-        for idx2, (flag_elbow_up, theta2) in enumerate(theta2_solutions.items()):
-            try:
-                # Calculate theta 3
-                theta3 = _ik_spherical_wrist_joint3(config, flag_elbow_up, p14)
-            except ValueError:
-                if len(solutions) == 0 and idx2 == len(theta2_solutions) - 1:
-                    raise
-                continue
-
-            # Calculate theta 5 (requires theta 1 - 3)
-            theta5_solutions = _ik_spherical_wrist_joint5(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
-
-            for idx5, (flag_non_flip, theta5) in enumerate(theta5_solutions.items()):
-                # Calculate theta 4 (requires theta 1 - 3)
-                theta4 = _ik_spherical_wrist_joint4(config, flag_non_flip, tjoint12, theta2, theta3, zdir)
-
-                # Calculate theta 6 (requires theta 1 - 5)
-                theta6 = _ik_spherical_wrist_joint6(config, tjoint12, theta2, theta3, theta4, theta5, xdir)
-
-                # Bundle all the angles
-                theta = [theta1, theta2, theta3, theta4, theta5, theta6]
-                theta = [wrap_to_pi(angle - joint.zero_offset) for angle, joint in zip(theta, config)]
-
-                # Append to solutions using the pose flags as key
-                solutions[4 * flag_right + 2 * flag_elbow_up + flag_non_flip] = theta
 
     # Return all successfully calculated solutions
     return solutions

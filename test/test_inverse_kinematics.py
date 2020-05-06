@@ -194,6 +194,7 @@ def test_ik_spherical_wrist_bad_config(dummy_tform, dh_melfa_rv_4a):
         ik_spherical_wrist(dh_melfa_rv_4a + [dh_melfa_rv_4a[-1]], dummy_tform, pose_flags=7)
 
 
+@pytest.mark.parametrize("calc_all", [True, False])
 @pytest.mark.parametrize("expected_joints",
                          [
                              # 0
@@ -213,7 +214,15 @@ def test_ik_spherical_wrist_bad_config(dummy_tform, dh_melfa_rv_4a):
                              (90, -25, 25, 0, -90, 0)
                          ]
                          )
-def test_ik_spherical_wrist_fk_based(expected_joints, dh_melfa_rv_4a, benchmark):
+def test_ik_spherical_wrist_fk_based(expected_joints, calc_all, dh_melfa_rv_4a, benchmark):
+    """
+    Check that the joints used in the FK can be reconstructed by the IK
+    :param expected_joints:
+    :param calc_all:
+    :param dh_melfa_rv_4a:
+    :param benchmark:
+    :return:
+    """
     expected_joints = np.deg2rad(expected_joints)
 
     # Calculate roboter pose
@@ -223,8 +232,13 @@ def test_ik_spherical_wrist_fk_based(expected_joints, dh_melfa_rv_4a, benchmark)
     flags = calculate_pose_flags(dh_melfa_rv_4a, expected_joints)
 
     # Calculate inverse kinematics
-    actual_joints = benchmark(ik_spherical_wrist, dh_melfa_rv_4a, tform_under_test, pose_flags=flags)[flags]
+    if calc_all:
+        solutions = benchmark(ik_spherical_wrist, dh_melfa_rv_4a, tform_under_test, pose_flags=None)
+    else:
+        solutions = benchmark(ik_spherical_wrist, dh_melfa_rv_4a, tform_under_test, pose_flags=flags)
 
+    print(f'Solutions found for flags: {sorted(solutions.keys())}')
+    actual_joints = solutions[flags]
     print(f'Actual:  {[f"{actual:+.5f}" for actual in actual_joints]}')
     print(f'Expect:  {[f"{expect:+.5f}" for expect in expected_joints]} Flags: {flags}')
     np.testing.assert_allclose(actual_joints, expected_joints, atol=HUNDREDTH_DEGREE)
