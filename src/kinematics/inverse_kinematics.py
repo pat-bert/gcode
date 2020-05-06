@@ -332,8 +332,7 @@ def _ik_spherical_wrist_joint3(config: List[BaseJoint], elbow_up: bool, p14: np.
 
     if elbow_up:
         return phi_offset - aux_phi_1
-    else:
-        return phi_offset - aux_phi_2
+    return phi_offset - aux_phi_2
 
 
 def _ik_spherical_wrist_joint4(non_flip: bool, tjoint14: np.ndarray, zdir) -> float:
