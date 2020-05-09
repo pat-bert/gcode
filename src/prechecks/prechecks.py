@@ -1,19 +1,18 @@
+from math import floor
 from typing import List
 
-from src.kinematics.joints import BaseJoint
-from src.kinematics.inverse_kinematics import ik_spherical_wrist, Singularity
-from src.kinematics.forward_kinematics import forward_kinematics
+import numpy as np
+
 from src.gcode.GCmd import GCmd
+from src.kinematics.forward_kinematics import forward_kinematics, get_tform
+from src.kinematics.inverse_kinematics import ik_spherical_wrist, Singularity, OutOfReachError
+from src.kinematics.joints import BaseJoint
 
 
 class TrajectoryError(ValueError):
     """
     Indicate that a trajectory check has failed.
     """
-
-
-class OutOfReach(ValueError):
-    pass
 
 
 class WorkspaceViolation(TrajectoryError):
@@ -49,14 +48,48 @@ class CommandFailureInfo:
         return f'{self.error_level} on line {self.line_number}: {self.command_str} - {self.failure_reason}'
 
 
-def linear_interpolation(start, end, *, ds):
+def linear_interpolation(start: np.ndarray, end: np.ndarray, *, ds: float):
     """
     Calculate linearly interpolated waypoints on a straight line.
-    :param start: Start pose
-    :param end: End pose
+    :param start: Start pose (x,y,z) given as 4x4 homogeneous matrix
+    :param end: End pose (x,y,z) given as 4x4 homogeneous matrix
     :param ds: Constant distance between points in mm
-    :return:
+    :return: Generator with all pose points on a straight line including start and end.
     """
+    # Get the cartesian distance
+    direction_vec = end[0:3, 3] - start[0:3, 3]
+    total_way_len = np.linalg.norm(direction_vec)
+
+    if total_way_len <= ds:
+        # No interpolation is necessary, just return the start and end points.
+        yield start
+        yield end
+    else:
+        yield start
+
+        # Direction vector along line
+        total_increments = floor(total_way_len / ds)
+
+        increment_vec = direction_vec / total_increments
+
+        # TODO Orientation interpolation (based on quaternions or euler?)
+        # Initialize the matrix components
+        init_tform = np.array(start)
+        xdir, ydir, zdir, pos = init_tform[0:3, 0], init_tform[0:3, 1], init_tform[0:3, 2], init_tform[0:3, 3]
+
+        # Linear interpolation
+        current_increment = 0
+        while current_increment < total_increments - 1:
+            pos += increment_vec
+            current_tform = get_tform(xdir, ydir, zdir, pos)
+            current_increment += 1
+            yield current_tform
+
+        # Finish with the end point
+        yield end
+
+
+def circular_interpolation():
     pass
 
 
@@ -138,8 +171,9 @@ def check_trajectory(
     # Validate the trajectory in the joint space
     try:
         # Calculate the inverse kinematics without specifying a specific pose flag
-        ik_spherical_wrist(config, None, pose_flags=None)
-    except OutOfReach as e:
+        tform = np.array([0])
+        solutions = ik_spherical_wrist(config, tform, pose_flags=None)
+    except OutOfReachError as e:
         # Inverse kinematic cannot be solved for points outside the workspace
         raise WorkspaceViolation from e
     except Singularity as e:
