@@ -18,7 +18,7 @@ def simple_rotational_joint():
     return BaseJointFactory.new(a=0, alpha=0, d=0, theta=None)
 
 
-def validate_vec(kind: str, actual, expected: List[float], atol=1):
+def validate_vec(kind: str, actual, expected: List[float], atol=0.5):
     """
     Helper function to validate vectors of a homogenous matrix (4x4)
     :param kind:
@@ -113,6 +113,13 @@ def test_forward_kinematics_rotational_joint(simple_rotational_joint, joint_coor
                                      [52.550, -42.990, 131.910, -43.210, 93.720, -103.650],
                                      [165.438, -41.185, -20.204, 153.391, 99.003, 606.813],
                                      None
+                             ),
+                             (
+                                     [0, 55, 15, 0, 110, 0],
+                                     [None, None, None, 493.107, 0.000, 615.287],
+                                     [
+                                         [-1, 0, 0], [0, 1, 0], [0, 0, -1]
+                                     ]
                              )
                          ]
                          )
