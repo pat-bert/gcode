@@ -61,7 +61,7 @@ class GResponse(BaseCmd):
             key, val = arg.split(cls.DELIMITER)
             kwargs[key] = val
 
-        return cls(state, kwargs, line_number=line)
+        return cls(state, line_number=line, kwargs)
 
     def __str__(self):
         """
