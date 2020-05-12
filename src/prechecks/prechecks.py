@@ -2,11 +2,12 @@ from typing import List
 
 import numpy as np
 
-from src.prechecks.spatial_interpolation import linear_interpolation, circular_interpolation
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics, pose2tform
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, Singularity, OutOfReachError
 from src.kinematics.joints import BaseJoint
+from src.prechecks.spatial_interpolation import linear_interpolation, circular_interpolation
+from src.prechecks.trajectory_segment import LinearSegment, CircularSegment, TrajectorySegment
 
 
 class TrajectoryError(ValueError):
@@ -51,8 +52,8 @@ class CommandFailureInfo:
 def check_trajectory(
         cmds: List[GCmd],
         config: List[BaseJoint],
-        qlim: List[float],
         clim: List[float],
+        qlim: List[float],
         qdlim: List[float],
         home_pos: List[float],
         ds: float,
@@ -62,8 +63,8 @@ def check_trajectory(
     Validate a trajectory defined by a list of G-code commands.
     :param cmds: List of G-Code command objects.
     :param config: List of joints containing coordinate transformations.
-    :param qlim: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
     :param clim: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
+    :param qlim: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
     :param qdlim: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
     :param home_pos: Home position given as list of joint values
     :param ds: Float value for distance between pose points in mm
@@ -100,28 +101,36 @@ def check_trajectory(
     start_position = forward_kinematics(config, home_pos)
 
     # Iterate over command list and generate waypoints
-    generate_trajectory_points(cmds, start_position, ds)
+    complete_trajectory = generate_trajectory_points(cmds, start_position, ds)
 
     # Validate the trajectory in the task space
+    within = [segment.is_within_cartesian_boundaries(clim) for segment in complete_trajectory]
+    if not all(within):
+        raise WorkspaceViolation('Found segments violating the cartesian boundaries.')
 
     # Validate the trajectory in the joint space
-    try:
-        # Calculate the inverse kinematics without specifying a specific pose flag
-        tform = np.array([0])
-        solutions = ik_spherical_wrist(config, tform, pose_flags=None)
-    except OutOfReachError as e:
-        # Inverse kinematic cannot be solved for points outside the workspace
-        raise WorkspaceViolation from e
-    except Singularity as e:
-        # Task-space interpolation will fail for exact singularities
-        pass
+    segments_joint_space = []
+    for segment in complete_trajectory:
+        segment_solutions = []
+        for pose in segment.trajectory_points:
+            try:
+                # Calculate the inverse kinematics without specifying a specific pose flag
+                # Only if no solution at all can be found exceptions will propagate out
+                solutions = ik_spherical_wrist(config, pose, pose_flags=None)
+                # Append the solutions for the current pose
+                segment_solutions.append(solutions)
+            except OutOfReachError as e:
+                # Inverse kinematic cannot be solved for points outside the workspace
+                raise WorkspaceViolation from e
+        # Append the solutions for the current segment
+        segments_joint_space.append(segment_solutions)
 
     # Check the configurations of the solutions
 
     # TODO Check for collisions (requires joint values)
 
 
-def generate_trajectory_points(cmds: List[GCmd], current_pos: np.ndarray, ds: float):
+def generate_trajectory_points(cmds: List[GCmd], current_pos: np.ndarray, ds: float) -> List[TrajectorySegment]:
     """
     Generates trajectory points for a list of G-code commands.
     :param cmds: List of G-Code command objects.
@@ -130,6 +139,8 @@ def generate_trajectory_points(cmds: List[GCmd], current_pos: np.ndarray, ds: fl
     :return:
     """
     is_absolute = True
+    all_trajectory_pose_points = []
+
     for line_number, command in enumerate(cmds):
         # Movement commands
         if command.id in ['G01', 'G1']:
@@ -149,6 +160,8 @@ def generate_trajectory_points(cmds: List[GCmd], current_pos: np.ndarray, ds: fl
 
             target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
             trajectory_pose_points = linear_interpolation(current_pos, target_pose, ds=ds)
+            lin_segment = LinearSegment(trajectory_pose_points)
+            all_trajectory_pose_points.append(lin_segment)
 
             # Move current position forward
             current_pos = target_pos
@@ -172,6 +185,8 @@ def generate_trajectory_points(cmds: List[GCmd], current_pos: np.ndarray, ds: fl
             target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
             centre_position = centre_pos.values
             trajectory_pose_points = circular_interpolation(current_pos, target_pose, centre_position, ds=ds)
+            circ_segment = CircularSegment(trajectory_pose_points)
+            all_trajectory_pose_points.append(circ_segment)
 
             # Move current position forward
             current_pos = target_pos
@@ -186,3 +201,5 @@ def generate_trajectory_points(cmds: List[GCmd], current_pos: np.ndarray, ds: fl
         # TODO Consider tool changes
         elif command.id.startswith('T'):
             pass
+
+    return all_trajectory_pose_points
