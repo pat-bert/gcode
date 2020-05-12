@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from src.kinematics.forward_kinematics import get_tform
-from src.prechecks.prechecks import linear_interpolation
+from prechecks.spatial_interpolation import linear_interpolation
 
 
 @pytest.mark.parametrize("start,end,ds,expected_points",

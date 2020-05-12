@@ -8,3 +8,5 @@
 /src/.mutmut-cache
 /exportToHTML/
 /coverage.xml
+*.pyc
+*.prof
