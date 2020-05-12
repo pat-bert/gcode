@@ -165,48 +165,48 @@ class GCmd(BaseCmd):
                 else:
                     # Arguments consisting only of a descriptor
                     args[arg] = None
+
+            # Get speed arguments
+            speed = args.get(cls.SPEED_DESCRIPTOR, None)
+            e_length = args.get(cls.EXTRUDE_DESCRIPTOR, None)
+
+            # Get time argument, preferring milliseconds
+            time_ms = args.get(cls.TIME_MS_DESCRIPTOR, None)
+            if time_ms is None and cmd_id[0] not in cls.MISC_CMD_IDS:
+                time_ms = args.get(cls.TIME_S_DESCRIPTOR, None)
+                if time_ms is not None:
+                    time_ms *= 1000
+
+            # Get miscellaneous argument
+            if cmd_id[0] in cls.MISC_CMD_IDS:
+                misc_cmd = args.get(cls.M_DESCRIPTOR, None)
             else:
-                # Get speed arguments
-                speed = args.get(cls.SPEED_DESCRIPTOR, None)
-                e_length = args.get(cls.EXTRUDE_DESCRIPTOR, None)
+                misc_cmd = None
 
-                # Get time argument, preferring milliseconds
-                time_ms = args.get(cls.TIME_MS_DESCRIPTOR, None)
-                if time_ms is None and cmd_id[0] not in cls.MISC_CMD_IDS:
-                    time_ms = args.get(cls.TIME_S_DESCRIPTOR, None)
-                    if time_ms is not None:
-                        time_ms *= 1000
+            # Get relative arguments
+            rel_cr = [args.get(axis, None) for axis in cls.REL_AXES]
+            rel_cr = cls.expand_coordinates(rel_cr)
 
-                # Get miscellaneous argument
-                if cmd_id[0] in cls.MISC_CMD_IDS:
-                    misc_cmd = args.get(cls.M_DESCRIPTOR, None)
-                else:
-                    misc_cmd = None
+            # Get absolute coordinates or home axis respectively
+            if cmd_id == cls.HOME_CMD:
+                abs_cr = None
+                home = "".join((axis for axis in cls.ABS_AXES if axis in args))
+            else:
+                home = ""
+                abs_cr = [args.get(axis, None) for axis in cls.ABS_AXES]
+                abs_cr = cls.expand_coordinates(abs_cr)
 
-                # Get relative arguments
-                rel_cr = [args.get(axis, None) for axis in cls.REL_AXES]
-                rel_cr = cls.expand_coordinates(rel_cr)
-
-                # Get absolute coordinates or home axis respectively
-                if cmd_id == cls.HOME_CMD:
-                    abs_cr = None
-                    home = "".join((axis for axis in cls.ABS_AXES if axis in args))
-                else:
-                    home = ""
-                    abs_cr = [args.get(axis, None) for axis in cls.ABS_AXES]
-                    abs_cr = cls.expand_coordinates(abs_cr)
-
-                # Initialise command
-                return cls(
-                    cmd_id,
-                    abs_cr=abs_cr,
-                    rel_cr=rel_cr,
-                    speed=speed,
-                    e_length=e_length,
-                    time_ms=time_ms,
-                    misc_cmd=misc_cmd,
-                    home=home,
-                )
+            # Initialise command
+            return cls(
+                cmd_id,
+                abs_cr=abs_cr,
+                rel_cr=rel_cr,
+                speed=speed,
+                e_length=e_length,
+                time_ms=time_ms,
+                misc_cmd=misc_cmd,
+                home=home,
+            )
 
     @classmethod
     def expand_coordinates(
