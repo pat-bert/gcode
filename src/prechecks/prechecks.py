@@ -4,10 +4,11 @@ import numpy as np
 
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics, pose2tform
-from src.kinematics.inverse_kinematics import ik_spherical_wrist, Singularity, OutOfReachError
+from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
 from src.prechecks.spatial_interpolation import linear_interpolation, circular_interpolation
-from src.prechecks.trajectory_segment import LinearSegment, CircularSegment, TrajectorySegment
+from src.prechecks.trajectory_segment import LinearSegment, CircularSegment, CartesianTrajectorySegment, \
+    JointTrajectorySegment
 
 
 class TrajectoryError(ValueError):
@@ -101,14 +102,22 @@ def check_trajectory(
     start_position = forward_kinematics(config, home_pos)
 
     # Iterate over command list and generate waypoints
-    complete_trajectory = generate_trajectory_points(cmds, start_position, ds)
+    task_trajectory = generate_task_trajectory(cmds, start_position, ds)
 
     # Validate the trajectory in the task space
-    within = [segment.is_within_cartesian_boundaries(clim) for segment in complete_trajectory]
+    within = [segment.is_within_cartesian_boundaries(clim) for segment in task_trajectory]
     if not all(within):
         raise WorkspaceViolation('Found segments violating the cartesian boundaries.')
 
     # Validate the trajectory in the joint space
+    joint_trajectory = generate_joint_trajectory(task_trajectory, config)
+
+    # Check the configurations of the solutions
+
+    # TODO Check for collisions (requires joint values)
+
+
+def generate_joint_trajectory(complete_trajectory, config):
     segments_joint_space = []
     for segment in complete_trajectory:
         segment_solutions = []
@@ -123,14 +132,11 @@ def check_trajectory(
                 # Inverse kinematic cannot be solved for points outside the workspace
                 raise WorkspaceViolation from e
         # Append the solutions for the current segment
-        segments_joint_space.append(segment_solutions)
-
-    # Check the configurations of the solutions
-
-    # TODO Check for collisions (requires joint values)
+        segments_joint_space.append(JointTrajectorySegment(segment_solutions))
+    return segments_joint_space
 
 
-def generate_trajectory_points(cmds: List[GCmd], current_pos: np.ndarray, ds: float) -> List[TrajectorySegment]:
+def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: float) -> List[CartesianTrajectorySegment]:
     """
     Generates trajectory points for a list of G-code commands.
     :param cmds: List of G-Code command objects.
