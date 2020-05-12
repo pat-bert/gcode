@@ -44,7 +44,7 @@ from prechecks.trajectory_segment import is_point_within_boundaries
                              (
                                      [0, 1, -0.1],
                                      [-0.1, 0.1, 1.1, 2],
-                                     True,
+                                     False,
                                      None
                              )
                          ]

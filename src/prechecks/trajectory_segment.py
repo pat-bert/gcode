@@ -1,10 +1,12 @@
 import abc
-from typing import List, Generator
+from typing import List, Union, Iterator
 
 import numpy as np
 
+from src.kinematics.inverse_kinematics import JointSolution
 
-def is_point_within_boundaries(point: np.ndarray, boundaries: List) -> bool:
+
+def is_point_within_boundaries(point: Union[np.ndarray, List], boundaries: List) -> bool:
     """
     A point is within a cuboid if all values are within a lower and an upper threshold.
     :param point: List of float values
@@ -18,8 +20,8 @@ def is_point_within_boundaries(point: np.ndarray, boundaries: List) -> bool:
     return all(lower <= i <= upper for i, lower, upper in zip(point, boundaries[::2], boundaries[1::2]))
 
 
-class TrajectorySegment(metaclass=abc.ABCMeta):
-    def __init__(self, trajectory_points: Generator[np.ndarray]):
+class CartesianTrajectorySegment(metaclass=abc.ABCMeta):
+    def __init__(self, trajectory_points: Iterator[np.ndarray]):
         self.trajectory_points = list(trajectory_points)
 
     @abc.abstractmethod
@@ -27,7 +29,7 @@ class TrajectorySegment(metaclass=abc.ABCMeta):
         pass
 
 
-class LinearSegment(TrajectorySegment):
+class LinearSegment(CartesianTrajectorySegment):
     def is_within_cartesian_boundaries(self, boundaries: List) -> bool:
         """
         A straight linear segment is within a rectangular cuboid if start and end point are within.
@@ -40,7 +42,7 @@ class LinearSegment(TrajectorySegment):
         return start_inside and end_inside
 
 
-class CircularSegment(TrajectorySegment):
+class CircularSegment(CartesianTrajectorySegment):
     def is_within_cartesian_boundaries(self, boundaries: List) -> bool:
         """
         A circular segment/sector is within a rectangular cuboid if all points are within.
@@ -48,3 +50,27 @@ class CircularSegment(TrajectorySegment):
         :return: Boolean to indicate whether the point is within
         """
         return all(is_point_within_boundaries(point, boundaries) for point in self.trajectory_points)
+
+
+class JointTrajectorySegment:
+    def __init__(self, solutions: List[JointSolution]):
+        self.solutions = solutions
+
+    def is_within_joint_limits(self, boundaries: List) -> bool:
+        pass
+
+    def has_common_configuration(self) -> bool:
+        """
+        Check whether there is a common configuration for all points of that segment
+        :return:
+        """
+        # Init with the configurations of the first point for that solutions exist
+        common_configurations = set(self.solutions[0].keys())
+        for solution in self.solutions[1:]:
+            # Only keep the configurations that are also viable for the next point
+            common_configurations &= set(solution.keys())
+
+            # If the set of common configurations is empty no common configuration exists
+            if len(common_configurations) == 0:
+                return False
+        return True
