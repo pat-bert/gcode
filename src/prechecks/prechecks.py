@@ -1,10 +1,10 @@
-from math import floor
 from typing import List
 
 import numpy as np
 
+from src.prechecks.spatial_interpolation import linear_interpolation, circular_interpolation
 from src.gcode.GCmd import GCmd
-from src.kinematics.forward_kinematics import forward_kinematics, get_tform
+from src.kinematics.forward_kinematics import forward_kinematics, pose2tform
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, Singularity, OutOfReachError
 from src.kinematics.joints import BaseJoint
 
@@ -48,62 +48,6 @@ class CommandFailureInfo:
         return f'{self.error_level} on line {self.line_number}: {self.command_str} - {self.failure_reason}'
 
 
-def linear_interpolation(start: np.ndarray, end: np.ndarray, *, ds: float):
-    """
-    Calculate linearly interpolated waypoints on a straight line.
-    :param start: Start pose (x,y,z) given as 4x4 homogeneous matrix
-    :param end: End pose (x,y,z) given as 4x4 homogeneous matrix
-    :param ds: Constant distance between points in mm
-    :return: Generator with all pose points on a straight line including start and end.
-    """
-    # Get the cartesian distance
-    direction_vec = end[0:3, 3] - start[0:3, 3]
-    total_way_len = np.linalg.norm(direction_vec)
-
-    if total_way_len <= ds:
-        # No interpolation is necessary, just return the start and end points.
-        yield start
-        yield end
-    else:
-        yield start
-
-        # Direction vector along line
-        total_increments = floor(total_way_len / ds)
-
-        increment_vec = direction_vec / total_increments
-
-        # TODO Orientation interpolation (based on quaternions or euler?)
-        # Initialize the matrix components
-        init_tform = np.array(start)
-        xdir, ydir, zdir, pos = init_tform[0:3, 0], init_tform[0:3, 1], init_tform[0:3, 2], init_tform[0:3, 3]
-
-        # Linear interpolation
-        current_increment = 0
-        while current_increment < total_increments - 1:
-            pos += increment_vec
-            current_tform = get_tform(xdir, ydir, zdir, pos)
-            current_increment += 1
-            yield current_tform
-
-        # Finish with the end point
-        yield end
-
-
-def circular_interpolation():
-    pass
-
-
-def trapezoidal_speed_profile(v_max: float, a: float, dt: float):
-    """
-
-    :param v_max: Peak velocity in mm/s
-    :param a: Constant acceleration in mm/s^2
-    :param dt: Constant time sample in seconds
-    :return:
-    """
-    pass
-
-
 def check_trajectory(
         cmds: List[GCmd],
         config: List[BaseJoint],
@@ -111,6 +55,7 @@ def check_trajectory(
         clim: List[float],
         qdlim: List[float],
         home_pos: List[float],
+        ds: float,
         fail_first: bool = False
 ):
     """
@@ -120,9 +65,10 @@ def check_trajectory(
     :param qlim: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
     :param clim: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
     :param qdlim: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
-    :param home_pos:
+    :param home_pos: Home position given as list of joint values
+    :param ds: Float value for distance between pose points in mm
     :param fail_first: Indicate whether the validation should be aborted on the first failure, defaults to False
-    :return:
+    :return: None
 
     The following checks are done in order:
     1.  Check that all points are within the user-specified task space
@@ -151,20 +97,10 @@ def check_trajectory(
         Special care is required for tool changes.
     """
     # Initialize the current position with the home position given in joint space
-    current_pos = forward_kinematics(config, home_pos)
+    start_position = forward_kinematics(config, home_pos)
 
     # Iterate over command list and generate waypoints
-    for line_number, command in enumerate(cmds):
-        if command.id in ['G01', 'G1']:
-            # Linear interpolation (constant way-interval)
-            linear_interpolation(current_pos, command.cartesian_abs, ds=1)
-            current_pos = command.cartesian_abs
-        elif command.id in ['G02', 'G2']:
-            # Circular interpolation (constant way-interval)
-            pass
-        # Consider relative coordinates
-        # Consider coordinate origin shifting
-        # Consider tool changes
+    generate_trajectory_points(cmds, start_position, ds)
 
     # Validate the trajectory in the task space
 
@@ -183,3 +119,70 @@ def check_trajectory(
     # Check the configurations of the solutions
 
     # TODO Check for collisions (requires joint values)
+
+
+def generate_trajectory_points(cmds: List[GCmd], current_pos: np.ndarray, ds: float):
+    """
+    Generates trajectory points for a list of G-code commands.
+    :param cmds: List of G-Code command objects.
+    :param current_pos: Start pose point given as 4x4 homogeneous matrix
+    :param ds: Float value for distance between pose points in mm
+    :return:
+    """
+    is_absolute = True
+    for line_number, command in enumerate(cmds):
+        # Movement commands
+        if command.id in ['G01', 'G1']:
+            # Get end point
+            target_pos = command.cartesian_abs
+            if not is_absolute:
+                target_pos += current_pos
+
+            # Linear interpolation (constant way-interval)
+            # TODO Ensure order
+            target_position = target_pos.values
+
+            # TODO Get angles
+            x_angle = 0
+            y_angle = 0
+            z_angle = 0
+
+            target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
+            trajectory_pose_points = linear_interpolation(current_pos, target_pose, ds=ds)
+
+            # Move current position forward
+            current_pos = target_pos
+        elif command.id in ['G02', 'G2']:
+            # Get end point and centre point
+            target_pos = command.cartesian_abs
+            centre_pos = target_pos + command.cartesian_rel
+            if not is_absolute:
+                target_pos += current_pos
+                centre_pos += current_pos
+
+            # Circular interpolation (constant way-interval)
+            # TODO Ensure order
+            target_position = target_pos.values
+
+            # TODO Get angles
+            x_angle = 0
+            y_angle = 0
+            z_angle = 0
+
+            target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
+            centre_position = centre_pos.values
+            trajectory_pose_points = circular_interpolation(current_pos, target_pose, centre_position, ds=ds)
+
+            # Move current position forward
+            current_pos = target_pos
+        # Consider relative coordinates
+        elif command.id is 'G90':
+            is_absolute = True
+        elif command.id is 'G91':
+            is_absolute = False
+        # TODO Consider coordinate origin shifting
+        elif command.id is 'G92':
+            pass
+        # TODO Consider tool changes
+        elif command.id.startswith('T'):
+            pass

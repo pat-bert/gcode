@@ -70,7 +70,24 @@ def tform2euler(tform: ndarray) -> List[float]:
     return [alpha, beta, gamma]
 
 
-def get_tform(xdir, ydir, zdir, pos):
+def pose2tform(position: List[float], *, x_angle: float, y_angle: float, z_angle: float) -> ndarray:
+    """
+    Convert a pose given as position and euler angles.
+    :param position: Position given as list of x, y and z values
+    :param x_angle: Value for the angle around the x axis in rad
+    :param y_angle: Value for the angle around the y axis in rad
+    :param z_angle: Value for the angle around the z axis in rad
+    :return: Homogeneous 4x4 matrix
+    """
+    # TODO Calculate unit vectors
+    xdir = np.array([0])
+    ydir = np.array([0])
+    zdir = np.array([0])
+
+    return get_tform(xdir, ydir, zdir, position)
+
+
+def get_tform(xdir: List[float], ydir: List[float], zdir: List[float], pos: List[float]) -> ndarray:
     """
     Compose a homogeneous matrix from the individual components
     :param xdir: Unit vector for x-axis
