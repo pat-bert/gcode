@@ -2,11 +2,12 @@ from math import floor
 from typing import List, Iterator
 
 import numpy as np
+from numpy import ndarray
 
 from src.kinematics.forward_kinematics import get_tform
 
 
-def linear_interpolation(start: np.ndarray, end: np.ndarray, *, ds: float) -> Iterator[np.ndarray]:
+def linear_interpolation(start: ndarray, end: ndarray, *, ds: float) -> Iterator[ndarray]:
     """
     Calculate equidistant interpolated waypoints on a straight line.
     :param start: Start pose (x,y,z,phi,theta,psi) given as 4x4 homogeneous matrix
@@ -47,7 +48,7 @@ def linear_interpolation(start: np.ndarray, end: np.ndarray, *, ds: float) -> It
         yield end
 
 
-def circular_interpolation(start: np.ndarray, end: np.ndarray, centre: List[float], *, ds: float):
+def circular_interpolation(start: ndarray, end: ndarray, centre: List[float], *, ds: float) -> Iterator[ndarray]:
     """
     Calculate equidistant interpolated waypoints on a circle segment.
     :param start: Start pose (x,y,z,phi,theta,psi) given as 4x4 homogeneous matrix

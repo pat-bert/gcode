@@ -1,4 +1,4 @@
-from math import sqrt, atan2, cos, atan, hypot
+from math import sqrt, atan2, cos, atan, hypot, sin
 from typing import List
 
 import numpy as np
@@ -70,21 +70,58 @@ def tform2euler(tform: ndarray) -> List[float]:
     return [alpha, beta, gamma]
 
 
-def pose2tform(position: List[float], *, x_angle: float, y_angle: float, z_angle: float) -> ndarray:
+def pose2tform(position: List[float], *, x_angle: float, y_angle: float, z_angle: float, order='ZYX') -> ndarray:
     """
     Convert a pose given as position and euler angles.
     :param position: Position given as list of x, y and z values
     :param x_angle: Value for the angle around the x axis in rad
     :param y_angle: Value for the angle around the y axis in rad
     :param z_angle: Value for the angle around the z axis in rad
+    :param order:
     :return: Homogeneous 4x4 matrix
     """
-    # TODO Calculate unit vectors
-    xdir = np.array([0])
-    ydir = np.array([0])
-    zdir = np.array([0])
+    # Catch invalid orders
+    if len(order) != 3:
+        raise ValueError(f'Only orders of length 3 are valid (was given {order}).')
 
-    return get_tform(xdir, ydir, zdir, position)
+    # Calculate unit vectors
+    rot_z = np.array(
+        [
+            [cos(z_angle), -sin(z_angle), 0],
+            [sin(z_angle), cos(z_angle), 0],
+            [0, 0, 1]
+        ]
+    )
+    rot_y = np.array(
+        [
+            [cos(y_angle), 0, -sin(y_angle)],
+            [0, 1, 0],
+            [sin(y_angle), 0, cos(y_angle)]
+        ]
+    )
+    rot_x = np.array(
+        [
+            [1, 0, 0],
+            [0, cos(x_angle), -sin(x_angle)],
+            [0, sin(x_angle), cos(x_angle)]
+        ]
+    )
+
+    # Calculate matrix for order
+    to_multiply = []
+    for char in order:
+        if char == 'X':
+            to_multiply.append(rot_x)
+        elif char == 'Y':
+            to_multiply.append(rot_y)
+        elif char == 'Z':
+            to_multiply.append(rot_z)
+        else:
+            raise ValueError(f'Illegal rotation axis: {char}')
+
+    # Get product and transform to tform
+    rot = np.linalg.multi_dot(to_multiply)
+    return get_tform(rot[0:3, 0], rot[0:3, 1], rot[0:3, 2], position)
 
 
 def get_tform(xdir: List[float], ydir: List[float], zdir: List[float], pos: List[float]) -> ndarray:
