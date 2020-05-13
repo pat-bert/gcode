@@ -94,9 +94,9 @@ def pose2tform(position: List[float], *, x_angle: float, y_angle: float, z_angle
     )
     rot_y = np.array(
         [
-            [cos(y_angle), 0, -sin(y_angle)],
+            [cos(y_angle), 0, sin(y_angle)],
             [0, 1, 0],
-            [sin(y_angle), 0, cos(y_angle)]
+            [-sin(y_angle), 0, cos(y_angle)]
         ]
     )
     rot_x = np.array(

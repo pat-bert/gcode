@@ -1,6 +1,6 @@
 import pytest
 
-from prechecks.trajectory_segment import is_point_within_boundaries
+from src.prechecks.trajectory_segment import is_point_within_boundaries
 
 
 @pytest.mark.parametrize("point,boundaries,within,exc",
