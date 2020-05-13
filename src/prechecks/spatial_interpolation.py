@@ -1,12 +1,12 @@
 from math import floor
-from typing import List, Generator
+from typing import List, Iterator
 
 import numpy as np
 
 from src.kinematics.forward_kinematics import get_tform
 
 
-def linear_interpolation(start: np.ndarray, end: np.ndarray, *, ds: float) -> Generator[np.ndarray]:
+def linear_interpolation(start: np.ndarray, end: np.ndarray, *, ds: float) -> Iterator[np.ndarray]:
     """
     Calculate equidistant interpolated waypoints on a straight line.
     :param start: Start pose (x,y,z,phi,theta,psi) given as 4x4 homogeneous matrix

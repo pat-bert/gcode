@@ -3,6 +3,7 @@ from typing import List, Union, Iterator
 
 import numpy as np
 
+from prechecks.prechecks import TrajectoryError
 from src.kinematics.inverse_kinematics import JointSolution
 
 
@@ -21,6 +22,10 @@ def is_point_within_boundaries(point: Union[np.ndarray, List], boundaries: List)
 
 
 class CartesianTrajectorySegment(metaclass=abc.ABCMeta):
+    """
+    Base class for parts of a trajectory within the cartesian task space
+    """
+
     def __init__(self, trajectory_points: Iterator[np.ndarray]):
         self.trajectory_points = list(trajectory_points)
 
@@ -30,6 +35,10 @@ class CartesianTrajectorySegment(metaclass=abc.ABCMeta):
 
 
 class LinearSegment(CartesianTrajectorySegment):
+    """
+    Represents a straight line segment within the task space
+    """
+
     def is_within_cartesian_boundaries(self, boundaries: List) -> bool:
         """
         A straight linear segment is within a rectangular cuboid if start and end point are within.
@@ -43,6 +52,10 @@ class LinearSegment(CartesianTrajectorySegment):
 
 
 class CircularSegment(CartesianTrajectorySegment):
+    """
+    Represents a circular sector within the task space
+    """
+
     def is_within_cartesian_boundaries(self, boundaries: List) -> bool:
         """
         A circular segment/sector is within a rectangular cuboid if all points are within.
@@ -53,24 +66,67 @@ class CircularSegment(CartesianTrajectorySegment):
 
 
 class JointTrajectorySegment:
+    """
+    Represents a list of trajectory point solutions given in the joint space
+    """
+
     def __init__(self, solutions: List[JointSolution]):
         self.solutions = solutions
 
-    def is_within_joint_limits(self, boundaries: List) -> bool:
-        pass
+    def filter_within_joint_limits(self, boundaries: List) -> None:
+        """
+        Remove solutions that are outside the joint limits for all points.
+        :param boundaries: Joint boundaries given as list of floats, e.g. J1 min, J1 max, ..
+        :return: None
+        :raises: JointLimitViolation if no solution within the joint limits is left for a point of the segment
+        """
+        # Iterate over all points
+        for point_number, point_solutions in enumerate(self.solutions):
+            # Check all available configurations for the current point
+            for configuration, joints in point_solutions.items():
+                # Check all joint boundaries (solutions and boundaries are naturally in manufacturer's system)
+                if not is_point_within_boundaries(joints, boundaries):
+                    # Remove the solution
+                    del point_solutions[configuration]
+                    if len(point_solutions) == 0:
+                        # No solution left for a point on the segment
+                        raise JointLimitViolation(f'No solution within joint limits left for point #{point_number}')
 
-    def has_common_configuration(self) -> bool:
+    def get_common_configurations(self) -> List[float]:
         """
         Check whether there is a common configuration for all points of that segment
-        :return:
+        :return: List of common configurations, can be empty
         """
         # Init with the configurations of the first point for that solutions exist
         common_configurations = set(self.solutions[0].keys())
-        for solution in self.solutions[1:]:
-            # Only keep the configurations that are also viable for the next point
-            common_configurations &= set(solution.keys())
 
-            # If the set of common configurations is empty no common configuration exists
-            if len(common_configurations) == 0:
-                return False
-        return True
+        # Start comparison with second point
+        idx = 1
+        while common_configurations and idx < len(self.solutions):
+            # Only keep the configurations that are also viable for the next point
+            common_configurations &= set(self.solutions[idx].keys())
+        return list(common_configurations)
+
+    def get_least_configuration_changes(self, shoulder_cost, elbow_cost, wrist_cost) -> List[JointSolution]:
+        """
+        Find the path of solutions with the minimum cost of configuration changes
+        :param shoulder_cost: Cost that a change of the shoulder configuration incurrs
+        :param elbow_cost: Cost that a change of the elbow configuration incurrs
+        :param wrist_cost: Cost that a change of the wrist configuration incurrs
+        :return: List of selected joint solutions with minimum cost
+        """
+        current_configuration = 7
+        next_configuration = 6
+
+        cost = 0
+
+        # Calculate the cost for a change
+        cost += shoulder_cost * (current_configuration & 4 == next_configuration & 4)
+        cost += elbow_cost * (current_configuration & 2 == next_configuration & 2)
+        cost += wrist_cost * (current_configuration & 1 == next_configuration & 1)
+
+
+class JointLimitViolation(TrajectoryError):
+    """
+    Will be raised if the positional limits of the joints are violated.
+    """

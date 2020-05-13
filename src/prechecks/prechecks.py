@@ -23,12 +23,6 @@ class WorkspaceViolation(TrajectoryError):
     """
 
 
-class JointLimitViolation(TrajectoryError):
-    """
-    Will be raised if the positional limits of the joints are violated.
-    """
-
-
 class JointVelocityViolation(TrajectoryError):
     """
     Will be raised if the
