@@ -20,12 +20,40 @@ class TrajectoryError(ValueError):
 class WorkspaceViolation(TrajectoryError):
     """
     Will be raised if no solution for the IK-problem can be found for a given pose.
+    Cannot be recovered.
+    """
+
+
+class CartesianLimitViolation(TrajectoryError):
+    """
+    Will be raised if any position of the trajectory is outside of the specified cartesian cuboid.
+    Cannot be recovered.
+    """
+
+
+class JointLimitViolation(TrajectoryError):
+    """
+    Will be raised if the positional limits of the joints are violated in each solution for a point.
+    In that case the trajectory is outside of the reduced joint workspace.
+    The reduced joint workspace is defined by the manufacturer's joint limits or by user-defined ones within.
+    Cannot be recovered.
     """
 
 
 class JointVelocityViolation(TrajectoryError):
     """
-    Will be raised if the
+    Will be raised if the the joint velocity would be exceeded.
+    In that case a singularity is present or the speed of the TCP has to be lowered.
+    """
+
+
+class ConfigurationChanges(TrajectoryError):
+    """
+    Will be raised if a segment is not accessible within at least one common configuration.
+    Since start and end points are included in segments also continuity between segments
+    is tested.
+    In case of a configuration change a singularity needs to be crossed and a path with the least
+    configuration changes might be found.
     """
 
 
@@ -98,20 +126,31 @@ def check_trajectory(
     # Iterate over command list and generate waypoints
     task_trajectory = generate_task_trajectory(cmds, start_position, ds)
 
-    # Validate the trajectory in the task space
-    within = [segment.is_within_cartesian_boundaries(clim) for segment in task_trajectory]
-    if not all(within):
-        raise WorkspaceViolation('Found segments violating the cartesian boundaries.')
+    # 1.) Validate the trajectory in the task space
+    within_cartesian = [segment.is_within_cartesian_boundaries(clim) for segment in task_trajectory]
+    if not all(within_cartesian):
+        violation_idx = [idx for idx, val in enumerate(within_cartesian) if not val]
+        raise CartesianLimitViolation('Found segments violating the cartesian boundaries.', violation_idx)
 
-    # Validate the trajectory in the joint space
+    # 2.) Create the trajectory in the joint space
     joint_trajectory = generate_joint_trajectory(task_trajectory, config)
 
+    # Filter for the joint limits and validate the trajectory
+    within_joint = [segment.is_within_joint_limits(qlim) for segment in joint_trajectory]
+    if not all(within_joint):
+        violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
+        raise JointLimitViolation('Found segments violating the joint boundaries.', violation_idx)
+
     # Check the configurations of the solutions
+    common_configurations = [segment.get_common_configurations() for segment in joint_trajectory]
+    if not all(common_configurations):
+        violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
+        raise ConfigurationChanges('Found segments without common configuration.', violation_idx)
 
     # TODO Check for collisions (requires joint values)
 
 
-def generate_joint_trajectory(complete_trajectory, config):
+def generate_joint_trajectory(complete_trajectory, config) -> List[JointTrajectorySegment]:
     segments_joint_space = []
     for segment in complete_trajectory:
         segment_solutions = []
@@ -144,51 +183,12 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
     for line_number, command in enumerate(cmds):
         # Movement commands
         if command.id in ['G01', 'G1']:
-            # Get end point
-            target_pos = command.cartesian_abs
-            if not is_absolute:
-                target_pos += current_pos
-
-            # Linear interpolation (constant way-interval)
-            # TODO Ensure order
-            target_position = target_pos.values
-
-            # TODO Get angles
-            x_angle = 0
-            y_angle = 0
-            z_angle = 0
-
-            target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
-            trajectory_pose_points = linear_interpolation(current_pos, target_pose, ds=ds)
-            lin_segment = LinearSegment(trajectory_pose_points)
+            lin_segment, target_pos = linear_segment_from_gcode(command, current_pos, ds, is_absolute)
             all_trajectory_pose_points.append(lin_segment)
-
-            # Move current position forward
             current_pos = target_pos
         elif command.id in ['G02', 'G2']:
-            # Get end point and centre point
-            target_pos = command.cartesian_abs
-            centre_pos = target_pos + command.cartesian_rel
-            if not is_absolute:
-                target_pos += current_pos
-                centre_pos += current_pos
-
-            # Circular interpolation (constant way-interval)
-            # TODO Ensure order
-            target_position = target_pos.values
-
-            # TODO Get angles
-            x_angle = 0
-            y_angle = 0
-            z_angle = 0
-
-            target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
-            centre_position = centre_pos.values
-            trajectory_pose_points = circular_interpolation(current_pos, target_pose, centre_position, ds=ds)
-            circ_segment = CircularSegment(trajectory_pose_points)
+            circ_segment, target_pos = circular_segment_from_gcode(command, current_pos, ds, is_absolute)
             all_trajectory_pose_points.append(circ_segment)
-
-            # Move current position forward
             current_pos = target_pos
         # Consider relative coordinates
         elif command.id is 'G90':
@@ -203,3 +203,42 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
             pass
 
     return all_trajectory_pose_points
+
+
+def circular_segment_from_gcode(command, current_pos, ds, is_absolute):
+    # Get end point and centre point
+    target_pos = command.cartesian_abs
+    centre_pos = target_pos + command.cartesian_rel
+    if not is_absolute:
+        target_pos += current_pos
+        centre_pos += current_pos
+    # Circular interpolation (constant way-interval)
+    # TODO Ensure order
+    target_position = target_pos.values
+    # TODO Get angles
+    x_angle = 0
+    y_angle = 0
+    z_angle = 0
+    target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
+    centre_position = centre_pos.values
+    trajectory_pose_points = circular_interpolation(current_pos, target_pose, centre_position, ds=ds)
+    circ_segment = CircularSegment(trajectory_pose_points)
+    return circ_segment, target_pos
+
+
+def linear_segment_from_gcode(command, current_pos, ds, is_absolute):
+    # Get end point
+    target_pos = command.cartesian_abs
+    if not is_absolute:
+        target_pos += current_pos
+    # Linear interpolation (constant way-interval)
+    # TODO Ensure order
+    target_position = target_pos.values
+    # TODO Get angles
+    x_angle = 0
+    y_angle = 0
+    z_angle = 0
+    target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
+    trajectory_pose_points = linear_interpolation(current_pos, target_pose, ds=ds)
+    lin_segment = LinearSegment(trajectory_pose_points)
+    return lin_segment, target_pos

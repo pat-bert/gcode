@@ -3,7 +3,6 @@ from typing import List, Union, Iterator
 
 import numpy as np
 
-from prechecks.prechecks import TrajectoryError
 from src.kinematics.inverse_kinematics import JointSolution
 
 
@@ -73,24 +72,25 @@ class JointTrajectorySegment:
     def __init__(self, solutions: List[JointSolution]):
         self.solutions = solutions
 
-    def filter_within_joint_limits(self, boundaries: List) -> None:
+    def is_within_joint_limits(self, limits: List) -> bool:
         """
         Remove solutions that are outside the joint limits for all points.
-        :param boundaries: Joint boundaries given as list of floats, e.g. J1 min, J1 max, ..
-        :return: None
-        :raises: JointLimitViolation if no solution within the joint limits is left for a point of the segment
+        :param limits: Joint limits given as list of floats, e.g. J1 min, J1 max, ..
+        :return: Boolean to indicate whether there are solutions within the joint limits for all points.
         """
         # Iterate over all points
+        within = True
         for point_number, point_solutions in enumerate(self.solutions):
             # Check all available configurations for the current point
             for configuration, joints in point_solutions.items():
                 # Check all joint boundaries (solutions and boundaries are naturally in manufacturer's system)
-                if not is_point_within_boundaries(joints, boundaries):
+                if not is_point_within_boundaries(joints, limits):
                     # Remove the solution
                     del point_solutions[configuration]
                     if len(point_solutions) == 0:
                         # No solution left for a point on the segment
-                        raise JointLimitViolation(f'No solution within joint limits left for point #{point_number}')
+                        within = False
+        return within
 
     def get_common_configurations(self) -> List[float]:
         """
@@ -126,7 +126,3 @@ class JointTrajectorySegment:
         cost += wrist_cost * (current_configuration & 1 == next_configuration & 1)
 
 
-class JointLimitViolation(TrajectoryError):
-    """
-    Will be raised if the positional limits of the joints are violated.
-    """
