@@ -124,5 +124,3 @@ class JointTrajectorySegment:
         cost += shoulder_cost * (current_configuration & 4 == next_configuration & 4)
         cost += elbow_cost * (current_configuration & 2 == next_configuration & 2)
         cost += wrist_cost * (current_configuration & 1 == next_configuration & 1)
-
-

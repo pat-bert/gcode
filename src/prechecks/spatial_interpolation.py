@@ -56,4 +56,3 @@ def circular_interpolation(start: np.ndarray, end: np.ndarray, centre: List[floa
     :param ds: Constant distance between points in mm
     :return: Generator with all pose points (x,y,z,phi,theta,psi) on a straight line including start and end.
     """
-    pass

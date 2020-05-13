@@ -6,4 +6,3 @@ def trapezoidal_speed_profile(v_max: float, a: float, dt: float):
     :param dt: Constant time sample in seconds
     :return:
     """
-    pass

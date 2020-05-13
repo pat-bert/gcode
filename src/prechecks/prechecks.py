@@ -191,12 +191,12 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
             all_trajectory_pose_points.append(circ_segment)
             current_pos = target_pos
         # Consider relative coordinates
-        elif command.id is 'G90':
+        elif command.id == 'G90':
             is_absolute = True
-        elif command.id is 'G91':
+        elif command.id == 'G91':
             is_absolute = False
         # TODO Consider coordinate origin shifting
-        elif command.id is 'G92':
+        elif command.id == 'G92':
             pass
         # TODO Consider tool changes
         elif command.id.startswith('T'):
