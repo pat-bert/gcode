@@ -28,6 +28,9 @@ class CartesianTrajectorySegment(metaclass=abc.ABCMeta):
     def __init__(self, trajectory_points: Iterator[np.ndarray]):
         self.trajectory_points = list(trajectory_points)
 
+        if len(self.trajectory_points) == 0:
+            raise ValueError('Trajectory may not be empty.')
+
     @abc.abstractmethod
     def is_within_cartesian_boundaries(self, boundaries: List) -> bool:
         pass
@@ -47,7 +50,7 @@ class LinearSegment(CartesianTrajectorySegment):
         # Convert generator to list to access last element
         start_inside = is_point_within_boundaries(self.trajectory_points[0], boundaries)
         end_inside = is_point_within_boundaries(self.trajectory_points[-1], boundaries)
-        return start_inside and end_inside
+        return start_inside and (len(self.trajectory_points) == 1 or end_inside)
 
 
 class CircularSegment(CartesianTrajectorySegment):
