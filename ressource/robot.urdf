@@ -29,7 +29,7 @@
             <geometry>
                 <mesh filename="test/rv_4a_top_1_RV_4A_NO1ARM.stl"/>
             </geometry>
-            <origin xyz="-100 350 0" rpy="1.5708 0 0"/>
+            <origin xyz="-100 0 -350" rpy="0 0 0"/>
             <material name="red"/>
         </visual>
     </link>
@@ -38,7 +38,7 @@
             <geometry>
                 <mesh filename="test/rv_4a_top_1_RV_4A_ELBOW.stl"/>
             </geometry>
-            <origin xyz="-600 -100 0" rpy="1.5708 0 1.5708"/>
+            <origin xyz="-100 0 -600" rpy="0 0 0"/>
         </visual>
     </link>
     <link name="link4">
@@ -46,7 +46,7 @@
             <geometry>
                 <mesh filename="test/rv_4a_top_1_RV_4A_NO2ARM.stl"/>
             </geometry>
-            <origin xyz="-735 0 -100" rpy="-3.1415 -1.5708 0"/>
+            <origin xyz="-100 0 -735" rpy="0 0 0"/>
             <material name="red"/>
         </visual>
     </link>
@@ -114,25 +114,25 @@
         <axis xyz="0 0 1"/>
     </joint>
     <joint name="J2" type="revolute">
-        <origin xyz="100 0 350" rpy="-1.5708 0 0"/>
+        <origin xyz="100 0 350" rpy="0 0 0"/>
         <parent link="link1"/>
         <child link="link2"/>
-        <axis xyz="0 0 1"/>
+        <axis xyz="0 1 0"/>
         <limit lower="-1.5708" upper="2.4435" effort="0" velocity="4.7124"/>
         <axis xyz="0 0 1"/>
     </joint>
     <joint name="J3" type="revolute">
-        <origin xyz="0 -250 0" rpy="0 0 -1.5708"/>
+        <origin xyz="0 0 250" rpy="0 -1.5708 0"/>
         <parent link="link2"/>
         <child link="link3"/>
-        <axis xyz="0 0 1"/>
+        <axis xyz="0 1 0"/>
         <limit lower="0" upper="2.9496" effort="0" velocity="4.7124"/>
     </joint>
     <joint name="J4" type="revolute">
-        <origin xyz="135 0 0" rpy="-1.5708 0 0"/>
+        <origin xyz="0 0 135" rpy="0 0 0"/>
         <parent link="link3"/>
         <child link="link4"/>
-        <axis xyz="0 0 1"/>
+        <axis xyz="1 0 0"/>
         <limit lower="-2.7925" upper="2.7925" effort="0" velocity="4.7124"/>
     </joint>
     <joint name="NO2ARM LEFT COVER" type="fixed">
