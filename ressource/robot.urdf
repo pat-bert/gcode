@@ -29,7 +29,7 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_NO1ARM.stl"/>
             </geometry>
-            <origin xyz="-100 0 -350" rpy="0 0 0"/>
+            <origin xyz="-100 0 -350"/>
             <material name="red"/>
         </visual>
     </link>
@@ -38,7 +38,7 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_ELBOW.stl"/>
             </geometry>
-            <origin xyz="-100 0 -600" rpy="0 0 0"/>
+            <origin xyz="-100 0 -600"/>
         </visual>
     </link>
     <link name="link4">
@@ -46,7 +46,7 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM.stl"/>
             </geometry>
-            <origin xyz="-100 0 -735" rpy="0 0 0"/>
+            <origin xyz="-100 0 -735"/>
             <material name="red"/>
         </visual>
     </link>
@@ -55,7 +55,7 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM_LCOVER.stl"/>
             </geometry>
-            <origin xyz="-100 0 -735" rpy="0 0 0"/>
+            <origin xyz="-100 0 -735"/>
             <material name="red"/>
         </visual>
     </link>
@@ -64,7 +64,7 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM_RCOVER.stl"/>
             </geometry>
-            <origin xyz="-100 0 -735" rpy="0 0 0"/>
+            <origin xyz="-100 0 -735"/>
             <material name="red"/>
         </visual>
     </link>
@@ -73,7 +73,7 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST.stl"/>
             </geometry>
-            <origin xyz="-350 0 -735" rpy="0 0 0"/>
+            <origin xyz="-350 0 -735"/>
             <material name="green"/>
         </visual>
     </link>
@@ -82,7 +82,7 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_RCOVER.stl"/>
             </geometry>
-            <origin xyz="-350 0 -735" rpy="0 0 0"/>
+            <origin xyz="-350 0 -735"/>
             <material name="green"/>
         </visual>
     </link>
