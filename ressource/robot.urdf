@@ -10,7 +10,7 @@
     <link name="base">
         <visual name="BASE">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_BASE.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_BASE.stl"/>
             </geometry>
             <origin xyz="0 0 0"/>
         </visual>
@@ -18,7 +18,7 @@
     <link name="link1">
         <visual name="SHOULDER">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_SHOULDER.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_SHOULDER.stl"/>
             </geometry>
             <origin xyz="0 0 0"/>
             <material name="green"/>
@@ -27,7 +27,7 @@
     <link name="link2">
         <visual name="NO1ARM">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_NO1ARM.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_NO1ARM.stl"/>
             </geometry>
             <origin xyz="-100 0 -350" rpy="0 0 0"/>
             <material name="red"/>
@@ -36,7 +36,7 @@
     <link name="link3">
         <visual name="ELBOW">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_ELBOW.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_ELBOW.stl"/>
             </geometry>
             <origin xyz="-100 0 -600" rpy="0 0 0"/>
         </visual>
@@ -44,7 +44,7 @@
     <link name="link4">
         <visual name="NO2ARM">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_NO2ARM.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM.stl"/>
             </geometry>
             <origin xyz="-100 0 -735" rpy="0 0 0"/>
             <material name="red"/>
@@ -53,45 +53,45 @@
     <link name="link4.1">
         <visual name="NO2ARM LEFT COVER">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_NO2ARM_LCOVER.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM_LCOVER.stl"/>
             </geometry>
-            <origin xyz="0 0 0"/>
+            <origin xyz="-100 0 -735" rpy="0 0 0"/>
             <material name="red"/>
         </visual>
     </link>
     <link name="link4.2">
         <visual name="NO2ARM RIGHT COVER">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_NO2ARM_RCOVER.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM_RCOVER.stl"/>
             </geometry>
-            <origin xyz="0 0 0"/>
+            <origin xyz="-100 0 -735" rpy="0 0 0"/>
             <material name="red"/>
         </visual>
     </link>
     <link name="link5">
         <visual name="WRIST">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_WRIST.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST.stl"/>
             </geometry>
-            <origin xyz="0 0 0"/>
+            <origin xyz="-350 0 -735" rpy="0 0 0"/>
             <material name="green"/>
         </visual>
     </link>
     <link name="link5.1">
         <visual name="WRIST REAR COVER">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_WRIST_RCOVER.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_RCOVER.stl"/>
             </geometry>
-            <origin xyz="0 0 0"/>
+            <origin xyz="-350 0 -735" rpy="0 0 0"/>
             <material name="green"/>
         </visual>
     </link>
-    <link name="link5.2">
+    <link name="link6">
         <visual name="WRIST FLANGE">
             <geometry>
-                <mesh filename="test/rv_4a_top_1_RV_4A_WRIST_FLANGE.stl"/>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_FLANGE.stl"/>
             </geometry>
-            <origin xyz="0 0 0"/>
+            <origin xyz="-440 0 735" rpy="3.1415 0 0"/>
             <material name="green"/>
         </visual>
     </link>
@@ -100,7 +100,7 @@
             <geometry>
                 <box size="0.5 0.5 0.1"/>
             </geometry>
-            <origin xyz="-300 -150 0"/>
+            <origin xyz="0 0 0"/>
             <material name="red"/>
         </visual>
     </link>
@@ -144,23 +144,25 @@
         <child link="link4.2"/>
     </joint>
     <joint name="J5" type="revolute">
+        <origin xyz="250 0 0" rpy="0 0 0"/>
         <parent link="link4"/>
         <child link="link5"/>
-        <axis xyz="0 0 1"/>
+        <axis xyz="0 1 0"/>
         <limit lower="-2.0944" upper="2.0944" effort="0" velocity="4.7124"/>
     </joint>
     <joint name="WRIST REAR COVER" type="fixed">
         <parent link="link5"/>
         <child link="link5.1"/>
     </joint>
+    <joint name="J6" type="revolute">
+        <origin xyz="90 0 0" rpy="0 0 0"/>
+        <parent link="link5"/>
+        <child link="link6"/>
+        <axis xyz="1 0 0"/>
+        <limit lower="-3.4907" upper="3.4907" effort="0" velocity="7.5398"/>
+    </joint>
     <joint name="WRIST FLANGE" type="fixed">
         <parent link="link5"/>
-        <child link="link5.2"/>
-    </joint>
-    <joint name="J6" type="revolute">
-        <parent link="link5"/>
         <child link="tool"/>
-        <axis xyz="0 0 1"/>
-        <limit lower="-3.4907" upper="3.4907" effort="0" velocity="7.5398"/>
     </joint>
 </robot>
