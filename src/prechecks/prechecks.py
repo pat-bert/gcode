@@ -1,19 +1,24 @@
-from typing import List
+from typing import List, Iterator
 
 import numpy as np
 
+from prechecks.gcode2segment import circular_segment_from_gcode, linear_segment_from_gcode
 from src.gcode.GCmd import GCmd
-from src.kinematics.forward_kinematics import forward_kinematics, pose2tform
+from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
-from src.prechecks.spatial_interpolation import linear_interpolation, circular_interpolation
-from src.prechecks.trajectory_segment import LinearSegment, CircularSegment, CartesianTrajectorySegment, \
-    JointTrajectorySegment
+from src.prechecks.trajectory_segment import CartesianTrajectorySegment, JointTrajectorySegment
 
 
 class TrajectoryError(ValueError):
     """
     Indicate that a trajectory check has failed.
+    """
+
+
+class CollisionViolation(TrajectoryError):
+    """
+
     """
 
 
@@ -79,8 +84,7 @@ def check_trajectory(
         qlim: List[float],
         qdlim: List[float],
         home_pos: List[float],
-        ds: float,
-        fail_first: bool = False
+        ds: float
 ):
     """
     Validate a trajectory defined by a list of G-code commands.
@@ -91,7 +95,6 @@ def check_trajectory(
     :param qdlim: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
     :param home_pos: Home position given as list of joint values
     :param ds: Float value for distance between pose points in mm
-    :param fail_first: Indicate whether the validation should be aborted on the first failure, defaults to False
     :return: None
 
     The following checks are done in order:
@@ -147,12 +150,45 @@ def check_trajectory(
         violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
         raise ConfigurationChanges('Found segments without common configuration.', violation_idx)
 
-    # TODO Check for collisions (requires joint values)
+    # TODO Create collision scene from task trajectory segments
+    all_collision_scenes = list(range(10))
+
+    # Check paths sorted by minimum configuration change cost for collisions
+    for least_cost_config in get_minimum_cost_paths():
+        for seg, conf, current_collision_scene in zip(joint_trajectory, least_cost_config, all_collision_scenes):
+            # Get joint coordinates at each point for the determined arm onfiguration
+            joint_values = [0, 3]
+            if has_collisions(joint_values, current_collision_scene):
+                # The current segment is not valid
+                break
+        else:
+            # The configuration list is valid for all segments, no need to calculate the next best path
+            break
+    else:
+        raise CollisionViolation('No collision-free trajectory could be determined.')
 
 
-def generate_joint_trajectory(complete_trajectory, config) -> List[JointTrajectorySegment]:
+def has_collisions(joint_values: List[float], collision_scene) -> bool:
+    # TODO Matlab call to check for collisions
+    return False
+
+
+def get_minimum_cost_paths() -> Iterator[List[int]]:
+    # TODO Yield results of Dijkstra algorithm for minimum cost in ascending order
+    for i in range(10):
+        yield [0, 1, 2, 3, 4, 5, 6, 7]
+
+
+def generate_joint_trajectory(task_trajectory: List[CartesianTrajectorySegment], config: List[BaseJoint]) \
+        -> List[JointTrajectorySegment]:
+    """
+    Generates the trajectory in joint space
+    :param task_trajectory: Trajectory in task space (cartesian), given as list of CartesianTrajectorySegments
+    :param config: List of joints implementing the BaseJoint interface
+    :return: Joint trajectory given as list of JointTrajectorySegments
+    """
     segments_joint_space = []
-    for segment in complete_trajectory:
+    for segment in task_trajectory:
         segment_solutions = []
         for pose in segment.trajectory_points:
             try:
@@ -175,7 +211,7 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
     :param cmds: List of G-Code command objects.
     :param current_pos: Start pose point given as 4x4 homogeneous matrix
     :param ds: Float value for distance between pose points in mm
-    :return:
+    :return: Task trajectory given as list of CartesianTrajectorySegments
     """
     is_absolute = True
     all_trajectory_pose_points = []
@@ -203,42 +239,3 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
             pass
 
     return all_trajectory_pose_points
-
-
-def circular_segment_from_gcode(command, current_pos, ds, is_absolute):
-    # Get end point and centre point
-    target_pos = command.cartesian_abs
-    centre_pos = target_pos + command.cartesian_rel
-    if not is_absolute:
-        target_pos += current_pos
-        centre_pos += current_pos
-    # Circular interpolation (constant way-interval)
-    # TODO Ensure order
-    target_position = target_pos.values
-    # TODO Get angles
-    x_angle = 0
-    y_angle = 0
-    z_angle = 0
-    target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
-    centre_position = centre_pos.values
-    trajectory_pose_points = circular_interpolation(current_pos, target_pose, centre_position, ds=ds)
-    circ_segment = CircularSegment(trajectory_pose_points)
-    return circ_segment, target_pos
-
-
-def linear_segment_from_gcode(command, current_pos, ds, is_absolute):
-    # Get end point
-    target_pos = command.cartesian_abs
-    if not is_absolute:
-        target_pos += current_pos
-    # Linear interpolation (constant way-interval)
-    # TODO Ensure order
-    target_position = target_pos.values
-    # TODO Get angles
-    x_angle = 0
-    y_angle = 0
-    z_angle = 0
-    target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
-    trajectory_pose_points = linear_interpolation(current_pos, target_pose, ds=ds)
-    lin_segment = LinearSegment(trajectory_pose_points)
-    return lin_segment, target_pos
