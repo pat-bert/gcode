@@ -91,8 +91,16 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_FLANGE.stl"/>
             </geometry>
-            <origin xyz="-440 0 735" rpy="3.1415 0 0"/>
-            <material name="green"/>
+            <origin xyz="-440 0 -735" rpy="0 0 0"/>
+        </visual>
+    </link>
+    <link name="adapter_plate">
+        <visual name="ADAPTER PLATE">
+            <geometry>
+                <mesh filename="visual/adapter.stl"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+            <material name="red"/>
         </visual>
     </link>
     <link name="tool">
@@ -126,7 +134,7 @@
         <parent link="link2"/>
         <child link="link3"/>
         <axis xyz="0 1 0"/>
-        <limit lower="0" upper="2.9496" effort="0" velocity="4.7124"/>
+        <limit lower="0.2618" upper="2.9496" effort="0" velocity="4.7124"/>
     </joint>
     <joint name="J4" type="revolute">
         <origin xyz="0 0 135" rpy="0 0 0"/>
@@ -162,7 +170,11 @@
         <limit lower="-3.4907" upper="3.4907" effort="0" velocity="7.5398"/>
     </joint>
     <joint name="WRIST FLANGE" type="fixed">
-        <parent link="link5"/>
+        <parent link="link6"/>
+        <child link="adapter_plate"/>
+    </joint>
+    <joint name="INTERFACE EXTRUDER" type="fixed">
+        <parent link="adapter_plate"/>
         <child link="tool"/>
     </joint>
 </robot>
