@@ -91,7 +91,7 @@
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_FLANGE.stl"/>
             </geometry>
-            <origin xyz="-440 0 735" rpy="3.1415 0 0"/>
+            <origin xyz="-440 0 -735" rpy="0 0 0"/>
         </visual>
     </link>
     <link name="adapter_plate">
@@ -99,7 +99,7 @@
             <geometry>
                 <mesh filename="visual/adapter.stl"/>
             </geometry>
-            <origin xyz="0 0 0" rpy="1.5708 0 1.5708"/>
+            <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
             <material name="red"/>
         </visual>
     </link>
