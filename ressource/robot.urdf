@@ -50,37 +50,10 @@
             <material name="red"/>
         </visual>
     </link>
-    <link name="link4.1">
-        <visual name="NO2ARM LEFT COVER">
-            <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM_LCOVER.stl"/>
-            </geometry>
-            <origin xyz="-100 0 -735"/>
-            <material name="red"/>
-        </visual>
-    </link>
-    <link name="link4.2">
-        <visual name="NO2ARM RIGHT COVER">
-            <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM_RCOVER.stl"/>
-            </geometry>
-            <origin xyz="-100 0 -735"/>
-            <material name="red"/>
-        </visual>
-    </link>
     <link name="link5">
         <visual name="WRIST">
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST.stl"/>
-            </geometry>
-            <origin xyz="-350 0 -735"/>
-            <material name="green"/>
-        </visual>
-    </link>
-    <link name="link5.1">
-        <visual name="WRIST REAR COVER">
-            <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_RCOVER.stl"/>
             </geometry>
             <origin xyz="-350 0 -735"/>
             <material name="green"/>
@@ -106,9 +79,9 @@
     <link name="tool">
         <visual name="EXTRUDER">
             <geometry>
-                <box size="0.5 0.5 0.1"/>
+                <box size="80 80 350"/>
             </geometry>
-            <origin xyz="0 0 0"/>
+            <origin xyz="175 0 150" rpy="-1.5708 0 -1.5708"/>
             <material name="red"/>
         </visual>
     </link>
@@ -143,24 +116,12 @@
         <axis xyz="1 0 0"/>
         <limit lower="-2.7925" upper="2.7925" effort="0" velocity="4.7124"/>
     </joint>
-    <joint name="NO2ARM LEFT COVER" type="fixed">
-        <parent link="link4"/>
-        <child link="link4.1"/>
-    </joint>
-    <joint name="NO2ARM RIGHT COVER" type="fixed">
-        <parent link="link4"/>
-        <child link="link4.2"/>
-    </joint>
     <joint name="J5" type="revolute">
         <origin xyz="250 0 0" rpy="0 0 0"/>
         <parent link="link4"/>
         <child link="link5"/>
         <axis xyz="0 1 0"/>
         <limit lower="-2.0944" upper="2.0944" effort="0" velocity="4.7124"/>
-    </joint>
-    <joint name="WRIST REAR COVER" type="fixed">
-        <parent link="link5"/>
-        <child link="link5.1"/>
     </joint>
     <joint name="J6" type="revolute">
         <origin xyz="90 0 0" rpy="0 0 0"/>
