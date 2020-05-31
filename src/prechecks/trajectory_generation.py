@@ -2,12 +2,12 @@ from typing import List
 
 import numpy as np
 
-from gcode.GCmd import GCmd
-from kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
-from kinematics.joints import BaseJoint
-from prechecks.gcode2segment import linear_segment_from_gcode, circular_segment_from_gcode
-from prechecks.prechecks import WorkspaceViolation
-from prechecks.trajectory_segment import CartesianTrajectorySegment, JointTrajectorySegment
+from src.gcode.GCmd import GCmd
+from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
+from src.kinematics.joints import BaseJoint
+from src.prechecks.gcode2segment import linear_segment_from_gcode, circular_segment_from_gcode
+from src.prechecks.exceptions import WorkspaceViolation
+from src.prechecks.trajectory_segment import CartesianTrajectorySegment, JointTrajectorySegment
 
 
 def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: float) -> List[CartesianTrajectorySegment]:
