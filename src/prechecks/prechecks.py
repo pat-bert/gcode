@@ -1,13 +1,15 @@
+from math import pi
 from typing import List, Iterator
 
 import numpy as np
 
-from prechecks.gcode2segment import circular_segment_from_gcode, linear_segment_from_gcode
+from prechecks.configs import melfa_rv_4a
 from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
+from src.prechecks.gcode2segment import circular_segment_from_gcode, linear_segment_from_gcode
 from src.prechecks.trajectory_segment import CartesianTrajectorySegment, JointTrajectorySegment
 
 
@@ -224,6 +226,7 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
     is_absolute = True
     all_trajectory_pose_points = []
 
+    # TODO Distinguish movements without extrusion
     for line_number, command in enumerate(cmds):
         # Movement commands
         if command.id in ['G01', 'G1']:
@@ -247,3 +250,25 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
             pass
 
     return all_trajectory_pose_points
+
+
+if __name__ == '__main__':
+    cmd_raw = 'G91\n' \
+              'G01 X100 Z-50'
+    commands = [GCmd.read_cmd_str(cmd_str) for cmd_str in cmd_raw.splitlines()]
+    robot_config = melfa_rv_4a()
+    cartesian_limits = [0, 1000, -300, 300, 0, 600]
+    joint_limits = [
+        -2.7925, 2.7925,
+        -1.5708, 2.4435,
+        +0.2618, 2.9496,
+        -2.7925, 2.7925,
+        -2.0944, 2.0944,
+        -3.4907, 3.4907
+    ]
+    joint_velocity_limits = [3.7699, 4.7124, 4.7124, 4.7124, 4.7124, 7.5398]
+    home_position = [0, 0, pi / 2, 0, pi / 2, 0]
+    inc_distance = 1
+    urdf_path = './../../ressource/robot.urdf'
+    check_trajectory(commands, robot_config, cartesian_limits, joint_limits, joint_velocity_limits, home_position,
+                     inc_distance, urdf_path)

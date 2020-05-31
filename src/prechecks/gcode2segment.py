@@ -1,7 +1,7 @@
-from gcode.GCmd import GCmd
-from kinematics.forward_kinematics import pose2tform
-from prechecks.spatial_interpolation import circular_interpolation, linear_interpolation
-from prechecks.trajectory_segment import CircularSegment, LinearSegment
+from src.gcode.GCmd import GCmd
+from src.kinematics.forward_kinematics import pose2tform
+from src.prechecks.spatial_interpolation import circular_interpolation, linear_interpolation
+from src.prechecks.trajectory_segment import CircularSegment, LinearSegment
 
 
 def circular_segment_from_gcode(command: GCmd, current_pos, ds: float, is_absolute: bool):
