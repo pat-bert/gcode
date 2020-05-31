@@ -1,53 +1,14 @@
-import sys
-import time
 from math import pi
 from typing import List, Iterator
-
-import numpy as np
 
 from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
-from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
 from src.prechecks.configs import melfa_rv_4a
-from src.prechecks.gcode2segment import circular_segment_from_gcode, linear_segment_from_gcode
-from src.prechecks.trajectory_segment import CartesianTrajectorySegment, JointTrajectorySegment
-
-
-def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=100):
-    """
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        bar_length  - Optional  : character length of bar (Int)
-    """
-    str_format = "{0:." + str(decimals) + "f}"
-    percents = str_format.format(100 * (iteration / float(total)))
-    filled_length = int(round(bar_length * iteration / float(total)))
-    bar = '█' * filled_length + '-' * (bar_length - filled_length)
-
-    sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)),
-
-    if iteration == total:
-        sys.stdout.write('\n')
-    sys.stdout.flush()
-
-
-def time_func_call(func):
-    def wrapped_func(*args, **kwargs):
-        start = time.process_time()
-        try:
-            result = func(*args, **kwargs)
-        finally:
-            print(f'Finished in {time.process_time() - start} seconds.')
-        return result
-
-    return wrapped_func
+from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
+from src.prechecks.trajectory_segment import JointTrajectorySegment
+from src.prechecks.utils import print_progress, time_func_call
 
 
 class TrajectoryError(ValueError):
@@ -204,6 +165,7 @@ def check_trajectory(
     print('Creating collision scene...')
     # TODO Create collision scene from task trajectory segments
     all_collision_scenes = list(range(10))
+
     # Init Matlab Runtime
     collider = MatlabCollisionChecker()
     collisions = collider.check_collisions(home_pos, path=urdf_path)
@@ -213,6 +175,7 @@ def check_trajectory(
 
     # Check paths sorted by minimum configuration change cost for collisions
     for least_cost_config in get_min_cost_paths(common_configurations, joint_trajectory):
+        # TODO Paralellize collision checking (segment-wise)
         for seg, seg_conf, current_collision_scene in zip(joint_trajectory, least_cost_config, all_collision_scenes):
             # Get joint coordinates at each point for the determined arm onfiguration
             total_len = len(seg.solutions)
@@ -241,69 +204,6 @@ def get_min_cost_paths(common_conf: List[List[float]], joint_traj: List[JointTra
     # TODO Yield results of Dijkstra algorithm for minimum cost in ascending order
     best_conf = [i[0] for i in common_conf]
     yield best_conf * len(joint_traj)
-
-
-def generate_joint_trajectory(task_trajectory: List[CartesianTrajectorySegment], config: List[BaseJoint]) \
-        -> List[JointTrajectorySegment]:
-    """
-    Generates the trajectory in joint space
-    :param task_trajectory: Trajectory in task space (cartesian), given as list of CartesianTrajectorySegments
-    :param config: List of joints implementing the BaseJoint interface
-    :return: Joint trajectory given as list of JointTrajectorySegments
-    """
-    segments_joint_space = []
-    for segment in task_trajectory:
-        segment_solutions = []
-        for pose in segment.trajectory_points:
-            try:
-                # Calculate the inverse kinematics without specifying a specific pose flag
-                # Only if no solution at all can be found exceptions will propagate out
-                solutions = ik_spherical_wrist(config, pose, pose_flags=None)
-                # Append the solutions for the current pose
-                segment_solutions.append(solutions)
-            except OutOfReachError as e:
-                # Inverse kinematic cannot be solved for points outside the workspace
-                raise WorkspaceViolation from e
-        # Append the solutions for the current segment
-        segments_joint_space.append(JointTrajectorySegment(segment_solutions))
-    return segments_joint_space
-
-
-def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: float) -> List[CartesianTrajectorySegment]:
-    """
-    Generates trajectory points for a list of G-code commands.
-    :param cmds: List of G-Code command objects.
-    :param current_pos: Start pose point given as 4x4 homogeneous matrix
-    :param ds: Float value for distance between pose points in mm
-    :return: Task trajectory given as list of CartesianTrajectorySegments
-    """
-    is_absolute = True
-    all_trajectory_pose_points = []
-
-    # TODO Distinguish movements without extrusion
-    for line_number, command in enumerate(cmds):
-        # Movement commands
-        if command.id in ['G01', 'G1']:
-            lin_segment = linear_segment_from_gcode(command, current_pos, ds, is_absolute)
-            all_trajectory_pose_points.append(lin_segment)
-            current_pos = lin_segment.target
-        elif command.id in ['G02', 'G2']:
-            circ_segment = circular_segment_from_gcode(command, current_pos, ds, is_absolute)
-            all_trajectory_pose_points.append(circ_segment)
-            current_pos = circ_segment.target
-        # Consider relative coordinates
-        elif command.id == 'G90':
-            is_absolute = True
-        elif command.id == 'G91':
-            is_absolute = False
-        # TODO Consider coordinate origin shifting
-        elif command.id == 'G92':
-            pass
-        # TODO Consider tool changes
-        elif command.id.startswith('T'):
-            pass
-
-    return all_trajectory_pose_points
 
 
 if __name__ == '__main__':
