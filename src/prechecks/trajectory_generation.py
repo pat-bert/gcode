@@ -67,7 +67,7 @@ def generate_joint_trajectory(task_trajectory: List[CartesianTrajectorySegment],
                 segment_solutions.append(solutions)
             except OutOfReachError as e:
                 # Inverse kinematic cannot be solved for points outside the workspace
-                raise WorkspaceViolation from e
+                raise WorkspaceViolation('Cannot reach position.') from e
         # Append the solutions for the current segment
         segments_joint_space.append(JointTrajectorySegment(segment_solutions))
     return segments_joint_space

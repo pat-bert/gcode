@@ -435,5 +435,5 @@ def acos_safe(arg) -> float:
     arg_clipped = round(arg, ndigits=6)
     try:
         return acos(arg_clipped)
-    except ValueError:
-        raise OutOfReachError
+    except ValueError as e:
+        raise OutOfReachError from e

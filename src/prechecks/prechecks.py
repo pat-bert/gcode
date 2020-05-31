@@ -93,7 +93,7 @@ def check_trajectory(
     print('Checking common configurations...')
     common_configurations = [segment.get_common_configurations() for segment in joint_trajectory]
     if not all(common_configurations):
-        violation_idx = [idx for idx, val in enumerate(common_configurations) if not common_configurations]
+        violation_idx = [idx for idx, val in enumerate(common_configurations) if not val]
         raise ConfigurationChanges('Found segments without common configuration.', violation_idx)
     print('Each segment can be executed without configuration change.')
 
@@ -147,10 +147,13 @@ if __name__ == '__main__':
               'G01 Y50 Z-50\n' \
               'G01 Z-200\n' \
               'G01 Y300\n' \
-              'G01 Y-700'
+              'G01 Y-700\n' \
+              'G90\n' \
+              'G01 Y0\n' \
+              'G01 X500 Z-50'
     commands = [GCmd.read_cmd_str(cmd_str) for cmd_str in cmd_raw.splitlines()]
     robot_config = melfa_rv_4a()
-    cartesian_limits = [0, 1000, -500, 500, 0, 700]
+    cartesian_limits = [0, 1000, -500, 500, -100, 700]
     joint_limits = [
         -2.7925, 2.7925,
         -1.5708, 2.4435,
