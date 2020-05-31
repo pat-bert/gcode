@@ -1,0 +1,141 @@
+<robot name="Mitsubishi Melfa RV-4A">
+    <material name="red">
+        <color rgba="1 0 0 0.8"/>
+    </material>
+    <material name="green">
+        <color rgba="0 1 0 0.8"/>
+    </material>
+
+    <!-- Link section -->
+    <link name="base">
+        <visual name="BASE">
+            <geometry>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_BASE.stl"/>
+            </geometry>
+            <origin xyz="0 0 0"/>
+        </visual>
+    </link>
+    <link name="link1">
+        <visual name="SHOULDER">
+            <geometry>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_SHOULDER.stl"/>
+            </geometry>
+            <origin xyz="0 0 0"/>
+            <material name="green"/>
+        </visual>
+    </link>
+    <link name="link2">
+        <visual name="NO1ARM">
+            <geometry>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_NO1ARM.stl"/>
+            </geometry>
+            <origin xyz="-100 0 -350"/>
+            <material name="red"/>
+        </visual>
+    </link>
+    <link name="link3">
+        <visual name="ELBOW">
+            <geometry>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_ELBOW.stl"/>
+            </geometry>
+            <origin xyz="-100 0 -600"/>
+        </visual>
+    </link>
+    <link name="link4">
+        <visual name="NO2ARM">
+            <geometry>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM.stl"/>
+            </geometry>
+            <origin xyz="-100 0 -735"/>
+            <material name="red"/>
+        </visual>
+    </link>
+    <link name="link5">
+        <visual name="WRIST">
+            <geometry>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST.stl"/>
+            </geometry>
+            <origin xyz="-350 0 -735"/>
+            <material name="green"/>
+        </visual>
+    </link>
+    <link name="link6">
+        <visual name="WRIST FLANGE">
+            <geometry>
+                <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_FLANGE.stl"/>
+            </geometry>
+            <origin xyz="-440 0 -735" rpy="0 0 0"/>
+        </visual>
+    </link>
+    <link name="adapter_plate">
+        <visual name="ADAPTER PLATE">
+            <geometry>
+                <mesh filename="visual/adapter.stl"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+            <material name="red"/>
+        </visual>
+    </link>
+    <link name="tool">
+        <visual name="EXTRUDER">
+            <geometry>
+                <box size="80 80 350"/>
+            </geometry>
+            <origin xyz="175 0 150" rpy="-1.5708 0 -1.5708"/>
+            <material name="red"/>
+        </visual>
+    </link>
+
+    <!-- Serial chain of joints -->
+    <joint name="J1" type="revolute">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <parent link="base"/>
+        <child link="link1"/>
+        <limit lower="-2.7925" upper="2.7925" effort="0" velocity="3.7699"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="J2" type="revolute">
+        <origin xyz="100 0 350" rpy="0 0 0"/>
+        <parent link="link1"/>
+        <child link="link2"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="-1.5708" upper="2.4435" effort="0" velocity="4.7124"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+    <joint name="J3" type="revolute">
+        <origin xyz="0 0 250" rpy="0 -1.5708 0"/>
+        <parent link="link2"/>
+        <child link="link3"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="0.2618" upper="2.9496" effort="0" velocity="4.7124"/>
+    </joint>
+    <joint name="J4" type="revolute">
+        <origin xyz="0 0 135" rpy="0 0 0"/>
+        <parent link="link3"/>
+        <child link="link4"/>
+        <axis xyz="1 0 0"/>
+        <limit lower="-2.7925" upper="2.7925" effort="0" velocity="4.7124"/>
+    </joint>
+    <joint name="J5" type="revolute">
+        <origin xyz="250 0 0" rpy="0 0 0"/>
+        <parent link="link4"/>
+        <child link="link5"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="-2.0944" upper="2.0944" effort="0" velocity="4.7124"/>
+    </joint>
+    <joint name="J6" type="revolute">
+        <origin xyz="90 0 0" rpy="0 0 0"/>
+        <parent link="link5"/>
+        <child link="link6"/>
+        <axis xyz="1 0 0"/>
+        <limit lower="-3.4907" upper="3.4907" effort="0" velocity="7.5398"/>
+    </joint>
+    <joint name="WRIST FLANGE" type="fixed">
+        <parent link="link6"/>
+        <child link="adapter_plate"/>
+    </joint>
+    <joint name="INTERFACE EXTRUDER" type="fixed">
+        <parent link="adapter_plate"/>
+        <child link="tool"/>
+    </joint>
+</robot>
