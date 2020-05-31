@@ -56,11 +56,11 @@ def check_trajectory(
         d.) The solutions are within the same configuration
             Optional Fix: Configuration changes are inserted
 
-    3.  Check that the TCP can reach the specified speed within the joint velocities.
+    3.  TODO Check that the TCP can reach the specified speed within the joint velocities.
         Prerequisite: Speed profile for fixed time steps, inverse Jacobian (difference based on IK)
 
     4.  Check that the robot paths are free of collisions.
-        Special care is required for tool changes.
+        TODO Special care is required for tool changes.
     """
     # Initialize the current position with the home position given in joint space
     start_position = forward_kinematics(config, home_pos)

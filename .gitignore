@@ -10,3 +10,4 @@
 /coverage.xml
 *.pyc
 *.prof
+/src_matlab/CollisionChecking.prj
