@@ -1,16 +1,29 @@
+import time
 from math import pi
 from typing import List, Iterator
 
 import numpy as np
 
-from prechecks.configs import melfa_rv_4a
 from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
+from src.prechecks.configs import melfa_rv_4a
 from src.prechecks.gcode2segment import circular_segment_from_gcode, linear_segment_from_gcode
 from src.prechecks.trajectory_segment import CartesianTrajectorySegment, JointTrajectorySegment
+
+
+def time_func_call(func):
+    def wrapped_func(*args, **kwargs):
+        start = time.process_time()
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            print(f'Finished in {time.process_time() - start} seconds.')
+        return result
+
+    return wrapped_func
 
 
 class TrajectoryError(ValueError):
@@ -80,6 +93,7 @@ class CommandFailureInfo:
         return f'{self.error_level} on line {self.line_number}: {self.command_str} - {self.failure_reason}'
 
 
+@time_func_call
 def check_trajectory(
         cmds: List[GCmd],
         config: List[BaseJoint],
@@ -132,61 +146,78 @@ def check_trajectory(
     start_position = forward_kinematics(config, home_pos)
 
     # Iterate over command list and generate waypoints
+    print('Generating task trajectory...')
     task_trajectory = generate_task_trajectory(cmds, start_position, ds)
 
     # 1.) Validate the trajectory in the task space
+    print('Validating trajectory in task space...')
     within_cartesian = [segment.is_within_cartesian_boundaries(clim) for segment in task_trajectory]
     if not all(within_cartesian):
         violation_idx = [idx for idx, val in enumerate(within_cartesian) if not val]
-        raise CartesianLimitViolation('Found segments violating the cartesian boundaries.', violation_idx)
+        raise CartesianLimitViolation('Found segments violating the cartesian limits.', violation_idx)
+    print('All segments are located within the cartesian limits.')
 
     # 2.) Create the trajectory in the joint space
+    print('Generating joint trajectory...')
     joint_trajectory = generate_joint_trajectory(task_trajectory, config)
 
     # Filter for the joint limits and validate the trajectory
+    print('Filtering positional joint limits...')
     within_joint = [segment.is_within_joint_limits(qlim) for segment in joint_trajectory]
     if not all(within_joint):
         violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
-        raise JointLimitViolation('Found segments violating the joint boundaries.', violation_idx)
+        raise JointLimitViolation('Found segments violating the joint limits.', violation_idx)
+    print('All segments have joint solutions within the limits.')
 
     # Check the configurations of the solutions
+    print('Checking common configurations...')
     common_configurations = [segment.get_common_configurations() for segment in joint_trajectory]
     if not all(common_configurations):
-        violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
-        raise ConfigurationChanges('Found segments without common configuration.', violation_idx)
+        raise ConfigurationChanges('Found segments without common configuration.')
+    print('Each segment can be executed without configuration change.')
 
+    # return
+    print('Creating collision scene...')
     # TODO Create collision scene from task trajectory segments
     all_collision_scenes = list(range(10))
+
+    # Init Matlab Runtime
     collider = MatlabCollisionChecker()
     collisions = collider.check_collisions(home_pos, path=urdf_path)
     if collisions[0]:
-        raise CollisionViolation('Home-position is in collision.')
+        raise CollisionViolation('Home position is in collision.')
+    print('Home position is not in collision.')
 
     # Check paths sorted by minimum configuration change cost for collisions
-    for least_cost_config in get_minimum_cost_paths():
-        for seg, conf, current_collision_scene in zip(joint_trajectory, least_cost_config, all_collision_scenes):
+    for least_cost_config in get_min_cost_paths(common_configurations, joint_trajectory):
+        for seg, seg_conf, current_collision_scene in zip(joint_trajectory, least_cost_config, all_collision_scenes):
             # Get joint coordinates at each point for the determined arm onfiguration
-            joint_values = [0, 3]
-            collisions = collider.check_collisions(joint_values)
-            if collisions[0]:
-                # The current segment is not valid
-                break
+            print(f'Checking collisions for segment #{seg.idx}..')
+            for point_idx, point_solutions in enumerate(seg.solutions):
+                print(f'Checking collisions for point #{point_idx}..')
+                joint_values = point_solutions[seg_conf]
+                collisions = collider.check_collisions(joint_values)
+                if collisions[0]:
+                    # The current segment is not valid
+                    print(f'Found collisions for point #{point_idx} on segment #{seg.idx}.')
+                    break
+            else:
+                print(f'No collisions found for segment #{seg.idx}.')
+                continue
+            break
         else:
             # The configuration list is valid for all segments, no need to calculate the next best path
+            print('All segments were collision-free with the current configuration path.')
             break
+        print('Some segments were in collision. Querying next-best configuration path.')
     else:
         raise CollisionViolation('No collision-free trajectory could be determined.')
 
 
-def has_collisions(joint_values: List[float], collision_scene) -> bool:
-    # TODO Matlab call to check for collisions
-    return False
-
-
-def get_minimum_cost_paths() -> Iterator[List[int]]:
+def get_min_cost_paths(common_conf: List[List[float]], joint_traj: List[JointTrajectorySegment]) -> Iterator[List[int]]:
     # TODO Yield results of Dijkstra algorithm for minimum cost in ascending order
-    for i in range(10):
-        yield [0, 1, 2, 3, 4, 5, 6, 7]
+    best_conf = [i[0] for i in common_conf]
+    yield best_conf * len(joint_traj)
 
 
 def generate_joint_trajectory(task_trajectory: List[CartesianTrajectorySegment], config: List[BaseJoint]) \
@@ -230,13 +261,13 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
     for line_number, command in enumerate(cmds):
         # Movement commands
         if command.id in ['G01', 'G1']:
-            lin_segment, target_pos = linear_segment_from_gcode(command, current_pos, ds, is_absolute)
+            lin_segment = linear_segment_from_gcode(command, current_pos, ds, is_absolute)
             all_trajectory_pose_points.append(lin_segment)
-            current_pos = target_pos
+            current_pos = lin_segment.target
         elif command.id in ['G02', 'G2']:
-            circ_segment, target_pos = circular_segment_from_gcode(command, current_pos, ds, is_absolute)
+            circ_segment = circular_segment_from_gcode(command, current_pos, ds, is_absolute)
             all_trajectory_pose_points.append(circ_segment)
-            current_pos = target_pos
+            current_pos = circ_segment.target
         # Consider relative coordinates
         elif command.id == 'G90':
             is_absolute = True
@@ -257,7 +288,7 @@ if __name__ == '__main__':
               'G01 X100 Z-50'
     commands = [GCmd.read_cmd_str(cmd_str) for cmd_str in cmd_raw.splitlines()]
     robot_config = melfa_rv_4a()
-    cartesian_limits = [0, 1000, -300, 300, 0, 600]
+    cartesian_limits = [0, 1000, -300, 300, 0, 700]
     joint_limits = [
         -2.7925, 2.7925,
         -1.5708, 2.4435,
@@ -269,6 +300,7 @@ if __name__ == '__main__':
     joint_velocity_limits = [3.7699, 4.7124, 4.7124, 4.7124, 4.7124, 7.5398]
     home_position = [0, 0, pi / 2, 0, pi / 2, 0]
     inc_distance = 1
-    urdf_path = './../../ressource/robot.urdf'
+    urdf_file_path = './../../ressource/robot.urdf'
+
     check_trajectory(commands, robot_config, cartesian_limits, joint_limits, joint_velocity_limits, home_position,
-                     inc_distance, urdf_path)
+                     inc_distance, urdf_file_path)

@@ -31,7 +31,7 @@ class MatlabCollisionChecker:
         if path is not None:
             is_coll, self_coll_pair, world_coll_pair = self.checker.validate_config(config, visual, path, nargout=3)
         else:
-            is_coll, self_coll_pair, world_coll_pair = self.checker.validate_config(config, nargout=3)
+            is_coll, self_coll_pair, world_coll_pair = self.checker.validate_config(config, visual, nargout=3)
 
         if is_coll == -1:
             raise ValueError('Need to supply path at least once to initialize.')

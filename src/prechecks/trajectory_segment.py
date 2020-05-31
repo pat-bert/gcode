@@ -35,6 +35,10 @@ class CartesianTrajectorySegment(metaclass=abc.ABCMeta):
     def is_within_cartesian_boundaries(self, boundaries: List) -> bool:
         pass
 
+    @property
+    def target(self):
+        return self.trajectory_points[-1]
+
 
 class LinearSegment(CartesianTrajectorySegment):
     """
@@ -48,8 +52,8 @@ class LinearSegment(CartesianTrajectorySegment):
         :return: Boolean to indicate whether the point is within
         """
         # Convert generator to list to access last element
-        start_inside = is_point_within_boundaries(self.trajectory_points[0], boundaries)
-        end_inside = is_point_within_boundaries(self.trajectory_points[-1], boundaries)
+        start_inside = is_point_within_boundaries(self.trajectory_points[0][0:3, 3], boundaries)
+        end_inside = is_point_within_boundaries(self.trajectory_points[-1][0:3, 3], boundaries)
         return start_inside and (len(self.trajectory_points) == 1 or end_inside)
 
 
@@ -64,16 +68,19 @@ class CircularSegment(CartesianTrajectorySegment):
         :param boundaries: List of boundaries with twice the length of the coordinates
         :return: Boolean to indicate whether the point is within
         """
-        return all(is_point_within_boundaries(point, boundaries) for point in self.trajectory_points)
+        return all(is_point_within_boundaries(point[0:3, 3], boundaries) for point in self.trajectory_points)
 
 
 class JointTrajectorySegment:
     """
     Represents a list of trajectory point solutions given in the joint space
     """
+    IDX = 0
 
     def __init__(self, solutions: List[JointSolution]):
         self.solutions = solutions
+        self.idx = self.IDX
+        self.IDX = self.IDX + 1
 
     def is_within_joint_limits(self, limits: List) -> bool:
         """
@@ -84,15 +91,23 @@ class JointTrajectorySegment:
         # Iterate over all points
         within = True
         for point_number, point_solutions in enumerate(self.solutions):
+            # Dictionary to be populated with remaining solutions
+            remaining_solutions = {}
+
             # Check all available configurations for the current point
             for configuration, joints in point_solutions.items():
                 # Check all joint boundaries (solutions and boundaries are naturally in manufacturer's system)
-                if not is_point_within_boundaries(joints, limits):
+                if is_point_within_boundaries(joints, limits):
                     # Remove the solution
-                    del point_solutions[configuration]
-                    if len(point_solutions) == 0:
-                        # No solution left for a point on the segment
-                        within = False
+                    remaining_solutions[configuration] = joints
+
+            # Update solutions for point
+            self.solutions[point_number] = remaining_solutions
+
+            # Update return value
+            if len(remaining_solutions) == 0:
+                # No solution left for a point on the segment
+                within = False
         return within
 
     def get_common_configurations(self) -> List[float]:
@@ -104,10 +119,11 @@ class JointTrajectorySegment:
         common_configurations = set(self.solutions[0].keys())
 
         # Start comparison with second point
-        idx = 1
-        while common_configurations and idx < len(self.solutions):
+        for current_point_solutions in self.solutions:
+            if not common_configurations:
+                break
             # Only keep the configurations that are also viable for the next point
-            common_configurations &= set(self.solutions[idx].keys())
+            common_configurations &= set(current_point_solutions.keys())
         return list(common_configurations)
 
     def get_least_configuration_changes(self, shoulder_cost, elbow_cost, wrist_cost) -> List[JointSolution]:
