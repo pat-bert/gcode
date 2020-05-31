@@ -80,7 +80,7 @@ class JointTrajectorySegment:
     def __init__(self, solutions: List[JointSolution]):
         self.solutions = solutions
         self.idx = self.IDX
-        self.IDX = self.IDX + 1
+        JointTrajectorySegment.IDX = JointTrajectorySegment.IDX + 1
 
     def is_within_joint_limits(self, limits: List) -> bool:
         """

@@ -1,3 +1,4 @@
+import sys
 import time
 from math import pi
 from typing import List, Iterator
@@ -12,6 +13,29 @@ from src.kinematics.joints import BaseJoint
 from src.prechecks.configs import melfa_rv_4a
 from src.prechecks.gcode2segment import circular_segment_from_gcode, linear_segment_from_gcode
 from src.prechecks.trajectory_segment import CartesianTrajectorySegment, JointTrajectorySegment
+
+
+def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=100):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        bar_length  - Optional  : character length of bar (Int)
+    """
+    str_format = "{0:." + str(decimals) + "f}"
+    percents = str_format.format(100 * (iteration / float(total)))
+    filled_length = int(round(bar_length * iteration / float(total)))
+    bar = '█' * filled_length + '-' * (bar_length - filled_length)
+
+    sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)),
+
+    if iteration == total:
+        sys.stdout.write('\n')
+    sys.stdout.flush()
 
 
 def time_func_call(func):
@@ -173,14 +197,13 @@ def check_trajectory(
     print('Checking common configurations...')
     common_configurations = [segment.get_common_configurations() for segment in joint_trajectory]
     if not all(common_configurations):
-        raise ConfigurationChanges('Found segments without common configuration.')
+        violation_idx = [idx for idx, val in enumerate(common_configurations) if not common_configurations]
+        raise ConfigurationChanges('Found segments without common configuration.', violation_idx)
     print('Each segment can be executed without configuration change.')
 
-    # return
     print('Creating collision scene...')
     # TODO Create collision scene from task trajectory segments
     all_collision_scenes = list(range(10))
-
     # Init Matlab Runtime
     collider = MatlabCollisionChecker()
     collisions = collider.check_collisions(home_pos, path=urdf_path)
@@ -192,9 +215,10 @@ def check_trajectory(
     for least_cost_config in get_min_cost_paths(common_configurations, joint_trajectory):
         for seg, seg_conf, current_collision_scene in zip(joint_trajectory, least_cost_config, all_collision_scenes):
             # Get joint coordinates at each point for the determined arm onfiguration
-            print(f'Checking collisions for segment #{seg.idx}..')
+            total_len = len(seg.solutions)
+            print_progress(0, total_len, prefix=f'Checking collisions for segment #{seg.idx}...')
             for point_idx, point_solutions in enumerate(seg.solutions):
-                print(f'Checking collisions for point #{point_idx}..')
+                print_progress(point_idx + 1, total_len, prefix=f'Checking collisions for segment #{seg.idx}...')
                 joint_values = point_solutions[seg_conf]
                 collisions = collider.check_collisions(joint_values)
                 if collisions[0]:
@@ -202,7 +226,6 @@ def check_trajectory(
                     print(f'Found collisions for point #{point_idx} on segment #{seg.idx}.')
                     break
             else:
-                print(f'No collisions found for segment #{seg.idx}.')
                 continue
             break
         else:
@@ -285,10 +308,14 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
 
 if __name__ == '__main__':
     cmd_raw = 'G91\n' \
-              'G01 X100 Z-50'
+              'G01 X100 Z-50\n' \
+              'G01 Y50 Z-50\n' \
+              'G01 Z-200\n' \
+              'G01 Y300\n' \
+              'G01 Y-700'
     commands = [GCmd.read_cmd_str(cmd_str) for cmd_str in cmd_raw.splitlines()]
     robot_config = melfa_rv_4a()
-    cartesian_limits = [0, 1000, -300, 300, 0, 700]
+    cartesian_limits = [0, 1000, -500, 500, 0, 700]
     joint_limits = [
         -2.7925, 2.7925,
         -1.5708, 2.4435,

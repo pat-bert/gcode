@@ -1,3 +1,5 @@
+from math import pi
+
 import numpy as np
 
 from Coordinate import Coordinate
@@ -45,24 +47,25 @@ def linear_segment_from_gcode(command: GCmd, current_pose: np.ndarray, ds: float
     :param is_absolute:
     :return:
     """
-    # Consider relative positioning
-    if not is_absolute:
-        zero = Coordinate([0] * 6, 'XYZABC')
-        command.cartesian_abs.update_empty(zero)
+    current_position = Coordinate(current_pose[0:3, 3], 'XYZ')
+    target_position = command.cartesian_abs
+
+    # Consider missing elements
+    if is_absolute:
+        # Missing element means use value from previous position
+        target_position.update_empty(current_position)
     else:
-        none_values = Coordinate(current_pose[0:3, 3], 'XYZ')
-        command.cartesian_abs.update_empty(none_values)
+        # Missing element means zero offset in relative positioning
+        zero = Coordinate([0] * 6, 'XYZABC')
+        target_position.update_empty(zero)
+        target_position += current_position
 
     # Get end point (TODO Ensure order)
-    target_position = command.cartesian_abs.values
     # TODO Get angles
-    x_angle = 0
+    x_angle = -pi
     y_angle = 0
-    z_angle = 0
-    target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
-
-    if not is_absolute:
-        target_pose = np.dot(current_pose, target_pose)
+    z_angle = -pi
+    target_pose = pose2tform(target_position.values, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
 
     # Linear interpolation (constant way-interval)
     trajectory_pose_points = linear_interpolation(current_pose, target_pose, ds=ds)
