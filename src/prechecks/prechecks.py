@@ -3,6 +3,7 @@ from typing import List, Iterator
 import numpy as np
 
 from prechecks.gcode2segment import circular_segment_from_gcode, linear_segment_from_gcode
+from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
@@ -84,7 +85,8 @@ def check_trajectory(
         qlim: List[float],
         qdlim: List[float],
         home_pos: List[float],
-        ds: float
+        ds: float,
+        urdf_path: str,
 ):
     """
     Validate a trajectory defined by a list of G-code commands.
@@ -95,6 +97,7 @@ def check_trajectory(
     :param qdlim: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
     :param home_pos: Home position given as list of joint values
     :param ds: Float value for distance between pose points in mm
+    :param urdf_path:
     :return: None
 
     The following checks are done in order:
@@ -152,13 +155,18 @@ def check_trajectory(
 
     # TODO Create collision scene from task trajectory segments
     all_collision_scenes = list(range(10))
+    collider = MatlabCollisionChecker()
+    collisions = collider.check_collisions(home_pos, path=urdf_path)
+    if collisions[0]:
+        raise CollisionViolation('Home-position is in collision.')
 
     # Check paths sorted by minimum configuration change cost for collisions
     for least_cost_config in get_minimum_cost_paths():
         for seg, conf, current_collision_scene in zip(joint_trajectory, least_cost_config, all_collision_scenes):
             # Get joint coordinates at each point for the determined arm onfiguration
             joint_values = [0, 3]
-            if has_collisions(joint_values, current_collision_scene):
+            collisions = collider.check_collisions(joint_values)
+            if collisions[0]:
                 # The current segment is not valid
                 break
         else:
