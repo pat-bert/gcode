@@ -1,5 +1,6 @@
 from time import sleep
-from typing import Tuple, Optional, Callable, List, AnyStr
+
+from typing import Tuple, Optional, Callable, List, AnyStr, Any
 
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService
@@ -38,6 +39,18 @@ TOOL_OFFSET_CMD = "TOOL"
 # Parameters for R3 protocol
 ROBOT_NO = 1
 PROGRAM_NO = 1
+
+
+class ReaderRegistry:
+    r = set()
+
+    @classmethod
+    def register(cls, func):
+        """
+        Creates a decorator that registers the function name and returns the function unchanged.
+        """
+        cls.r.add(func.__name__)
+        return func
 
 
 class R3SubApi:
@@ -226,7 +239,7 @@ class R3Reader(R3SubApi):
     API functions related to reading values, parameters, ...
     """
 
-    def __init__(self, client: IClient, joints, *, r2c: Callable, digits: int, **kwargs):
+    def __init__(self, client: IClient, joints: List[str], *, r2c: Callable, digits: int, **kwargs):
         """
         Create an interface object for reading functions.
         :param client: Communication client
@@ -239,20 +252,23 @@ class R3Reader(R3SubApi):
         self.from_response_to_coordinate = r2c
         self.digits = digits
 
+    @ReaderRegistry.register
     def get_current_tool_number(self) -> int:
         """
         Get the current tool number
         :return: Current tool number as integer
         """
+        # TODO Check meaning
         tool_no = self.read_variable(CURRENT_TOOL_NO)
-        # TODO Verify response with actual hardware
-        return int(tool_no.split("=")[-1])
+        return int(tool_no)
 
+    @ReaderRegistry.register
     def get_current_tool_data(self) -> str:
         # TODO Do conversion to Coordinate
         tool_data = self.read_variable('P_TOOL')
         return tool_data
 
+    @ReaderRegistry.register
     def get_override(self) -> float:
         """
         Get the current override factor.
@@ -260,22 +276,25 @@ class R3Reader(R3SubApi):
         """
         return self._get_float_cmd(OVERRIDE_CMD, direct=False)
 
+    @ReaderRegistry.register
     def get_current_linear_speed(self) -> float:
         """
         Get the current linear speed in mm/s.
         :return: Current linear speed factor, float.
         """
         val = self.read_variable("M_RSPD")
-        return float(val.split("=")[-1])
+        return float(val)
 
+    @ReaderRegistry.register
     def get_joint_speed(self) -> float:
         """
         Get the current joint speed in percent.
         :return: Current joint override, float.
         """
         val = self.read_variable("M_JOVRD")
-        return float(val.split("=")[-1])
+        return float(val)
 
+    @ReaderRegistry.register
     def get_joint_borders(self) -> Tuple[float, ...]:
         """
         Get the limits for the joints in degrees.
@@ -283,8 +302,9 @@ class R3Reader(R3SubApi):
         """
         borders = self._read_parameter("MEJAR")
         coordinates = self.parse_comma_string(borders)
-        return tuple(float(i) for i in coordinates)
+        return tuple(float(i) for i in coordinates[0:2 * len(self.joints)])
 
+    @ReaderRegistry.register
     def get_xyz_borders(self) -> Tuple[float, ...]:
         """
         Get the limits for XYZ in mm.
@@ -292,13 +312,14 @@ class R3Reader(R3SubApi):
         """
         borders = self._read_parameter("MEPAR")
         coordinates = self.parse_comma_string(borders)
-        return tuple(float(i) for i in coordinates)
+        return tuple(float(i) for i in coordinates[0: 2 * 3])
 
     @staticmethod
     def parse_comma_string(response: str) -> List[str]:
         relevant_str = response.split(DELIMITER)[1]
         return relevant_str.split(", ")
 
+    @ReaderRegistry.register
     def get_current_xyzabc(self) -> Coordinate:
         """
         Get the current positions for XYZABC.
@@ -308,6 +329,7 @@ class R3Reader(R3SubApi):
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=6)
 
+    @ReaderRegistry.register
     def get_current_joint(self) -> Coordinate:
         """
         Get the current joint angles.
@@ -317,6 +339,7 @@ class R3Reader(R3SubApi):
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=len(self.joints))
 
+    @ReaderRegistry.register
     def get_safe_pos(self) -> Coordinate:
         """
         Get the current value of the safe position.
@@ -326,9 +349,30 @@ class R3Reader(R3SubApi):
         safe_pos_values = [float(i) for i in answer_str.split(DELIMITER)[1].split(", ")]
         return Coordinate(safe_pos_values, self.joints)
 
-    def get_servo_state(self):
-        # TODO Implement command and parsing
-        pass
+    @ReaderRegistry.register
+    def get_servo_state(self) -> int:
+        servo_state = self.read_variable(SRV_STATE_VAR)
+        return int(servo_state)
+
+    @staticmethod
+    def poll(func: Callable, val: Any, poll_rate_ms: int = 5, timeout_s: int = 60, ):
+        """
+        Poll a reading method until a given value is received or a timeout occurs.
+        :param func: Method of R3Reader to be called
+        :param val:
+        :param poll_rate_ms:
+        :param timeout_s:
+        :return:
+        :raises: ValueError, if the method is not listed in the pollable methods.
+        """
+        if func.__name__ not in ReaderRegistry.r:
+            raise ValueError(f'Unpollable function supplied: {func}')
+
+        # Iteratively call the method
+        while True:
+            response = func()
+            if response == val:
+                return
 
     def _read_parameter(self, parameter: str) -> str:
         """
@@ -346,7 +390,8 @@ class R3Reader(R3SubApi):
         :return: Client response excluding status
         """
         self._protocol_send(f"VAL{variable}")
-        return self.client.receive()
+        response = self.client.receive()
+        return response.split(f"{variable}=")[-1]
 
     def _get_float_cmd(self, cmd: str, direct=True) -> float:
         """
