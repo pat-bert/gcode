@@ -259,13 +259,13 @@ class R3Reader(R3SubApi):
         :return: Current tool number as integer
         """
         # TODO Check meaning
-        tool_no = self.read_variable(CURRENT_TOOL_NO)
+        tool_no = self._read_variable(CURRENT_TOOL_NO)
         return int(tool_no)
 
     @ReaderRegistry.register
     def get_current_tool_data(self) -> str:
         # TODO Do conversion to Coordinate
-        tool_data = self.read_variable('P_TOOL')
+        tool_data = self._read_variable('P_TOOL')
         return tool_data
 
     @ReaderRegistry.register
@@ -282,7 +282,7 @@ class R3Reader(R3SubApi):
         Get the current linear speed in mm/s.
         :return: Current linear speed factor, float.
         """
-        val = self.read_variable("M_RSPD")
+        val = self._read_variable("M_RSPD")
         return float(val)
 
     @ReaderRegistry.register
@@ -291,7 +291,7 @@ class R3Reader(R3SubApi):
         Get the current joint speed in percent.
         :return: Current joint override, float.
         """
-        val = self.read_variable("M_JOVRD")
+        val = self._read_variable("M_JOVRD")
         return float(val)
 
     @ReaderRegistry.register
@@ -351,7 +351,7 @@ class R3Reader(R3SubApi):
 
     @ReaderRegistry.register
     def get_servo_state(self) -> int:
-        servo_state = self.read_variable(SRV_STATE_VAR)
+        servo_state = self._read_variable(SRV_STATE_VAR)
         return int(servo_state)
 
     @staticmethod
@@ -383,7 +383,7 @@ class R3Reader(R3SubApi):
         self._protocol_send(f"PNR{parameter}")
         return self.client.receive()
 
-    def read_variable(self, variable: str) -> str:
+    def _read_variable(self, variable: str) -> str:
         """
         Auxilary function to read number variables.
         :param variable: String representation of the variable

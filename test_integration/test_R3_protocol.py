@@ -116,13 +116,33 @@ class TestR3ProtocolReader:
     def test_get_current_joint_speed(self, protocol, echo_server, prefix, exc):
         self.float_value(echo_server, protocol.get_joint_speed, prefix, exc, response='50.0')
 
-    @pytest.mark.skip(reason='Not implemented.')
     def test_get_joint_borders(self, protocol, echo_server, prefix, exc):
-        protocol.get_joint_borders()
+        response = 'MEJAR;-4.00, 4.00, -5.00, 1.00, 1.00, 16.00, -6.00, 16.00, -2.00, 1.00, -3.00, 3.00, -8.00, 8.00;10'
+        expected = (-4.0, 4.0, -5.0, 1.0, 1.0, 16.0, -6.0, 16.0, -2.0, 1.0, -3.0, 3.0)
 
-    @pytest.mark.skip(reason='Not implemented.')
+        # Test
+        if exc is None:
+            echo_server.reconfigure(pre=prefix, msg=response)
+            actual = protocol.get_joint_borders()
+            assert actual == expected
+        else:
+            echo_server.reconfigure(pre=prefix, msg='')
+            with pytest.raises(exc):
+                protocol.get_joint_borders()
+
     def test_get_xyz_borders(self, protocol, echo_server, prefix, exc):
-        protocol.get_xyz_borders()
+        response = 'MEPAR;-4.00, 4.00, -5.00, 1.00, -1.00, 16.00;10'
+        expected = (-4.0, 4.0, -5.0, 1.0, -1.0, 16.0)
+
+        # Test
+        if exc is None:
+            echo_server.reconfigure(pre=prefix, msg=response)
+            actual = protocol.get_xyz_borders()
+            assert actual == expected
+        else:
+            echo_server.reconfigure(pre=prefix, msg='')
+            with pytest.raises(exc):
+                protocol.get_xyz_borders()
 
     def test_get_current_xyzabc(self, protocol, echo_server, prefix, exc):
         """
@@ -172,14 +192,19 @@ class TestR3ProtocolReader:
     def test_get_safe_pos(self, protocol, prefix, exc):
         protocol.get_safe_pos()
 
-    @pytest.mark.skip(reason='Not implemented.')
-    def test_get_servo_state(self, protocol, prefix, exc):
-        protocol.get_servo_state()
+    def test_get_servo_state(self, protocol, echo_server, prefix, exc):
+        response = 'M_SVO=+1'
+        expected = 1
 
-    @pytest.mark.skip(reason='Not implemented.')
-    @pytest.mark.parametrize("var", [])
-    def test_read_variable(self, protocol, var: str, prefix, exc):
-        protocol.read_variable(var)
+        # Test
+        if exc is None:
+            echo_server.reconfigure(pre=prefix, msg=response)
+            actual = protocol.get_servo_state()
+            assert actual == expected
+        else:
+            echo_server.reconfigure(pre=prefix, msg='')
+            with pytest.raises(exc):
+                protocol.get_servo_state()
 
 
 @pytest.mark.parametrize("prefix,exc", [(p, e) for p, e in ErrorDispatch.items()])
