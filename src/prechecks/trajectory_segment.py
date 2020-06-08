@@ -51,9 +51,18 @@ class LinearSegment(CartesianTrajectorySegment):
         :param boundaries: List of boundaries with twice the length of the coordinates
         :return: Boolean to indicate whether the point is within
         """
-        # Convert generator to list to access last element
-        start_inside = is_point_within_boundaries(self.trajectory_points[0][0:3, 3], boundaries)
-        end_inside = is_point_within_boundaries(self.trajectory_points[-1][0:3, 3], boundaries)
+        # Distinguish element types
+        if self.trajectory_points[0].shape == (4, 4,):
+            # Homogeneous transformation matrix
+            start = self.trajectory_points[0][0:3, 3]
+            end = self.trajectory_points[-1][0:3, 3]
+        else:
+            # Assume single element
+            start = self.trajectory_points[0]
+            end = self.trajectory_points[-1]
+
+        start_inside = is_point_within_boundaries(start, boundaries)
+        end_inside = is_point_within_boundaries(end, boundaries)
         return start_inside and (len(self.trajectory_points) == 1 or end_inside)
 
 
@@ -68,7 +77,10 @@ class CircularSegment(CartesianTrajectorySegment):
         :param boundaries: List of boundaries with twice the length of the coordinates
         :return: Boolean to indicate whether the point is within
         """
-        return all(is_point_within_boundaries(point[0:3, 3], boundaries) for point in self.trajectory_points)
+        if self.trajectory_points[0].shape == (4, 4,):
+            return all(is_point_within_boundaries(point[0:3, 3], boundaries) for point in self.trajectory_points)
+        else:
+            return all(is_point_within_boundaries(point, boundaries) for point in self.trajectory_points)
 
 
 class JointTrajectorySegment:
@@ -134,12 +146,3 @@ class JointTrajectorySegment:
         :param wrist_cost: Cost that a change of the wrist configuration incurrs
         :return: List of selected joint solutions with minimum cost
         """
-        current_configuration = 7
-        next_configuration = 6
-
-        cost = 0
-
-        # Calculate the cost for a change
-        cost += shoulder_cost * (current_configuration & 4 == next_configuration & 4)
-        cost += elbow_cost * (current_configuration & 2 == next_configuration & 2)
-        cost += wrist_cost * (current_configuration & 1 == next_configuration & 1)

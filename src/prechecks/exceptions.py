@@ -1,6 +1,3 @@
-from gcode.GCmd import GCmd
-
-
 class TrajectoryError(ValueError):
     """
     Indicate that a trajectory check has failed.
@@ -51,18 +48,3 @@ class ConfigurationChanges(TrajectoryError):
     In case of a configuration change a singularity needs to be crossed and a path with the least
     configuration changes might be found.
     """
-
-
-class CommandFailureInfo:
-    """
-    Contains information of a command evaluation, e.g. reason for failed checks.
-    """
-
-    def __init__(self, line: int, command: GCmd, exc=None):
-        self.line_number = line
-        self.command_str = str(command)
-        self.failure_reason = str(exc)
-        self.error_level = 'critical'
-
-    def __str__(self):
-        return f'{self.error_level} on line {self.line_number}: {self.command_str} - {self.failure_reason}'

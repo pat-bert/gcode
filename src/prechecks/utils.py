@@ -18,7 +18,7 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
     filled_length = int(round(bar_length * iteration / float(total)))
     bar = '█' * filled_length + '-' * (bar_length - filled_length)
 
-    sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)),
+    sys.stdout.write(f'\r{prefix} |{bar}| {percents}% {suffix}')
 
     if iteration == total:
         sys.stdout.write('\n')
@@ -26,6 +26,16 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
 
 
 def time_func_call(func):
+    """
+    Prints the processing time of the wrapped function after its context is left.
+    :param func: Function to be wrapped.
+
+    Usage:
+    @time_func_call
+    def func():
+        pass
+    """
+
     def wrapped_func(*args, **kwargs):
         start = time.process_time()
         try:
