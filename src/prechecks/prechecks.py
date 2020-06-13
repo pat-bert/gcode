@@ -1,6 +1,8 @@
 from math import pi
 from typing import List, Iterator
 
+from dijkstar import find_path
+
 from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
@@ -8,6 +10,7 @@ from src.kinematics.joints import BaseJoint
 from src.prechecks.configs import melfa_rv_4a
 from src.prechecks.exceptions import CollisionViolation, CartesianLimitViolation, JointLimitViolation, \
     ConfigurationChanges
+from src.prechecks.graph_search import create_graph
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
 from src.prechecks.trajectory_segment import JointTrajectorySegment
 from src.prechecks.utils import print_progress, time_func_call
@@ -96,6 +99,17 @@ def check_trajectory(
         violation_idx = [idx for idx, val in enumerate(common_configurations) if not val]
         raise ConfigurationChanges('Found segments without common configuration.', violation_idx)
     print('Each segment can be executed without configuration change.')
+
+    # Create a unidirectional graph of the solutions. For each point a set of nodes is created according to viable robot
+    # configurations. The nodes of the same points stay unconnected but all nodes of adjacent points are connected at
+    # the beginning. The edges between the nodes represent the cost required. The cost is calculated based on the joint
+    # coordinates and the robot configurations of the connected nodes.
+    graph, start_node, stop_node = create_graph(joint_trajectory)
+
+    # Find the initially shortest path to be checked for collisions. Nodes in collision can be removed to query for the
+    # next best path.
+    path_info = find_path(graph, start_node, stop_node)
+    print(path_info)
 
     print('Creating collision scene...')
     # TODO Create collision scene from task trajectory segments

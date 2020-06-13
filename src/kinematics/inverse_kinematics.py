@@ -6,7 +6,7 @@ import numpy as np
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
 
-JointSolution = Dict[float, List[float]]
+JointSolution = Dict[int, List[float]]
 
 
 class Singularity(ValueError):

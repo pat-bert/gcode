@@ -1,5 +1,3 @@
-from math import pi
-
 import pytest
 
 from src.prechecks.configs import melfa_rv_4a
