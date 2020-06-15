@@ -1,6 +1,6 @@
 from typing import Union, List, Optional, Tuple
 
-import CollisionChecking
+import src_matlab.CollisionChecking.for_redistribution_files_only.CollisionChecking as CollisionChecking
 import matlab
 import numpy as np
 

@@ -11,9 +11,9 @@ def test_check_collisions():
     invalid_joints = [0, 0, 0, 0, pi / 2, 0]
 
     with pytest.raises(ValueError):
-        is_collision, self_collision, world_collision = eng.check_collisions(valid_joints)
+        eng.check_collisions(valid_joints)
 
-    is_collision, self_collision, world_collision = eng.check_collisions(valid_joints, path='./../ressource/robot.urdf')
+    is_collision, self_collision, world_collision = eng.check_collisions(valid_joints, path='./ressource/robot.urdf')
 
     assert not is_collision
     assert len(self_collision) == 0
