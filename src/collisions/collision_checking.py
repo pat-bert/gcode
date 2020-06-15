@@ -1,5 +1,4 @@
-from math import pi
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Tuple
 
 import CollisionChecking
 import matlab
@@ -18,12 +17,12 @@ class MatlabCollisionChecker:
         self.checker.terminate()
 
     def check_collisions(self, joint_coord: Union[List, np.ndarray], visual: Optional[bool] = False,
-                         path: Optional[str] = None):
+                         path: Optional[str] = None) -> Tuple[bool, np.ndarray, np.ndarray]:
         """
 
-        :param joint_coord:
+        :param joint_coord: Joint coordinates in manufacturer system and in rad
         :param visual:
-        :param path:
+        :param path: Path to the URDF file
         :return:
         """
         config = matlab.double(list(joint_coord), size=[len(joint_coord), 1])
@@ -37,21 +36,3 @@ class MatlabCollisionChecker:
             raise ValueError('Need to supply path at least once to initialize.')
 
         return is_coll, np.asarray(self_coll_pair, dtype=np.uint64), np.asarray(world_coll_pair, dtype=np.uint64)
-
-
-if __name__ == '__main__':
-    with MatlabCollisionChecker() as col:
-        try:
-            col.check_collisions([0, 3, 4], path=None)
-        except ValueError:
-            # Expected
-            pass
-        urdf_path = r'D:\Nutzer\Documents\PycharmProjects\gcode\ressource\robot.urdf'
-        import time
-
-        r = list()
-        start = time.process_time()
-        for i in range(1, 100):
-            r.append(col.check_collisions([-pi / 2, 0, pi / 2, 0, pi / 2, 0 + i * pi / 100], path=urdf_path))
-        print(time.process_time() - start)
-        print(r)
