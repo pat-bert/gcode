@@ -5,7 +5,6 @@ import matlab
 import numpy as np
 
 
-# Checker.terminate()
 class MatlabCollisionChecker:
     def __init__(self):
         self.checker = CollisionChecking.initialize()
