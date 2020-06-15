@@ -33,7 +33,11 @@ def calculate_node_idx(point_idx, configuration) -> int:
     :param configuration: Robot configuration for the node
     :return: Integer value for the node index
     """
-    return 8 * point_idx + configuration
+    if 0 <= configuration <= 7:
+        if point_idx >= 0:
+            return 8 * point_idx + configuration
+        raise ValueError('Point index must be positive.')
+    raise ValueError('Only configurations from 0-7 are allowed.')
 
 
 def create_graph(joint_traj: List[JointTrajectorySegment]) -> Tuple[Graph, int, int]:
