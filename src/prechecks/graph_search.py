@@ -39,6 +39,10 @@ def calculate_node_idx(point_idx, configuration) -> int:
 def create_graph(joint_traj: List[JointTrajectorySegment]) -> Tuple[Graph, int, int]:
     """
     Constructs a graph for a given joint trajectory.
+    The graph is unidirectional and has one common start and one common end node.
+    The graph consists of n layers with n being the total count of points in the joint trajectory.
+    The nodes within a layer are not connected but the nodes of adjacent layers are all connected initially.
+    For each point a node is created for each viable robot configuration/joint solution.
     :param joint_traj: List of JointTrajectorySegments
     :return: Graph that can be used to determine shortest paths, start node, stop node.
     """

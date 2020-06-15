@@ -109,7 +109,7 @@ def check_trajectory(
     # Find the initially shortest path to be checked for collisions. Nodes in collision can be removed to query for the
     # next best path.
     path_info = find_path(graph, start_node, stop_node)
-    print(path_info)
+    print(f'Total cost for the minimum cost path: {path_info.total_cost}')
 
     print('Creating collision scene...')
     # TODO Create collision scene from task trajectory segments
