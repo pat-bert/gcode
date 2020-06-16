@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from dijkstar import Graph
 
@@ -8,7 +8,31 @@ START_NODE = -1
 STOP_NODE = -2
 
 
-def calc_cost(curr_conf, curr_joints, prev_conf, prev_joints, curr_seg_idx=None, prev_seg_idx=None):
+def joint_limit_distance(joints: List[float], qlim: List[float], weights: Optional[List[float]] = None) -> float:
+    """
+    Measure to drive joints away from their limits.
+    :param joints: Joint coordinates to be evaluated
+    :param qlim: Joint limits in order [J1 min, J1 max, J2 min, J2 max, Jn min, Jn max]
+    :param weights:
+    :return: Non-negative cost value for the given joint coordinates. Best is zero.
+
+    [1] B. Siciliano, L. Sciavicco, L. Villani und G. Oriolo, Robotics : Modelling, Planning and Control, London:
+    Springer, 2009.
+    """
+    val = 0
+    if weights is None:
+        for jmin, jmax, j in zip(qlim[::2], qlim[1::2], joints):
+            val += ((j - 0.5 * (jmin + jmax)) / (jmax - jmin)) ** 2
+    else:
+        if len(weights) != len(joints):
+            raise ValueError('Need to supply as many weight factors as joint coordinates.')
+
+        for jmin, jmax, j, jweight in zip(qlim[::2], qlim[1::2], joints, weights):
+            val += jweight * ((j - 0.5 * (jmin + jmax)) / (jmax - jmin)) ** 2
+    return val / (2 * len(joints))
+
+
+def calc_cost(curr_conf, curr_joints, prev_conf, prev_joints, qlim: List[float], curr_seg_idx=None, prev_seg_idx=None):
     # Check whether the configuration changes
     if curr_conf != prev_conf:
         if curr_seg_idx == prev_seg_idx:
@@ -20,7 +44,7 @@ def calc_cost(curr_conf, curr_joints, prev_conf, prev_joints, curr_seg_idx=None,
             return float('Inf')
     else:
         # Common configurations are fine
-        cost = 1
+        cost = joint_limit_distance(curr_joints, qlim)
 
         # TODO Apply additional cost depending on proximity to joint limits, singularitites or high velocities
         return cost
@@ -40,7 +64,7 @@ def calculate_node_idx(point_idx, configuration) -> int:
     raise ValueError('Only configurations from 0-7 are allowed.')
 
 
-def create_graph(joint_traj: List[JointTrajectorySegment]) -> Tuple[Graph, int, int]:
+def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float]) -> Tuple[Graph, int, int]:
     """
     Constructs a graph for a given joint trajectory.
     The graph is unidirectional and has one common start and one common end node.
@@ -48,6 +72,7 @@ def create_graph(joint_traj: List[JointTrajectorySegment]) -> Tuple[Graph, int, 
     The nodes within a layer are not connected but the nodes of adjacent layers are all connected initially.
     For each point a node is created for each viable robot configuration/joint solution.
     :param joint_traj: List of JointTrajectorySegments
+    :param qlim: Joint limits in order [J1 min, J1 max, J2 min, J2 max, Jn min, Jn max]
     :return: Graph that can be used to determine shortest paths, start node, stop node.
     """
     joint_network = Graph()
@@ -71,7 +96,7 @@ def create_graph(joint_traj: List[JointTrajectorySegment]) -> Tuple[Graph, int, 
                         previous_node_idx = calculate_node_idx(point_idx - 1, previous_conf)
                         # Call a cost function to determine the transition cost between the nodes based on the robot
                         # configurations and the joint values.
-                        cost = calc_cost(current_conf, current_joints, previous_conf, previous_joints)
+                        cost = calc_cost(current_conf, current_joints, previous_conf, previous_joints, qlim)
                         # Add the edge to the graph
                         joint_network.add_edge(previous_node_idx, node_idx, edge=cost)
 

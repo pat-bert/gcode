@@ -104,7 +104,7 @@ def check_trajectory(
     # configurations. The nodes of the same points stay unconnected but all nodes of adjacent points are connected at
     # the beginning. The edges between the nodes represent the cost required. The cost is calculated based on the joint
     # coordinates and the robot configurations of the connected nodes.
-    graph, start_node, stop_node = create_graph(joint_trajectory)
+    graph, start_node, stop_node = create_graph(joint_trajectory, qlim)
 
     # Find the initially shortest path to be checked for collisions. Nodes in collision can be removed to query for the
     # next best path.
