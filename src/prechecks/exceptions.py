@@ -40,7 +40,7 @@ class JointVelocityViolation(TrajectoryError):
     """
 
 
-class ConfigurationChanges(TrajectoryError):
+class ConfigurationChangesError(TrajectoryError):
     """
     Will be raised if a segment is not accessible within at least one common configuration.
     Since start and end points are included in segments also continuity between segments

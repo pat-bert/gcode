@@ -55,6 +55,8 @@ def generate_joint_trajectory(task_trajectory: List[CartesianTrajectorySegment],
     :param config: List of joints implementing the BaseJoint interface
     :return: Joint trajectory given as list of JointTrajectorySegments
     """
+    print('Generating joint trajectory...')
+
     segments_joint_space = []
     for segment in task_trajectory:
         segment_solutions = []
