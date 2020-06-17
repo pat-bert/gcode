@@ -63,7 +63,6 @@ def check_trajectory(
         Prerequisite: Speed profile for fixed time steps, inverse Jacobian (difference based on IK)
 
     4.  Check that the robot paths are free of collisions.
-        TODO Special care is required for tool changes.
     """
     # Initialize the current position with the home position given in joint space
     start_position = forward_kinematics(config, home_pos)

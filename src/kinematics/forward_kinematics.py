@@ -20,7 +20,18 @@ def geometric_jacobian(config: List[BaseJoint], joint_coordinates: List[float]) 
 
     # Calculate cumulative transformation matrices (transformation from base frame)
     total_tform = np.eye(4)
-    tform_0_i_list = []
+
+    # Initialize with base frame
+    tform_0_i_list = [
+        np.array(
+            [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]
+            ]
+        )
+    ]
 
     for tform_i_j in tform_i_j_list:
         total_tform = total_tform.dot(tform_i_j)
@@ -31,7 +42,7 @@ def geometric_jacobian(config: List[BaseJoint], joint_coordinates: List[float]) 
     p_ee = tform_0_ee[0:3, 3]
 
     jacobian = np.zeros((6, len(config)))
-    for (col, tform_0_i), joint in zip(enumerate(tform_0_i_list), config):
+    for (col, tform_0_i), joint in zip(enumerate(tform_0_i_list[:-1]), config):
         # Select joint axis given in base frame
         current_z_axis_base_frame = tform_0_i[0:3, 2]
 
@@ -93,21 +104,37 @@ def tform2quat(tform: ndarray) -> List[float]:
     return [w, x, y, z]
 
 
+def axang2rotm(axis: List[float], angle: float) -> ndarray:
+    k = np.array(
+        [
+            [0, -axis[2], axis[1]],
+            [axis[2], 0, -axis[0]],
+            [-axis[1], axis[0], 0]
+        ]
+    )
+    # Rodrigues Equation
+    return np.eye(3) + sin(angle) * k + (1 - cos(angle)) * (k @ k)
+
+
 def tform2euler(tform: ndarray) -> List[float]:
     """
     Calculates euler angles from a homogeneous matrix.
     :param tform: Homogenous matrix (4x4)
     :return: ABC in deg as used by Mitsubishi (ZY'X'', alpha and gamma swapped)
     """
-    beta = atan2(-tform[2, 0], hypot(tform[2, 1], tform[2, 2]))
+    return rotm2euler(tform[0:3, 0:3])
+
+
+def rotm2euler(rotm: ndarray) -> List[float]:
+    beta = atan2(-rotm[2, 0], hypot(rotm[2, 1], rotm[2, 2]))
     c_b = cos(beta)
 
     if abs(c_b) > 1e-10:
-        gamma = atan2(tform[1, 0] / c_b, tform[0, 0] / c_b)
-        alpha = atan2(tform[2, 1] / c_b, tform[2, 2] / c_b)
+        gamma = atan2(rotm[1, 0] / c_b, rotm[0, 0] / c_b)
+        alpha = atan2(rotm[2, 1] / c_b, rotm[2, 2] / c_b)
     else:
         gamma = 0
-        alpha = atan2(tform[0, 1], tform[1, 1])
+        alpha = atan2(rotm[0, 1], rotm[1, 1])
         if beta < 0:
             alpha *= -1
     return [alpha, beta, gamma]
