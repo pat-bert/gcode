@@ -3,9 +3,52 @@ from typing import List
 
 import numpy as np
 from numpy.core.multiarray import ndarray
-from numpy.linalg import multi_dot
+from numpy.linalg import multi_dot, inv
 
-from src.kinematics.joints import BaseJoint
+from src.kinematics.joints import BaseJoint, JointType
+
+
+def geometric_jacobian(config: List[BaseJoint], joint_coordinates: List[float]) -> ndarray:
+    """
+    Calculate the jacobian for the current joint coordinates.
+    :param config: Tuple of joints
+    :param joint_coordinates: Tuple of joint coordinate values (either mm or radian)
+    :return: 6xn matrix for n joints
+    """
+    # Calculate all individual transformation matrices
+    tform_i_j_list = [forward_kinematics([joint], [joint_val]) for joint, joint_val in zip(config, joint_coordinates)]
+
+    # Calculate cumulative transformation matrices (transformation from base frame)
+    total_tform = np.eye(4)
+    tform_0_i_list = []
+
+    for tform_i_j in tform_i_j_list:
+        total_tform = total_tform.dot(tform_i_j)
+        tform_0_i_list.append(total_tform)
+
+    # End-effector position
+    tform_0_ee = tform_0_i_list[-1]
+    p_ee = tform_0_ee[0:3, 3]
+
+    jacobian = np.zeros((6, len(config)))
+    for (col, tform_0_i), joint in zip(enumerate(tform_0_i_list), config):
+        # Select joint axis given in base frame
+        current_z_axis_base_frame = tform_0_i[0:3, 2]
+
+        # Distinguish rotational and translational joints, fill current column of jacobian
+        if joint.joint_type is JointType.ROTATIONAL:
+            joint_origin = tform_0_i[0:3, 3]
+            jacobian[0:3, col] = np.cross(current_z_axis_base_frame, p_ee - joint_origin)
+            jacobian[3:6, col] = current_z_axis_base_frame
+        else:
+            jacobian[0:3, col] = current_z_axis_base_frame
+    return jacobian
+
+
+def right_generalized_inverse_jacobian(jacobian: ndarray) -> ndarray:
+    jacobian_t = jacobian.transpose()
+    # TODO Compare with pinv(jacobian)
+    return jacobian_t @ inv(jacobian @ jacobian_t)
 
 
 def forward_kinematics(config: List[BaseJoint], joint_coordinates: List[float], subtract_offset=False) -> ndarray:

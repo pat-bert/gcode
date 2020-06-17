@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from src.kinematics.forward_kinematics import forward_kinematics, tform2quat, tform2euler, calculate_pose_flags, \
-    pose2tform
+    pose2tform, geometric_jacobian
 from src.kinematics.joint_factories import BaseJointFactory
 
 
@@ -288,3 +288,72 @@ def test_pose2tform(pos, a, b, c, order, exc):
     else:
         with pytest.raises(exc):
             pose2tform(pos, x_angle=a, y_angle=b, z_angle=c, order=order)
+
+
+@pytest.mark.parametrize("config,joint_values,jac_columns",
+                         [
+                             # Rotational joint plus translational joint with affect on translation
+                             (
+                                     [
+                                         BaseJointFactory.new(a=0, alpha=0, d=0),
+                                         BaseJointFactory.new(a=10, alpha=pi / 2, theta=pi / 2)
+                                     ],
+                                     [0, 0],
+                                     [[-10, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, 0]]
+                             ),
+                             # Translational joint (z-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=0, theta=0)],
+                                     [0],
+                                     [[0, 0, 1, 0, 0, 0]]
+                             ),
+                             # Translational joint (y-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=-pi / 2, theta=0)],
+                                     [0],
+                                     [[0, 1, 0, 0, 0, 0]]
+                             ),
+                             # Translational joint (x-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=pi / 2, theta=pi / 2)],
+                                     [0],
+                                     [[1, 0, 0, 0, 0, 0]]
+                             ),
+                             # Rotational joint (z-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=0, d=0)],
+                                     [0],
+                                     [[0, 0, 0, 0, 0, 1]]
+                             ),
+                             # Rotational joint (y-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=-pi / 2, d=0)],
+                                     [0],
+                                     [[0, 0, 0, 0, 1, 0]]
+                             ),
+                             # Multiple translational joints (z-axis + y-axis)
+                             (
+                                     [
+                                         BaseJointFactory.new(a=0, alpha=0, theta=0),
+                                         BaseJointFactory.new(a=0, alpha=-pi / 2, theta=0)
+                                     ],
+                                     [0, 0],
+                                     [[0, 0, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0]]
+                             )
+                         ]
+                         )
+def test_geometric_jacobian(config, joint_values, jac_columns):
+    actual_jacobian = geometric_jacobian(config, joint_values)
+    shape = (6, len(config))
+    print('Actual:')
+    print(actual_jacobian)
+    assert actual_jacobian.shape == shape
+
+    jac = np.zeros(shape)
+    for col_idx, col in enumerate(jac_columns):
+        jac[:, col_idx] = col
+
+    print('Expected:')
+    print(jac)
+
+    np.testing.assert_allclose(actual_jacobian, jac, atol=1e-6)
