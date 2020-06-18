@@ -307,35 +307,17 @@ def test_pose2tform(pos, a, b, c, order, exc):
                                      [0],
                                      [[0, 0, 1, 0, 0, 0]]
                              ),
-                             # Translational joint (y-axis)
-                             (
-                                     [BaseJointFactory.new(a=0, alpha=-pi / 2, theta=0)],
-                                     [0],
-                                     [[0, 1, 0, 0, 0, 0]]
-                             ),
-                             # Translational joint (x-axis)
-                             (
-                                     [BaseJointFactory.new(a=0, alpha=pi / 2, theta=pi / 2)],
-                                     [0],
-                                     [[1, 0, 0, 0, 0, 0]]
-                             ),
                              # Rotational joint (z-axis)
                              (
                                      [BaseJointFactory.new(a=0, alpha=0, d=0)],
                                      [0],
                                      [[0, 0, 0, 0, 0, 1]]
                              ),
-                             # Rotational joint (y-axis)
-                             (
-                                     [BaseJointFactory.new(a=0, alpha=-pi / 2, d=0)],
-                                     [0],
-                                     [[0, 0, 0, 0, 1, 0]]
-                             ),
                              # Multiple translational joints (z-axis + y-axis)
                              (
                                      [
-                                         BaseJointFactory.new(a=0, alpha=0, theta=0),
-                                         BaseJointFactory.new(a=0, alpha=-pi / 2, theta=0)
+                                         BaseJointFactory.new(a=0, alpha=-pi / 2, theta=0),
+                                         BaseJointFactory.new(a=0, alpha=0, theta=0)
                                      ],
                                      [0, 0],
                                      [[0, 0, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0]]

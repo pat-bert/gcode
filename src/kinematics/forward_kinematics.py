@@ -22,16 +22,7 @@ def geometric_jacobian(config: List[BaseJoint], joint_coordinates: List[float]) 
     total_tform = np.eye(4)
 
     # Initialize with base frame
-    tform_0_i_list = [
-        np.array(
-            [
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1]
-            ]
-        )
-    ]
+    tform_0_i_list = [np.eye(4)]
 
     for tform_i_j in tform_i_j_list:
         total_tform = total_tform.dot(tform_i_j)
