@@ -90,7 +90,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     zdir = tform[0:3, 2]
 
     # Get the wrist center in base frame from the flange position in base frame
-    p04 = tcp_pos - zdir * config[5].d
+    p04 = tcp_pos - zdir * config[5].d - xdir * config[5].a
 
     # Attempt to calculate j1, singularity error will propagate
     theta1_solutions = _ik_spherical_wrist_joint1(flag_right, p04)

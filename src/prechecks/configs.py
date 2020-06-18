@@ -3,9 +3,13 @@ from math import pi
 from src.kinematics.joint_factories import BaseJointFactory
 
 
-def melfa_rv_4a():
-    rtoff = 0.0  # radial tool offset
-    atoff = 0.0  # axial tool offset
+def melfa_rv_4a(rtoff=0, atoff=0):
+    """
+
+    :param rtoff: Radial tool offset (in x-direction of tool frame)
+    :param atoff: Axial tool offset (in z-direction of tool frame)
+    :return:
+    """
 
     # Denavit-Hartenberg parameters: a - alpha - d - zero offset
     # Mitsubishi defines axis origins differently than resulting from DH-convention
@@ -15,7 +19,7 @@ def melfa_rv_4a():
         [135, -pi / 2, 0.0, -pi / 2],
         [0.0, +pi / 2, 250, 0],
         [0.0, -pi / 2, 0.0, 0],
-        [rtoff, 0.00000, 90 + atoff, pi]
+        [-rtoff, 0.00000, 90 + atoff, pi]
     ]
 
     config = [BaseJointFactory.new(a=a, alpha=alpha, d=d, theta=None, offset=z) for a, alpha, d, z in dh_parameters]

@@ -299,7 +299,7 @@ def test_pose2tform(pos, a, b, c, order, exc):
                                          BaseJointFactory.new(a=10, alpha=pi / 2, theta=pi / 2)
                                      ],
                                      [0, 0],
-                                     [[-10, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, 0]]
+                                     [[-10, 0, 0, 0, 0, 1], [0, 0, 1, 0, 0, 0]]
                              ),
                              # Translational joint (z-axis)
                              (

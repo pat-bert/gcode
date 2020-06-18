@@ -9,7 +9,7 @@ from src.kinematics.joints import BaseJoint
 from src.prechecks.configs import melfa_rv_4a
 
 
-def frr(config: List[BaseJoint], initial_joints: List[float], weights=None, stop_threshold: float = 1e-6) \
+def frr(config: List[BaseJoint], initial_joints: List[float], weights=None, stop_threshold: float = 1e-5) \
         -> List[float]:
     """
     Functional Redundancy Resolution
@@ -76,14 +76,20 @@ def frr(config: List[BaseJoint], initial_joints: List[float], weights=None, stop
 
 
 if __name__ == '__main__':
-    robot = melfa_rv_4a()
-    home = [-1, pi / 3, pi / 2, 0, pi / 2, pi]
-    # home = [-64, 47, 79, 31, 55, -180]
-    print(home)
-    # home = [i / 180 * pi for i in home]
-    import time
+    # Define test data
+    robot = melfa_rv_4a(rtoff=-50, atoff=200)
+    home = [0, 0, pi / 2, 0, pi / 2, pi]
+    tuning = [0, 0.1, 0.1, 0.1, 0.1, 0.01]
 
-    s = time.time()
-    new_joints = frr(robot, home, weights=[0.1, 0.1, 0.1, 0.1, 0.1, 0.5])
-    print(f'Calculated in {time.time() - s} s.')
-    print(new_joints)
+    # Do optimization and print joints
+    new_joints = frr(robot, home, weights=tuning)
+    print(f'Original joints:\t{[f"{i:+.3f}" for i in home]}')
+    print(f'New joints:\t\t\t{[f"{i:+.3f}" for i in new_joints]}')
+
+    # Validate new position
+    tcp_pos = forward_kinematics(robot, home)
+    tcp_pos_new = forward_kinematics(robot, new_joints)
+    tcp_pos_dev = tcp_pos_new - tcp_pos
+    print(f'TCP Pos Deviation:\t{[f"{i:+.3f}" for i in tcp_pos_dev[0:3, 3]]}')
+    print(f'TCP ZDIR Deviation:\t{[f"{i:+.3f}" for i in tcp_pos_dev[0:3, 2]]}')
+    print(f'Weights:\t\t\t{tuning}')

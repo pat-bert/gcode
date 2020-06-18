@@ -58,7 +58,6 @@ def geometric_jacobian(config: List[BaseJoint], joint_coordinates: List[float]) 
 
 def right_generalized_inverse_jacobian(jacobian: ndarray) -> ndarray:
     jacobian_t = jacobian.transpose()
-    # TODO Compare with pinv(jacobian)
     return jacobian_t @ inv(jacobian @ jacobian_t)
 
 
