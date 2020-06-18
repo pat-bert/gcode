@@ -4,7 +4,8 @@ from typing import List
 import numpy as np
 import pytest
 
-from src.kinematics.forward_kinematics import forward_kinematics, tform2quat, tform2euler, calculate_pose_flags
+from src.kinematics.forward_kinematics import forward_kinematics, tform2quat, tform2euler, calculate_pose_flags, \
+    pose2tform, geometric_jacobian
 from src.kinematics.joint_factories import BaseJointFactory
 
 
@@ -18,7 +19,7 @@ def simple_rotational_joint():
     return BaseJointFactory.new(a=0, alpha=0, d=0, theta=None)
 
 
-def validate_vec(kind: str, actual, expected: List[float], atol=1):
+def validate_vec(kind: str, actual, expected: List[float], atol=0.5):
     """
     Helper function to validate vectors of a homogenous matrix (4x4)
     :param kind:
@@ -54,6 +55,10 @@ def test_forward_kinematics_two_translational_joints(simple_translational_joint,
     validate_vec('Y', transformation, [0, 1, 0])
     validate_vec('Z', transformation, [0, 0, 1])
     validate_vec('pos', transformation, [0, 0, 2 * joint_coordinate])
+
+
+def test_joint_len(simple_rotational_joint):
+    assert len(simple_rotational_joint) == 1
 
 
 @pytest.mark.parametrize("joint_coordinate", [pi / 2, 0, 3.7, -2.1])
@@ -113,6 +118,13 @@ def test_forward_kinematics_rotational_joint(simple_rotational_joint, joint_coor
                                      [52.550, -42.990, 131.910, -43.210, 93.720, -103.650],
                                      [165.438, -41.185, -20.204, 153.391, 99.003, 606.813],
                                      None
+                             ),
+                             (
+                                     [0, 55, 15, 0, 110, 0],
+                                     [None, None, None, 493.107, 0.000, 615.287],
+                                     [
+                                         [-1, 0, 0], [0, 1, 0], [0, 0, -1]
+                                     ]
                              )
                          ]
                          )
@@ -130,7 +142,7 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, benchmark, joints_deg, abcxyz
     tcp_pose = benchmark(forward_kinematics, dh_melfa_rv_4a, joints_rad)
 
     # Unpack expected coordinates
-    a, b, c, *xyz = abcxyz
+    _, _, _, *xyz = abcxyz
 
     print(tcp_pose)
 
@@ -147,6 +159,13 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, benchmark, joints_deg, abcxyz
         validate_vec('X', tcp_pose, tcp_x)
         validate_vec('Y', tcp_pose, tcp_y)
         validate_vec('Z', tcp_pose, tcp_z)
+
+
+def test_forward_kinematics_unequal_length(dh_melfa_rv_4a):
+    with pytest.raises(ValueError):
+        forward_kinematics(dh_melfa_rv_4a, [0] * (len(dh_melfa_rv_4a) - 1))
+    with pytest.raises(ValueError):
+        forward_kinematics(dh_melfa_rv_4a, [0] * (len(dh_melfa_rv_4a) + 1))
 
 
 @pytest.mark.parametrize("joints_deg,a,b,c",
@@ -204,8 +223,8 @@ def test_tform2euler(dh_melfa_rv_4a, joints_deg, a, b, c):
 
         # Angles match or are off by 360 degrees
         assert (a == pytest.approx(a_actual, abs=atol)) or (round(a - a_actual, r) % 360 == pytest.approx(0, abs=atol))
-        assert (a == pytest.approx(a_actual, abs=atol)) or (round(b - b_actual, r) % 360 == pytest.approx(0, abs=atol))
-        assert (a == pytest.approx(a_actual, abs=atol)) or (round(c - c_actual, r) % 360 == pytest.approx(0, abs=atol))
+        assert (b == pytest.approx(b_actual, abs=atol)) or (round(b - b_actual, r) % 360 == pytest.approx(0, abs=atol))
+        assert (c == pytest.approx(c_actual, abs=atol)) or (round(c - c_actual, r) % 360 == pytest.approx(0, abs=atol))
 
 
 @pytest.mark.parametrize("joints,ex_flags",
@@ -246,3 +265,77 @@ def test_calculate_pose_flags(joints, ex_flags, dh_melfa_rv_4a):
     flags = calculate_pose_flags(dh_melfa_rv_4a, joints)
 
     assert flags == ex_flags
+
+
+@pytest.mark.parametrize("pos,a,b,c,order,exc",
+                         [
+                             ([0, 0, 0], 0.3, 0.2, -0.1, 'ZYA', ValueError),
+                             ([0, 0, 0], 0.3, 0.2, -0.1, 'ZYXX', ValueError),
+                             ([0, 0, 0], 0.3, 0.2, -0.1, 'ZYX', None),
+                         ]
+                         )
+def test_pose2tform(pos, a, b, c, order, exc):
+    if exc is None:
+        actual_tform = pose2tform(pos, x_angle=a, y_angle=b, z_angle=c, order=order)
+        a_actual, b_actual, c_actual = tform2euler(actual_tform)
+
+        # Angles match or are off by 360 degrees
+        tol = 0.01
+        r = 10
+        assert (a == pytest.approx(a_actual, abs=tol)) or (round(a - a_actual, r) % 2 * pi == pytest.approx(0, abs=tol))
+        assert (b == pytest.approx(b_actual, abs=tol)) or (round(b - b_actual, r) % 2 * pi == pytest.approx(0, abs=tol))
+        assert (c == pytest.approx(c_actual, abs=tol)) or (round(c - c_actual, r) % 2 * pi == pytest.approx(0, abs=tol))
+    else:
+        with pytest.raises(exc):
+            pose2tform(pos, x_angle=a, y_angle=b, z_angle=c, order=order)
+
+
+@pytest.mark.parametrize("config,joint_values,jac_columns",
+                         [
+                             # Rotational joint plus translational joint with affect on translation
+                             (
+                                     [
+                                         BaseJointFactory.new(a=0, alpha=0, d=0),
+                                         BaseJointFactory.new(a=10, alpha=pi / 2, theta=pi / 2)
+                                     ],
+                                     [0, 0],
+                                     [[-10, 0, 0, 0, 0, 1], [0, 0, 1, 0, 0, 0]]
+                             ),
+                             # Translational joint (z-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=0, theta=0)],
+                                     [0],
+                                     [[0, 0, 1, 0, 0, 0]]
+                             ),
+                             # Rotational joint (z-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=0, d=0)],
+                                     [0],
+                                     [[0, 0, 0, 0, 0, 1]]
+                             ),
+                             # Multiple translational joints (z-axis + y-axis)
+                             (
+                                     [
+                                         BaseJointFactory.new(a=0, alpha=-pi / 2, theta=0),
+                                         BaseJointFactory.new(a=0, alpha=0, theta=0)
+                                     ],
+                                     [0, 0],
+                                     [[0, 0, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0]]
+                             )
+                         ]
+                         )
+def test_geometric_jacobian(config, joint_values, jac_columns):
+    actual_jacobian = geometric_jacobian(config, joint_values)
+    shape = (6, len(config))
+    print('Actual:')
+    print(actual_jacobian)
+    assert actual_jacobian.shape == shape
+
+    jac = np.zeros(shape)
+    for col_idx, col in enumerate(jac_columns):
+        jac[:, col_idx] = col
+
+    print('Expected:')
+    print(jac)
+
+    np.testing.assert_allclose(actual_jacobian, jac, atol=1e-6)

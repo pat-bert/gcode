@@ -8,6 +8,11 @@
 
     <!-- Link section -->
     <link name="base">
+        <inertial>
+            <origin xyz="0 0 0"/>
+            <mass value="10.842"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="BASE">
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_BASE.stl"/>
@@ -16,6 +21,11 @@
         </visual>
     </link>
     <link name="link1">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="8.060"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="SHOULDER">
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_SHOULDER.stl"/>
@@ -25,6 +35,11 @@
         </visual>
     </link>
     <link name="link2">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="5.588"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="NO1ARM">
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_NO1ARM.stl"/>
@@ -34,6 +49,11 @@
         </visual>
     </link>
     <link name="link3">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="8.311"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="ELBOW">
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_ELBOW.stl"/>
@@ -42,6 +62,11 @@
         </visual>
     </link>
     <link name="link4">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="3.204"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="NO2ARM">
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM.stl"/>
@@ -51,6 +76,11 @@
         </visual>
     </link>
     <link name="link5">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="1.243"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="WRIST">
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST.stl"/>
@@ -60,6 +90,11 @@
         </visual>
     </link>
     <link name="link6">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="0.107"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="WRIST FLANGE">
             <geometry>
                 <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_FLANGE.stl"/>
@@ -68,6 +103,11 @@
         </visual>
     </link>
     <link name="adapter_plate">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="0.140"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="ADAPTER PLATE">
             <geometry>
                 <mesh filename="visual/adapter.stl"/>
@@ -77,6 +117,11 @@
         </visual>
     </link>
     <link name="tool">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="2"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
         <visual name="EXTRUDER">
             <geometry>
                 <box size="80 80 350"/>

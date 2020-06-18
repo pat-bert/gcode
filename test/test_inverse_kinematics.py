@@ -59,7 +59,7 @@ def dummy_tform():
                              # RBN
                              pytest.param(
                                  [-1, 0, 0], [0, 1, 0], [0, 0, -1],
-                                 [493.107, 0.000, 615.287], 5,
+                                 [493.107, 0.000, 615.287], 5,  # 616.587
                                  [0, 55, 15, 0, 110, 0], None, marks=pytest.mark.xfail(reason='Bad accuracy')
                              ),
                              # RBF
@@ -138,19 +138,23 @@ def test_ik_spherical_wrist(xdir, ydir, zdir, pos, expected_joints, flags, exc, 
     print('\n\nCalculating inverse kinematics...')
     if exc is None:
         # Regular solution should be possible
-        act_joints = ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=flags)[flags]
+        solutions = ik_spherical_wrist(dh_melfa_rv_4a, tform, pose_flags=None)
+        act_joints = solutions[flags]
+
+        for key, val in sorted(solutions.items(), key=lambda d: d[0]):
+            print(f'Solution for flag {key}:  {[f"{actual:+.5f}" for actual in val]}')
 
         # Test the solution
         expected_joints = np.deg2rad(expected_joints)
         print('\nChecking results...')
-        print(f'Actual:  {[f"{actual:+.5f}" for actual in act_joints]}')
-        print(f'Expect:  {[f"{expect:+.5f}" for expect in expected_joints]}')
+        print(f'Actual ({flags}):\t{[f"{actual:+.5f}" for actual in act_joints]}')
+        print(f'Expect:\t{[f"{expect:+.5f}" for expect in expected_joints]}')
 
         non_flip = bool((flags & 1) == 1)
         up = bool((flags & 2) == 2)
         right = bool((flags & 4) == 4)
 
-        print(f'EFlags:  {"R" if right else "L"},{"A" if up else "B"},{"N" if non_flip else "F"}')
+        print(f'EFlags:\t{"R" if right else "L"},{"A" if up else "B"},{"N" if non_flip else "F"}')
 
         # Reconvert the joint angles to a pose
         print('\n\nCalculating forward kinematics from solution...')
@@ -211,7 +215,9 @@ def test_ik_spherical_wrist_bad_config(dummy_tform, dh_melfa_rv_4a):
                              (0, 55, 15, 0, 110, 0),
                              # 10
                              (90, -25, 25, 0, 90, 0),
-                             (90, -25, 25, 0, -90, 0)
+                             (90, -25, 25, 0, -90, 0),
+                             (90, -24, 20, 0, 94, 0),
+                             (90, -24, 20, 0, -86, 0)
                          ]
                          )
 def test_ik_spherical_wrist_fk_based(expected_joints, calc_all, dh_melfa_rv_4a, benchmark):

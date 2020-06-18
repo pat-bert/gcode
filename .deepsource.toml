@@ -3,7 +3,8 @@ version = 1
 test_patterns = [
   "test/**",
   "test_integration/**",
-  "test_*.py"
+  "test_*.py",
+  "src_matlab/**"
 ]
 
 [[analyzers]]

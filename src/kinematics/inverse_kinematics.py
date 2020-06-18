@@ -6,6 +6,8 @@ import numpy as np
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
 
+JointSolution = Dict[int, List[float]]
+
 
 class Singularity(ValueError):
     pass
@@ -45,7 +47,7 @@ ELBOW_SINGULARITY_THRESHOLD = 1e-3
 SHOULDER_SINGULARITY_THRESHOLD = 1e-3
 
 
-def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=None) -> Dict[float, List[float]]:
+def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=None) -> JointSolution:
     """
     Calculate the forward kinematics for a given configuration of joints and joint coordinates.
     :param config: Tuple of joints, offsets are considered
@@ -88,7 +90,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
     zdir = tform[0:3, 2]
 
     # Get the wrist center in base frame from the flange position in base frame
-    p04 = tcp_pos - zdir * config[5].d
+    p04 = tcp_pos - zdir * config[5].d - xdir * config[5].a
 
     # Attempt to calculate j1, singularity error will propagate
     theta1_solutions = _ik_spherical_wrist_joint1(flag_right, p04)
@@ -99,7 +101,7 @@ def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=No
 
 def _calc_j1_dependants(config: List[BaseJoint], elbow_up: Optional[bool], non_flip: Optional[bool], p04: np.ndarray,
                         j1_solutions: Dict[bool, float], xdir: np.ndarray, zdir: np.ndarray) \
-        -> Dict[float, List[float]]:
+        -> JointSolution:
     """
     Calculate all dependant angles (2-6) for given j1 solutions
     :param config: Tuple of joints, offsets are considered
@@ -141,7 +143,7 @@ def _calc_j1_dependants(config: List[BaseJoint], elbow_up: Optional[bool], non_f
 
 def _calc_j2_dependants(conf: List[BaseJoint], non_flip: Optional[bool], p14: np.ndarray, flag_sum: int, j1: float,
                         j2_solutions: Dict[bool, float], tf12: np.ndarray, xdir: np.ndarray, zdir: np.ndarray) \
-        -> Dict[float, List[float]]:
+        -> JointSolution:
     """
     Calculate all dependant angles (3-6) for given j2 solutions
     :param conf: Tuple of joints, offsets are considered
@@ -187,7 +189,7 @@ def _calc_j2_dependants(conf: List[BaseJoint], non_flip: Optional[bool], p14: np
 
 
 def _calc_j5_dependants(conf: List[BaseJoint], flag_sum: int, theta123: List[float], j5_solutions: Dict[bool, float],
-                        tf14: np.ndarray, xdir: np.ndarray, zdir: np.ndarray) -> Dict[float, List[float]]:
+                        tf14: np.ndarray, xdir: np.ndarray, zdir: np.ndarray) -> JointSolution:
     """
     Calculate the dependant last joint for given j5 solutions
     :param conf: Tuple of joints, offsets are considered
@@ -430,8 +432,8 @@ def acos_safe(arg) -> float:
     :raises: OutOfReachError if acos is not defined for the rounded arg
     """
     # Check whether no solution is available (= OutOfReachError)
-    arg_clipped = round(arg, ndigits=6)
+    arg_clipped = int(1e10 * arg) / 1e10
     try:
         return acos(arg_clipped)
-    except ValueError:
-        raise OutOfReachError
+    except ValueError as e:
+        raise OutOfReachError from e
