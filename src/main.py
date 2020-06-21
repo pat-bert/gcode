@@ -41,7 +41,7 @@ import sys
 
 # Own libraries
 from src.ApplicationExceptions import ApiException
-from src.GRedirect import GRedirect
+from src.printer_components.GRedirect import GRedirect
 from src.cli_commands.demo import demo_mode
 from src.cli_commands.execute_r3 import execute_r3
 from src.cli_commands.interactive_gcode import interactive_gcode

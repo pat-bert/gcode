@@ -1,6 +1,6 @@
 from src import ApplicationExceptions
 from src.gcode.GCmd import GCmd
-from src.GPrinter import GPrinter
+from src.printer_components.GPrinter import GPrinter
 
 
 def interactive_gcode(ip, port, log_file=None, safe_return=False) -> None:

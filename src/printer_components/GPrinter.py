@@ -1,13 +1,10 @@
 from typing import Dict, Union, Set
 
-from src.printer_components.Extruder import Extruder
+from src.printer_components.GRedirect import RedirectionTargets, GRedirect
+from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
-from src.GRedirect import RedirectionTargets, GRedirect
-from src.printer_components.Heater import Heater
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.printer_components.PrinterComponent import PrinterComponent
-from src.clients.TcpClientR3 import TcpClientR3
-from src.printer_components.UxHandler import UxHandler
 
 
 class GPrinter:
@@ -77,14 +74,7 @@ class GPrinter:
             tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return
         )
 
-        # Create extruder object
-        extruder = Extruder()
-
-        # Create heater object
-        heater = Heater()
-
-        # Create UX object
-        user_output = UxHandler()
+        # Create object for remaining components
 
         # Create printer object
-        return cls(mover, extruder, heater, user_output)
+        return cls(mover)
