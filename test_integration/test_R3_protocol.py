@@ -31,29 +31,41 @@ def protocol(valid_client):
     return R3Protocol(valid_client, MelfaCoordinateService(), joints=JOINTS, digits=2)
 
 
-@pytest.mark.skip(reason='Not implemented.')
+@pytest.mark.parametrize("prefix,exc", [(p, e) for p, e in ErrorDispatch.items()])
 @pytest.mark.usefixtures('echo_server')
 class TestR3ProtocolUtil:
-    def test_reset_alarm(self, protocol):
-        protocol.reset_alarm()
+    @staticmethod
+    def execute_report_failures(echo_server, func, prefix, exc, silencing_errors=False):
+        """
+        Test macro for getting float responses
+        """
+        echo_server.reconfigure(pre=prefix, msg='')
+        if exc is None or silencing_errors:
+            func()
+        else:
+            with pytest.raises(exc):
+                func()
 
-    def test_activate_servo(self, protocol):
-        protocol.activate_servo()
+    def test_reset_alarm(self, protocol, echo_server, prefix, exc):
+        self.execute_report_failures(echo_server, protocol.reset_alarm, prefix, exc, silencing_errors=True)
 
-    def test_deactivate_servo(self, protocol):
-        protocol.deactivate_servo()
+    def test_activate_servo(self, protocol, echo_server, prefix, exc):
+        self.execute_report_failures(echo_server, protocol.activate_servo, prefix, exc)
 
-    def test_obtain_control(self, protocol):
-        protocol.obtain_control()
+    def test_deactivate_servo(self, protocol, echo_server, prefix, exc):
+        self.execute_report_failures(echo_server, protocol.deactivate_servo, prefix, exc)
 
-    def test_release_control(self, protocol):
-        protocol.release_control()
+    def test_obtain_control(self, protocol, echo_server, prefix, exc):
+        self.execute_report_failures(echo_server, protocol.obtain_control, prefix, exc)
 
-    def test_open_communication(self, protocol):
-        protocol.open_communication()
+    def test_release_control(self, protocol, echo_server, prefix, exc):
+        self.execute_report_failures(echo_server, protocol.release_control, prefix, exc)
 
-    def test_close_communication(self, protocol):
-        protocol.close_communication()
+    def test_open_communication(self, protocol, echo_server, prefix, exc):
+        self.execute_report_failures(echo_server, protocol.open_communication, prefix, exc)
+
+    def test_close_communication(self, protocol, echo_server, prefix, exc):
+        self.execute_report_failures(echo_server, protocol.close_communication, prefix, exc)
 
 
 @pytest.mark.skip(reason='Not implemented.')
@@ -114,7 +126,7 @@ class TestR3ProtocolReader:
         self.float_value(echo_server, protocol.get_current_linear_speed, prefix, exc, response='50.0')
 
     def test_get_current_joint_speed(self, protocol, echo_server, prefix, exc):
-        self.float_value(echo_server, protocol.get_joint_speed, prefix, exc, response='50.0')
+        self.float_value(echo_server, protocol.get_current_joint_speed, prefix, exc, response='50.0')
 
     def test_get_joint_borders(self, protocol, echo_server, prefix, exc):
         response = 'MEJAR;-4.00, 4.00, -5.00, 1.00, 1.00, 16.00, -6.00, 16.00, -2.00, 1.00, -3.00, 3.00, -8.00, 8.00;10'
@@ -188,9 +200,16 @@ class TestR3ProtocolReader:
             with pytest.raises(exc):
                 protocol.get_current_joint()
 
-    @pytest.mark.skip(reason='Not implemented.')
-    def test_get_safe_pos(self, protocol, prefix, exc):
-        protocol.get_safe_pos()
+    def test_get_safe_pos(self, protocol, echo_server, prefix, exc):
+        if exc is None:
+            echo_server.reconfigure(pre=prefix, msg='JSAFE;0, 1, 2, 3, 4, 5; Blabla')
+            safe_pos = protocol.get_safe_pos()
+            assert str(safe_pos) == 'J10.00 J21.00 J32.00 J43.00 J54.00 J65.00'
+            print(safe_pos)
+        else:
+            echo_server.reconfigure(pre=prefix, msg='')
+            with pytest.raises(exc):
+                protocol.get_safe_pos()
 
     def test_get_servo_state(self, protocol, echo_server, prefix, exc):
         response = 'M_SVO=+1'
@@ -271,14 +290,59 @@ class TestR3ProtocolResetter:
     def test_reset_base_coordinate_system(self, protocol):
         protocol.reset_base_coordinate_system()
 
-    def test_reset_override(self, protocol):
+    def test_reset_override(self, echo_server, protocol):
+        """
+        Test that the override can be reset.
+        :param protocol:
+        :return:
+        """
+        override_initial = protocol.get_override()
+        # Change the override to 10%
+        protocol.set_override(10.0)
         protocol.reset_override()
+        override_final = protocol.get_override()
+        assert override_initial == override_final
 
     def test_reset_linear_speed(self, protocol):
+        """
+        Test that resetting the linear speed reverts the changes.
+        :param protocol:
+        :return:
+        """
+        lin_speed_initial = protocol.get_current_linear_speed()
+        protocol.set_linear_speed(lin_speed_initial + 10.0)
         protocol.reset_linear_speed()
+        lin_speed_final = protocol.get_current_linear_speed()
+        assert lin_speed_initial == lin_speed_final
 
     def test_reset_joint_speed(self, protocol):
+        """
+        Test that resetting the joint speed reverts the changes.
+        :param protocol:
+        :return:
+        """
+        joint_speed_initial = protocol.get_current_joint_speed()
+        protocol.set_joint_speed(10.0)
         protocol.reset_joint_speed()
+        joint_speed_final = protocol.get_current_joint_speed()
+        assert joint_speed_initial == joint_speed_final
 
     def test_reset_all_speeds(self, protocol):
+        """
+        Test that all speed ranges are reset
+        :param protocol:
+        :return:
+        """
+        lin_speed_initial = protocol.get_current_linear_speed()
+        joint_speed_initial = protocol.get_current_joint_speed()
+
+        protocol.set_linear_speed(lin_speed_initial + 10.0)
+        protocol.set_joint_speed(10.0)
+
         protocol.reset_all_speeds()
+
+        lin_speed_final = protocol.get_current_linear_speed()
+        joint_speed_final = protocol.get_current_joint_speed()
+
+        assert lin_speed_initial == lin_speed_final
+        assert joint_speed_initial == joint_speed_final

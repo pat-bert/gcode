@@ -286,7 +286,7 @@ class R3Reader(R3SubApi):
         return float(val)
 
     @ReaderRegistry.register
-    def get_joint_speed(self) -> float:
+    def get_current_joint_speed(self) -> float:
         """
         Get the current joint speed in percent.
         :return: Current joint override, float.
