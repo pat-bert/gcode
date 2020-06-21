@@ -1,5 +1,5 @@
 import abc
-from src.GRedirect import RedirectionTargets
+from src.printer_components.GRedirect import RedirectionTargets
 from typing import Iterable
 
 

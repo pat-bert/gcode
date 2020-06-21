@@ -9,7 +9,7 @@ import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
 from src.ApplicationExceptions import MelfaBaseException, ApiException
 from src.Coordinate import Coordinate
-from src.GRedirect import RedirectionTargets
+from src.printer_components.GRedirect import RedirectionTargets
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
 from src.clients.TcpClientR3 import TcpClientR3
