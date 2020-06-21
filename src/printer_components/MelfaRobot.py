@@ -6,18 +6,14 @@ import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
 from src.ApplicationExceptions import MelfaBaseException, ApiException
 from src.Coordinate import Coordinate
-from src.printer_components.GRedirect import RedirectionTargets
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
-from src.clients.TcpClientR3 import TcpClientR3
+from src.clients.IClient import IClient
 from src.gcode.GCmd import GCmd
+from src.printer_components.GRedirect import RedirectionTargets
 from src.printer_components.PrinterComponent import PrinterComponent
 from src.protocols.R3Protocol import R3Protocol
 from src.refactor import cmp_response
-
-
-class IllegalAxesCount(ApiException):
-    pass
 
 
 class SpeedBelowMinimum(ApiException):
@@ -34,23 +30,22 @@ class MelfaRobot(PrinterComponent):
     INCH_IN_MM = 25.4
 
     def __init__(
-            self, io_client, speed_threshold=10, number_axes: int = 6, safe_return=False
+            self, io_client: IClient, speed_threshold=10, number_axes: int = 6, safe_return=False
     ):
         """
         Initialises the robot.
-        :param io_client: Communication object for TCP/IP-protocol
+        :param io_client: Communication object
         :param number_axes: Number of robot AXES, declared by 'J[n]', n>=1
-        :param safe_return:
+        :param safe_return: Flag to specify whether the robot should start and stop at its safe position
         """
-        if not hasattr(io_client, "send") or not hasattr(io_client, "receive"):
-            raise TypeError("Client does not implement required methods.")
         if number_axes <= 0:
-            raise IllegalAxesCount
+            raise ValueError('Number of axes needs to be larger than zero.')
 
-        self.client: TcpClientR3 = io_client
         self.work_coordinate_offset = "(-500,0,-250,0,0,0)"
         self.joints = ["J{}".format(i) for i in range(1, number_axes + 1)]
         self.speed_threshold = speed_threshold
+
+        # Wrap the client in the specific protocol
         self.protocol = R3Protocol(io_client, MelfaCoordinateService(), self.joints)
 
         # Operation Flags
@@ -91,10 +86,9 @@ class MelfaRobot(PrinterComponent):
         # Activate work coordinates
         self.activate_work_coordinate(True)
 
-    def shutdown(self, safe_return: bool = False, *args, **kwargs) -> None:
+    def shutdown(self, *args, **kwargs) -> None:
         """
         Safely shuts down the robot.
-        :param safe_return: Flag, whether the robot should return to its safe position
         :return: None
         """
         # Finish robot communication
@@ -120,7 +114,7 @@ class MelfaRobot(PrinterComponent):
             # Communication & Control off
             self._change_communication_state(False)
             # Shutdown TCP in ANY CASE
-            self.client.close()
+            self.protocol.client.close()
 
     def activate_work_coordinate(self, active: bool) -> None:
         """
@@ -535,7 +529,8 @@ class MelfaRobot(PrinterComponent):
                 self.protocol.reader,
             )
 
-    def get_directed_angle(self, start_pos, target_pos, center_pos, is_clockwise):
+    def get_directed_angle(self, start_pos: Coordinate, target_pos: Coordinate, center_pos: Coordinate,
+                           is_clockwise: bool) -> float:
         # Determine the angle
         angle = get_angle(start_pos, target_pos, center_pos, self.active_plane)
         # Adjust the angle according to the direction
