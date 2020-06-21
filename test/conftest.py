@@ -1,5 +1,16 @@
 import pytest
 
+from src.prechecks.configs import melfa_rv_4a
+
+
+@pytest.fixture
+def dh_melfa_rv_4a():
+    """
+    Provide the DH config for the Mitsubishi Melfa RV-4A
+    :return:
+    """
+    return melfa_rv_4a(rtoff=0, atoff=0)
+
 
 def pytest_addoption(parser):
     parser.addoption(

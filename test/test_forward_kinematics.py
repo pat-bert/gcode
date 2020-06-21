@@ -4,7 +4,8 @@ from typing import List
 import numpy as np
 import pytest
 
-from src.kinematics.forward_kinematics import forward_kinematics, tform2quat
+from src.kinematics.forward_kinematics import forward_kinematics, tform2quat, tform2euler, calculate_pose_flags, \
+    pose2tform, geometric_jacobian
 from src.kinematics.joint_factories import BaseJointFactory
 
 
@@ -18,31 +19,7 @@ def simple_rotational_joint():
     return BaseJointFactory.new(a=0, alpha=0, d=0, theta=None)
 
 
-@pytest.fixture
-def dh_melfa_rv_4a():
-    """
-    Provide the DH config for the Mitsubishi Melfa RV-4A
-    :return:
-    """
-    rtoff = 0.0  # radial tool offset
-    atoff = 0.0  # axial tool offset
-
-    # Denavit-Hartenberg parameters: a - alpha - d - zero offset
-    # Mitsubishi defines axis origins differently than resulting from DH-convention
-    dh_parameters = [
-        [0.100, -pi / 2, 0.350, 0],
-        [0.250, 0.00000, 0.000, -pi / 2],
-        [0.135, -pi / 2, 0.000, -pi / 2],
-        [0.000, +pi / 2, 0.250, 0],
-        [0.000, -pi / 2, 0.000, 0],
-        [rtoff, 0.00000, 0.090 + atoff, pi]
-    ]
-
-    config = [BaseJointFactory.new(a=a, alpha=alpha, d=d, theta=None, offset=z) for a, alpha, d, z in dh_parameters]
-    return config
-
-
-def validate_vec(kind: str, actual, expected: List[float], atol=0.001):
+def validate_vec(kind: str, actual, expected: List[float], atol=0.5):
     """
     Helper function to validate vectors of a homogenous matrix (4x4)
     :param kind:
@@ -78,6 +55,10 @@ def test_forward_kinematics_two_translational_joints(simple_translational_joint,
     validate_vec('Y', transformation, [0, 1, 0])
     validate_vec('Z', transformation, [0, 0, 1])
     validate_vec('pos', transformation, [0, 0, 2 * joint_coordinate])
+
+
+def test_joint_len(simple_rotational_joint):
+    assert len(simple_rotational_joint) == 1
 
 
 @pytest.mark.parametrize("joint_coordinate", [pi / 2, 0, 3.7, -2.1])
@@ -137,10 +118,17 @@ def test_forward_kinematics_rotational_joint(simple_rotational_joint, joint_coor
                                      [52.550, -42.990, 131.910, -43.210, 93.720, -103.650],
                                      [165.438, -41.185, -20.204, 153.391, 99.003, 606.813],
                                      None
+                             ),
+                             (
+                                     [0, 55, 15, 0, 110, 0],
+                                     [None, None, None, 493.107, 0.000, 615.287],
+                                     [
+                                         [-1, 0, 0], [0, 1, 0], [0, 0, -1]
+                                     ]
                              )
                          ]
                          )
-def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz, tcp_cs):
+def test_forward_melfa_coordinates(dh_melfa_rv_4a, benchmark, joints_deg, abcxyz, tcp_cs):
     """
     Validate some positions by XYZ-values obtained from the Mitsubishi simulator
     :param dh_melfa_rv_4a: Joint configurations based on DH-parameters for Mitsubishi Melfa RV-4A
@@ -151,13 +139,10 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz, tcp_cs):
     joints_rad = [np.deg2rad(i) for i in joints_deg]
 
     # Calculate actual coordinates
-    tcp_pose = forward_kinematics(dh_melfa_rv_4a, joints_rad)
+    tcp_pose = benchmark(forward_kinematics, dh_melfa_rv_4a, joints_rad)
 
     # Unpack expected coordinates
-    a, b, c, *xyz = abcxyz
-
-    # Convert mm to m
-    xyz = [i / 1000 for i in xyz]
+    _, _, _, *xyz = abcxyz
 
     print(tcp_pose)
 
@@ -174,3 +159,183 @@ def test_forward_melfa_coordinates(dh_melfa_rv_4a, joints_deg, abcxyz, tcp_cs):
         validate_vec('X', tcp_pose, tcp_x)
         validate_vec('Y', tcp_pose, tcp_y)
         validate_vec('Z', tcp_pose, tcp_z)
+
+
+def test_forward_kinematics_unequal_length(dh_melfa_rv_4a):
+    with pytest.raises(ValueError):
+        forward_kinematics(dh_melfa_rv_4a, [0] * (len(dh_melfa_rv_4a) - 1))
+    with pytest.raises(ValueError):
+        forward_kinematics(dh_melfa_rv_4a, [0] * (len(dh_melfa_rv_4a) + 1))
+
+
+@pytest.mark.parametrize("joints_deg,a,b,c",
+                         [
+                             # Home position
+                             ([0, 0, 90, 0, 90, 0], 180, 0, 180),
+                             ([-110, 0, 90, 0, 90, 0], -180, 0, 70),
+                             # Arbitrary positions
+                             ([5.951, -23.864, 139.059, -153.690, 65.113, -51.627], 30, -50, 120),
+                             ([37.200, 14.850, 74.505, -20.107, 88.542, -177.127], 160, -3, 35),
+                             ([0, -54.748, 141.102, 0, 3.646, 42.34], 90, 47.66, 90),
+                             # Degenerate beta = +90 deg
+                             ([0, -54.748, 141.102, 0, 3.646, 0], -180, 90, 180),
+                             ([-63.008, -18.080, 124.879, 98.374, 64.246, -108.716], 138.009, 89.999, 138.009),
+                             ([22.835, -34.309, 134.587, -87.672, 102.626, 100.536], 95.896, 90, 15.896),
+                             ([0, 29.017, 57.018, 0, 3.965, 0], -180, 90, 180),
+                             # Degenerate beta = -90 deg
+                             ([0, 52.521, 98.176, 0, 119.303, 0], 0, -90, 0),
+                         ]
+                         )
+def test_tform2euler(dh_melfa_rv_4a, joints_deg, a, b, c):
+    # Convert to radian
+    joints_rad = [np.deg2rad(i) for i in joints_deg]
+
+    # Calculate actual coordinates
+    tcp_pose = forward_kinematics(dh_melfa_rv_4a, joints_rad)
+
+    # Calculate euler angles
+    actual_angles = tform2euler(tcp_pose)
+    actual_angles = np.rad2deg(actual_angles)
+    a_actual, b_actual, c_actual = actual_angles
+
+    digits = 5
+    print(f'Actual: A:{a_actual:.{digits}f}° B:{b_actual:.{digits}f}° C:{c_actual:.{digits}f}°')
+    print(f'Expected: A:{a:.{digits}f}° B:{b:.{digits}f}° C:{c:.{digits}f}°')
+
+    # Check
+    diff_to_gimbal_lock = abs(abs(b) - 90)
+
+    # Different tolerance depending on distance to gimbal lock
+    if diff_to_gimbal_lock == 0.0:
+        # Gimbal lock!
+        assert round(b - b_actual, 3) % 360 == pytest.approx(0, abs=0.01)
+        assert round(a - a_actual + c - c_actual, 3) % 360 == pytest.approx(0, abs=1.5)
+    else:
+        if diff_to_gimbal_lock > 0.1:
+            # Normal
+            atol = 0.01
+        else:
+            # Very close
+            atol = 1.0
+
+        # Rounding to many digits is still necessary to get the modulo right
+        r = 10
+
+        # Angles match or are off by 360 degrees
+        assert (a == pytest.approx(a_actual, abs=atol)) or (round(a - a_actual, r) % 360 == pytest.approx(0, abs=atol))
+        assert (b == pytest.approx(b_actual, abs=atol)) or (round(b - b_actual, r) % 360 == pytest.approx(0, abs=atol))
+        assert (c == pytest.approx(c_actual, abs=atol)) or (round(c - c_actual, r) % 360 == pytest.approx(0, abs=atol))
+
+
+@pytest.mark.parametrize("joints,ex_flags",
+                         [
+                             # RBN
+                             [(-160, 0, 28, 0, 20, 0), 5],
+                             # RAN
+                             [(-160, 0, 29, 0, 20, 0), 7],
+                             # RAF
+                             [(-160, 0, 29, 0, -20, 0), 6],
+                             # RBF
+                             [(-160, 0, 28, 0, -20, 0), 4],
+                             # LAN
+                             [(0, -46, 90, 0, 90, 0), 3],
+                             # RAN
+                             [(0, -45, 90, 0, 90, 0), 7],
+                             # LAF
+                             [(0, -50, 90, 0, -30, 0), 2],
+                             # LBF
+                             [(0, -15, 28, 160, -5, 0), 0],
+                             [(120, -15, 28, 160, -5, 0), 0],
+                             # LBN
+                             [(0, -15, 28, 160, 5, 0), 1]
+                         ]
+                         )
+def test_calculate_pose_flags(joints, ex_flags, dh_melfa_rv_4a):
+    """
+    Test that for given angles the correct flags can be calculated
+    :param joints:
+    :param ex_flags:
+    :param dh_melfa_rv_4a:
+    :return:
+    """
+    # Collect angles
+    joints = np.deg2rad(joints)
+
+    # Calculate flags
+    flags = calculate_pose_flags(dh_melfa_rv_4a, joints)
+
+    assert flags == ex_flags
+
+
+@pytest.mark.parametrize("pos,a,b,c,order,exc",
+                         [
+                             ([0, 0, 0], 0.3, 0.2, -0.1, 'ZYA', ValueError),
+                             ([0, 0, 0], 0.3, 0.2, -0.1, 'ZYXX', ValueError),
+                             ([0, 0, 0], 0.3, 0.2, -0.1, 'ZYX', None),
+                         ]
+                         )
+def test_pose2tform(pos, a, b, c, order, exc):
+    if exc is None:
+        actual_tform = pose2tform(pos, x_angle=a, y_angle=b, z_angle=c, order=order)
+        a_actual, b_actual, c_actual = tform2euler(actual_tform)
+
+        # Angles match or are off by 360 degrees
+        tol = 0.01
+        r = 10
+        assert (a == pytest.approx(a_actual, abs=tol)) or (round(a - a_actual, r) % 2 * pi == pytest.approx(0, abs=tol))
+        assert (b == pytest.approx(b_actual, abs=tol)) or (round(b - b_actual, r) % 2 * pi == pytest.approx(0, abs=tol))
+        assert (c == pytest.approx(c_actual, abs=tol)) or (round(c - c_actual, r) % 2 * pi == pytest.approx(0, abs=tol))
+    else:
+        with pytest.raises(exc):
+            pose2tform(pos, x_angle=a, y_angle=b, z_angle=c, order=order)
+
+
+@pytest.mark.parametrize("config,joint_values,jac_columns",
+                         [
+                             # Rotational joint plus translational joint with affect on translation
+                             (
+                                     [
+                                         BaseJointFactory.new(a=0, alpha=0, d=0),
+                                         BaseJointFactory.new(a=10, alpha=pi / 2, theta=pi / 2)
+                                     ],
+                                     [0, 0],
+                                     [[-10, 0, 0, 0, 0, 1], [0, 0, 1, 0, 0, 0]]
+                             ),
+                             # Translational joint (z-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=0, theta=0)],
+                                     [0],
+                                     [[0, 0, 1, 0, 0, 0]]
+                             ),
+                             # Rotational joint (z-axis)
+                             (
+                                     [BaseJointFactory.new(a=0, alpha=0, d=0)],
+                                     [0],
+                                     [[0, 0, 0, 0, 0, 1]]
+                             ),
+                             # Multiple translational joints (z-axis + y-axis)
+                             (
+                                     [
+                                         BaseJointFactory.new(a=0, alpha=-pi / 2, theta=0),
+                                         BaseJointFactory.new(a=0, alpha=0, theta=0)
+                                     ],
+                                     [0, 0],
+                                     [[0, 0, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0]]
+                             )
+                         ]
+                         )
+def test_geometric_jacobian(config, joint_values, jac_columns):
+    actual_jacobian = geometric_jacobian(config, joint_values)
+    shape = (6, len(config))
+    print('Actual:')
+    print(actual_jacobian)
+    assert actual_jacobian.shape == shape
+
+    jac = np.zeros(shape)
+    for col_idx, col in enumerate(jac_columns):
+        jac[:, col_idx] = col
+
+    print('Expected:')
+    print(jac)
+
+    np.testing.assert_allclose(actual_jacobian, jac, atol=1e-6)
