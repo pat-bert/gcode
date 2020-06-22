@@ -1,7 +1,7 @@
 from src.BaseCmd import BaseCmd
 
 
-class GResponse(BaseCmd):
+class GResponse:
     """
     Implements possible return messages from a 3D-printer in response to a G-code.
     """
