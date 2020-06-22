@@ -15,6 +15,12 @@ jobs:
       - restore_cache: &restore-cache-template
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
       - run:
+          name: Install Matlab 2020a Runtime and set path
+          command: |
+            curl.exe -o ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o./mcr_extracted\ && ./mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/
+            ls ./matlab_runtime/
+            setenv LD_LIBRARY_PATH ./matlab_runtime/version/runtime/glnxa64:./matlab_runtime/version/bin/glnxa64:./matlab_runtime/version/sys/os/glnxa64:./matlab_runtime/version/sys/opengl/lib/glnxa64
+      - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
           command: |
