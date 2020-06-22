@@ -82,7 +82,7 @@ jobs:
             python --version
             python -m pip install -r requirements.txt
             cd ./src_matlab/CollisionChecking/for_redistribution_files_only/
-            python3 setup.py install
+            python setup.py install
             cd ./../../../
       - save_cache: *save-cache-template
       - run:
