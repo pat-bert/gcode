@@ -24,9 +24,9 @@ jobs:
           command: |
             wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip &&
             7z x ./mcr.zip -o./mcr_extracted\ &&
-            chmod -R 777 ./mcr_extracted
-            ./mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/ &&
-            setenv LD_LIBRARY_PATH ./matlab_runtime/version/runtime/glnxa64:./matlab_runtime/version/bin/glnxa64:./matlab_runtime/version/sys/os/glnxa64:./matlab_runtime/version/sys/opengl/lib/glnxa64
+            chmod -R 777 mcr_extracted\ /
+            ./mcr_extracted\ /install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/ &&
+            setenv LD_LIBRARY_PATH ./mcr_extracted\ /bin/glnxa64:./mcr_extracted\ /sys/os/glnxa64:./mcr_extracted\ /sys/opengl/lib/glnxa64
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
@@ -80,9 +80,7 @@ jobs:
           name: Install Matlab 2020a Runtime
           shell: cmd.exe
           command: |
-            curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip &&
-            7z x .\mcr.zip -o.\mcr_extracted\ &&
-            .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
+            curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip && 7z x .\mcr.zip -o.\mcr_extracted\ && .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
       - run:
           # Python needs to be installed
           # Install a virtual environment using the installed python interpreter
