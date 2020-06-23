@@ -1,3 +1,4 @@
+from collections import namedtuple
 from typing import List, Tuple, Optional
 
 from dijkstar import Graph
@@ -7,47 +8,96 @@ from src.prechecks.trajectory_segment import JointTrajectorySegment
 START_NODE = -1
 STOP_NODE = -2
 
+NodeInfo = namedtuple('NodeInfo', 'conf joints seg_idx t')
 
-def joint_limit_distance(joints: List[float], qlim: List[float], weights: Optional[List[float]] = None) -> float:
+
+def joint_limit_cost(joints: List[float], qlim: List[float], w: Optional[List[float]] = None) -> float:
     """
     Measure to drive joints away from their limits.
     :param joints: Joint coordinates to be evaluated
     :param qlim: Joint limits in order [J1 min, J1 max, J2 min, J2 max, Jn min, Jn max]
-    :param weights:
+    :param w: Weights for the individual joints.
     :return: Non-negative cost value for the given joint coordinates. Best is zero.
 
     [1] B. Siciliano, L. Sciavicco, L. Villani und G. Oriolo, Robotics : Modelling, Planning and Control, London:
     Springer, 2009.
     """
     val = 0
-    if weights is None:
+    if w is None:
         for jmin, jmax, j in zip(qlim[::2], qlim[1::2], joints):
+            # Use distance from mid-point relative to total range
             val += ((j - 0.5 * (jmin + jmax)) / (jmax - jmin)) ** 2
     else:
-        if len(weights) != len(joints):
+        if len(w) != len(joints):
             raise ValueError('Need to supply as many weight factors as joint coordinates.')
 
-        for jmin, jmax, j, jweight in zip(qlim[::2], qlim[1::2], joints, weights):
-            val += jweight * ((j - 0.5 * (jmin + jmax)) / (jmax - jmin)) ** 2
+        for jmin, jmax, j, jw in zip(qlim[::2], qlim[1::2], joints, w):
+            val += jw * ((j - 0.5 * (jmin + jmax)) / (jmax - jmin)) ** 2
+
+    # Normalize with regard to number of joints
     return val / (2 * len(joints))
 
 
-def calc_cost(curr_conf, curr_joints, prev_conf, prev_joints, qlim: List[float], curr_seg_idx=None, prev_seg_idx=None):
+def joint_velocity_cost(prev_j: List[float], curr_j: List[float], qdlim: List[float], dt: float,
+                        w: Optional[List[float]] = None) -> float:
+    """
+    Measure to penalize large joint velocities.
+    :param prev_j: Joint coordinates of the previous node
+    :param curr_j: Joint coordinate of the current node
+    :param qdlim: Maximum joint velocities in order
+    :param dt: Time Delta between the points in seconds
+    :param w: Weights for the individual joints.
+    :return: Non-negative cost value for the given joint coordinates. Best is zero.
+    """
+    val = 0
+    if w is None:
+        for jprev, jcurr, j_vel_max in zip(prev_j, curr_j, qdlim):
+            # Use necessary velocity with regard to maximum velocity
+            val += (jcurr - jprev) / (dt * j_vel_max) ** 2
+    else:
+        if len(w) != len(curr_j):
+            raise ValueError('Need to supply as many weight factors as joint coordinates.')
+        for jprev, jcurr, j_vel_max, jw in zip(prev_j, curr_j, qdlim, qdlim, w):
+            val += jw * (jcurr - jprev) / (dt * j_vel_max) ** 2
+
+    # Normalize with regard to number of joints
+    return val / (2 * len(curr_j))
+
+
+def singularity_proximity() -> float:
+    # TODO Apply additional cost depending on proximity to singularitites
+    return 0.0
+
+
+def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[float]) -> float:
+    """
+    Calculate the edge cost between two nodes.
+    :param curr: Info about the current node
+    :param prev: Info about the previous node
+    :param qlim: Joint limits in order [J1 min, J1 max, J2 min, J2 max, Jn min, Jn max]
+    :param qdlim: Maximum joint velocities in order
+    :return: Non-negative cost value for the given joint coordinates. Best is zero.
+    """
     # Check whether the configuration changes
-    if curr_conf != prev_conf:
-        if curr_seg_idx == prev_seg_idx:
+    if curr.conf != prev.conf:
+        if curr.seg_idx == prev.seg_idx:
             # Currently, configuration changes within a segment are not allowed.
             return float('Inf')
-        else:
-            # Currently, configuration changes between segments are not allowed.
-            # TODO Study different configuration changes, apply penalty instead.
-            return float('Inf')
-    else:
-        # Common configurations are fine
-        cost = joint_limit_distance(curr_joints, qlim)
 
-        # TODO Apply additional cost depending on proximity to joint limits, singularitites or high velocities
-        return cost
+        # Currently, configuration changes between segments are not allowed either.
+        # TODO Study different configuration changes, apply penalty instead.
+        return float('Inf')
+
+    # Common configurations are fine
+    cost = joint_limit_cost(curr.joints, qlim)
+
+    # Proportional to joint delta
+    cost += joint_velocity_cost(prev.joints, curr.joints, qdlim, dt=curr.t - prev.t)
+
+    # Cost with regard to singularity proximity
+    cost += singularity_proximity()
+
+    return cost
 
 
 def calculate_node_idx(point_idx, configuration) -> int:
@@ -64,7 +114,20 @@ def calculate_node_idx(point_idx, configuration) -> int:
     raise ValueError('Only configurations from 0-7 are allowed.')
 
 
-def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float]) -> Tuple[Graph, int, int]:
+def calc_conf_from_node(node_idx, point_idx) -> int:
+    """
+    Calculates the configuration from a node index
+    :param node_idx: Integer value for the node index
+    :param point_idx: Index of the point that the node belongs to within the trajectory.
+    :return: Integer value for the robot configuration of the node
+    """
+    if point_idx >= 0:
+        return node_idx - 8 * point_idx
+    raise ValueError('Point index must be positive.')
+
+
+def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float], qdlim: List[float]) \
+        -> Tuple[Graph, int, int]:
     """
     Constructs a graph for a given joint trajectory.
     The graph is unidirectional and has one common start and one common end node.
@@ -73,6 +136,7 @@ def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float]) ->
     For each point a node is created for each viable robot configuration/joint solution.
     :param joint_traj: List of JointTrajectorySegments
     :param qlim: Joint limits in order [J1 min, J1 max, J2 min, J2 max, Jn min, Jn max]
+    :param qdlim: Maximum joint velocities in order
     :return: Graph that can be used to determine shortest paths, start node, stop node.
     """
     joint_network = Graph()
@@ -91,12 +155,15 @@ def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float]) ->
                     joint_network.add_edge(START_NODE, node_idx, edge=0)
                 else:
                     # Following point nodes are connected to all nodes of the previous point
-                    for previous_conf, previous_joints in current_parents.items():
+                    for prev_conf, prev_joints in current_parents.items():
                         # Calculate the index of the previous node
-                        previous_node_idx = calculate_node_idx(point_idx - 1, previous_conf)
+                        previous_node_idx = calculate_node_idx(point_idx - 1, prev_conf)
                         # Call a cost function to determine the transition cost between the nodes based on the robot
                         # configurations and the joint values.
-                        cost = calc_cost(current_conf, current_joints, previous_conf, previous_joints, qlim)
+                        # TODO Use correct time deltas and segment indices
+                        curr_node_info = NodeInfo(conf=current_conf, joints=current_joints, seg_idx=None, t=0.0)
+                        prev_node_info = NodeInfo(conf=prev_conf, joints=prev_joints, seg_idx=None, t=1.0)
+                        cost = calc_cost(curr_node_info, prev_node_info, qlim, qdlim)
                         # Add the edge to the graph
                         joint_network.add_edge(previous_node_idx, node_idx, edge=cost)
 

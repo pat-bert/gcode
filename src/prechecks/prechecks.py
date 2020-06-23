@@ -1,5 +1,5 @@
 from math import pi
-from typing import List, Iterator
+from typing import List
 
 from dijkstar import find_path
 
@@ -10,9 +10,8 @@ from src.kinematics.joints import BaseJoint
 from src.prechecks.configs import melfa_rv_4a
 from src.prechecks.exceptions import CollisionViolation, CartesianLimitViolation, JointLimitViolation, \
     ConfigurationChangesError
-from src.prechecks.graph_search import create_graph
+from src.prechecks.graph_search import create_graph, calc_conf_from_node
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
-from src.prechecks.trajectory_segment import JointTrajectorySegment
 from src.prechecks.utils import print_progress, time_func_call
 
 
@@ -74,21 +73,24 @@ def check_trajectory(
 
     # Convert to joint space and filter out solutions exceeding the limits
     joint_trajectory = generate_joint_trajectory(task_trajectory, config)
-    filter_joint_limits(joint_trajectory, qlim)
+    # filter_joint_limits(joint_trajectory, qlim)
 
     # Check the configurations of the solutions
     common_configurations = get_common_configurations(joint_trajectory)
+    print(f'Configurations in trajectory: {set([conf for conf_list in common_configurations for conf in conf_list])}')
+    print(f'Configurations common to all segments: {set.intersection(*map(set, common_configurations))}')
 
     # Create a unidirectional graph of the solutions. For each point a set of nodes is created according to viable robot
     # configurations. The nodes of the same points stay unconnected but all nodes of adjacent points are connected at
     # the beginning. The edges between the nodes represent the cost required. The cost is calculated based on the joint
     # coordinates and the robot configurations of the connected nodes.
-    graph, start_node, stop_node = create_graph(joint_trajectory, qlim)
+    graph, start_node, stop_node = create_graph(joint_trajectory, qlim, qdlim)
 
     # Find the initially shortest path to be checked for collisions. Nodes in collision can be removed to query for the
     # next best path.
-    path_info = find_path(graph, start_node, stop_node)
-    print(f'Total cost for the minimum cost path: {path_info.total_cost}')
+    path = find_path(graph, start_node, stop_node)
+    print(f'Total cost for the minimum cost path: {path.total_cost}')
+    robot_conf_per_point = (calc_conf_from_node(node_idx, pt_idx) for pt_idx, node_idx in enumerate(path.nodes[1:-1]))
 
     print('Creating collision scene...')
     # TODO Create collision scene from task trajectory segments
@@ -102,7 +104,7 @@ def check_trajectory(
     print('Home position is not in collision.')
 
     # Check paths sorted by minimum configuration change cost for collisions
-    for least_cost_config in get_min_cost_paths(common_configurations, joint_trajectory):
+    for least_cost_config in [robot_conf_per_point]:
         # TODO Paralellize collision checking (segment-wise)
         for seg, seg_conf, current_collision_scene in zip(joint_trajectory, least_cost_config, all_collision_scenes):
             # Get joint coordinates at each point for the determined arm onfiguration
@@ -175,12 +177,6 @@ def filter_joint_limits(joint_trajectory, qlim: List[float]):
         violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
         raise JointLimitViolation('Found segments violating the joint limits.', violation_idx)
     print('All segments have joint solutions within the limits.')
-
-
-def get_min_cost_paths(common_conf: List[List[float]], joint_traj: List[JointTrajectorySegment]) -> Iterator[List[int]]:
-    # TODO Yield results of Dijkstra algorithm for minimum cost in ascending order
-    best_conf = [i[0] for i in common_conf]
-    yield best_conf * len(joint_traj)
 
 
 if __name__ == '__main__':

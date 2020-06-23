@@ -34,7 +34,6 @@ def linear_interpolation(start: ndarray, end: ndarray, *, ds: float) -> Iterator
         total_increments = floor(total_way_len / ds)
         increment_vec = direction_vec / total_increments
 
-        # TODO Orientation interpolation (SLERP)
         # Initialize the matrix components
         init_tform = np.array(start)
         xdir, ydir, zdir, pos = init_tform[0:3, 0], init_tform[0:3, 1], init_tform[0:3, 2], init_tform[0:3, 3]

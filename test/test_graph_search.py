@@ -1,6 +1,6 @@
 import pytest
 
-from src.prechecks.graph_search import calculate_node_idx, joint_limit_distance
+from src.prechecks.graph_search import calculate_node_idx, joint_limit_cost
 
 
 @pytest.mark.parametrize("pt_idx,conf,node_idx,exc",
@@ -33,9 +33,9 @@ def test_calculate_node_idx(pt_idx, conf, node_idx, exc):
                          )
 def test_joint_limit_distance(joints, qlim, weights, cost, exc):
     if exc is None:
-        actual_cost = joint_limit_distance(joints, qlim, weights)
+        actual_cost = joint_limit_cost(joints, qlim, weights)
         assert actual_cost >= 0
         assert actual_cost == cost
     else:
         with pytest.raises(exc):
-            joint_limit_distance(joints, qlim, weights)
+            joint_limit_cost(joints, qlim, weights)

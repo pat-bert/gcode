@@ -61,7 +61,7 @@ def linear_segment_from_gcode(command: GCmd, current_pose: np.ndarray, ds: float
         target_position += current_position
 
     # Get end point (TODO Ensure order)
-    # TODO Get angles
+    # TODO Get angles from tool vector (initial rotation)
     x_angle = -pi
     y_angle = 0
     z_angle = -pi
