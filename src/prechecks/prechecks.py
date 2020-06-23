@@ -73,7 +73,7 @@ def check_trajectory(
 
     # Convert to joint space and filter out solutions exceeding the limits
     joint_trajectory = generate_joint_trajectory(task_trajectory, config)
-    # filter_joint_limits(joint_trajectory, qlim)
+    filter_joint_limits(joint_trajectory, qlim)
 
     # Check the configurations of the solutions
     common_configurations = get_common_configurations(joint_trajectory)
@@ -90,7 +90,8 @@ def check_trajectory(
     # next best path.
     path = find_path(graph, start_node, stop_node)
     print(f'Total cost for the minimum cost path: {path.total_cost}')
-    robot_conf_per_point = (calc_conf_from_node(node_idx, pt_idx) for pt_idx, node_idx in enumerate(path.nodes[1:-1]))
+    robot_conf_per_point = [calc_conf_from_node(node_idx, pt_idx) for pt_idx, node_idx in enumerate(path.nodes[1:-1])]
+    print(f'Configurations in shortest path: {set(robot_conf_per_point)}')
 
     print('Creating collision scene...')
     # TODO Create collision scene from task trajectory segments
@@ -181,7 +182,7 @@ def filter_joint_limits(joint_trajectory, qlim: List[float]):
 
 if __name__ == '__main__':
     cmd_raw = 'G91\n' \
-              'G01 X100 Z-50\n' \
+              'G01 X100 Z-50 F500\n' \
               'G01 Y50 Z-50\n' \
               'G01 Z-200\n' \
               'G01 Y300\n' \

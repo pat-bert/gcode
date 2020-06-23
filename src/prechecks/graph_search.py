@@ -3,6 +3,7 @@ from typing import List, Tuple, Optional
 
 from dijkstar import Graph
 
+from src.prechecks.exceptions import JointVelocityViolation, JOINT_SPEED_ALLOWABLE_RATIO
 from src.prechecks.trajectory_segment import JointTrajectorySegment
 
 START_NODE = -1
@@ -49,16 +50,19 @@ def joint_velocity_cost(prev_j: List[float], curr_j: List[float], qdlim: List[fl
     :param w: Weights for the individual joints.
     :return: Non-negative cost value for the given joint coordinates. Best is zero.
     """
-    val = 0
-    if w is None:
-        for jprev, jcurr, j_vel_max in zip(prev_j, curr_j, qdlim):
-            # Use necessary velocity with regard to maximum velocity
-            val += (jcurr - jprev) / (dt * j_vel_max) ** 2
-    else:
+    if w is not None:
         if len(w) != len(curr_j):
             raise ValueError('Need to supply as many weight factors as joint coordinates.')
-        for jprev, jcurr, j_vel_max, jw in zip(prev_j, curr_j, qdlim, qdlim, w):
-            val += jw * (jcurr - jprev) / (dt * j_vel_max) ** 2
+    else:
+        w = [1] * len(curr_j)
+
+    val = 0
+    for jprev, jcurr, j_vel_max, jw in zip(prev_j, curr_j, qdlim, w):
+        velocity_ratio = (jcurr - jprev) / (dt * j_vel_max)
+        if velocity_ratio >= JOINT_SPEED_ALLOWABLE_RATIO:
+            # Notify calling function about invalid connection
+            raise JointVelocityViolation
+        val += jw * velocity_ratio ** 2
 
     # Normalize with regard to number of joints
     return val / (2 * len(curr_j))
@@ -141,14 +145,17 @@ def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float], qd
     """
     joint_network = Graph()
     current_parents = {}
+    t_prev_point = 0
     total_point_count = sum((len(segment.solutions) for segment in joint_traj))
 
     point_idx = 0
-    for segment in joint_traj:
-        for point_nodes in segment.solutions:
-            for current_conf, current_joints in point_nodes.items():
-                # Iterate over all nodes of the current point
-                node_idx = calculate_node_idx(point_idx, current_conf)
+    # Iterate over all segments
+    for joint_segment in joint_traj:
+        # Iterate over points in task space and corresponding points in time per segment
+        for ik_solutions_point, t_curr_point in zip(joint_segment.solutions, joint_segment.time_points):
+            # Iterate over all nodes of the current point
+            for curr_conf, curr_joints in ik_solutions_point.items():
+                node_idx = calculate_node_idx(point_idx, curr_conf)
                 if point_idx == 0:
                     # First point nodes are all connected to start node (zero cost) and do not have distinct parent
                     # nodes.
@@ -160,9 +167,9 @@ def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float], qd
                         previous_node_idx = calculate_node_idx(point_idx - 1, prev_conf)
                         # Call a cost function to determine the transition cost between the nodes based on the robot
                         # configurations and the joint values.
-                        # TODO Use correct time deltas and segment indices
-                        curr_node_info = NodeInfo(conf=current_conf, joints=current_joints, seg_idx=None, t=0.0)
-                        prev_node_info = NodeInfo(conf=prev_conf, joints=prev_joints, seg_idx=None, t=1.0)
+                        # TODO Use correct segment indices
+                        curr_node_info = NodeInfo(conf=curr_conf, joints=curr_joints, seg_idx=None, t=t_curr_point)
+                        prev_node_info = NodeInfo(conf=prev_conf, joints=prev_joints, seg_idx=None, t=t_prev_point)
                         cost = calc_cost(curr_node_info, prev_node_info, qlim, qdlim)
                         # Add the edge to the graph
                         joint_network.add_edge(previous_node_idx, node_idx, edge=cost)
@@ -170,12 +177,13 @@ def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float], qd
             # Connect all last point nodes to a common last point (zero cost). This is useful to find the shortest path
             # simply as path from START_NODE to STOP_NODE. The nodes are connected with zero cost.
             if point_idx >= total_point_count - 1:
-                for current_conf in point_nodes.keys():
-                    node_idx = calculate_node_idx(point_idx, current_conf)
+                for curr_conf in ik_solutions_point.keys():
+                    node_idx = calculate_node_idx(point_idx, curr_conf)
                     joint_network.add_edge(node_idx, STOP_NODE, edge=0)
 
             # Move forward to the next point and save the nodes of the current point as parents for the next point
-            current_parents = point_nodes
+            current_parents = ik_solutions_point
+            t_prev_point = t_curr_point
             point_idx += 1
 
     return joint_network, START_NODE, STOP_NODE,

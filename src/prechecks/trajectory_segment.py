@@ -4,6 +4,7 @@ from typing import List, Union, Iterator
 import numpy as np
 
 from src.kinematics.inverse_kinematics import JointSolution
+from src.prechecks.speed_profile import trapezoidal_speed_profile
 
 
 def is_point_within_boundaries(point: Union[np.ndarray, List], boundaries: List) -> bool:
@@ -25,8 +26,29 @@ class CartesianTrajectorySegment(metaclass=abc.ABCMeta):
     Base class for parts of a trajectory within the cartesian task space
     """
 
-    def __init__(self, trajectory_points: Iterator[np.ndarray]):
+    def __init__(self, trajectory_points: Iterator[np.ndarray], velocity=None, acceleration=None, ds=None):
+        """
+        Create a cartesian trajectory segment. Time points are calculated according to a trapezoidal speed profile.
+        :param trajectory_points:
+        :param velocity: Velocity in mm/min
+        :param acceleration: Acceleration in mm/s^2
+        :param ds: Way delta for discretizing the segment in mm
+        """
         self.trajectory_points = list(trajectory_points)
+        s_total = self.trajectory_points[-1] - self.trajectory_points[0]
+
+        if s_total.shape == (4, 4,):
+            # Homogeneous transformation matrix
+            self.s_total = np.linalg.norm(s_total[0:3, 3])
+        else:
+            # Assume single element
+            self.s_total = np.linalg.norm(s_total)
+
+        self.ds = ds
+        if velocity is not None and acceleration is not None and ds is not None:
+            self.time_points = trapezoidal_speed_profile(velocity / 60, acceleration, self.s_total, self.ds)
+        else:
+            self.time_points = None
 
         if len(self.trajectory_points) == 0:
             raise ValueError('Trajectory may not be empty.')
@@ -89,8 +111,9 @@ class JointTrajectorySegment:
     """
     IDX = 0
 
-    def __init__(self, solutions: List[JointSolution]):
+    def __init__(self, solutions: List[JointSolution], time_points):
         self.solutions = solutions
+        self.time_points = time_points
         self.idx = self.IDX
         JointTrajectorySegment.IDX = JointTrajectorySegment.IDX + 1
 
@@ -137,12 +160,3 @@ class JointTrajectorySegment:
             # Only keep the configurations that are also viable for the next point
             common_configurations &= set(current_point_solutions.keys())
         return list(common_configurations)
-
-    def get_least_configuration_changes(self, shoulder_cost, elbow_cost, wrist_cost) -> List[JointSolution]:
-        """
-        Find the path of solutions with the minimum cost of configuration changes
-        :param shoulder_cost: Cost that a change of the shoulder configuration incurrs
-        :param elbow_cost: Cost that a change of the elbow configuration incurrs
-        :param wrist_cost: Cost that a change of the wrist configuration incurrs
-        :return: List of selected joint solutions with minimum cost
-        """
