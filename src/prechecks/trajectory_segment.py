@@ -111,7 +111,7 @@ class JointTrajectorySegment:
     """
     IDX = 0
 
-    def __init__(self, solutions: List[JointSolution], time_points):
+    def __init__(self, solutions: List[JointSolution], time_points=None):
         self.solutions = solutions
         self.time_points = time_points
         self.idx = self.IDX

@@ -68,7 +68,7 @@ def joint_velocity_cost(prev_j: List[float], curr_j: List[float], qdlim: List[fl
     return val / (2 * len(curr_j))
 
 
-def singularity_proximity() -> float:
+def singularity_proximity(curr_j: List[float]) -> float:
     # TODO Apply additional cost depending on proximity to singularitites
     return 0.0
 
@@ -99,7 +99,7 @@ def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[flo
     cost += joint_velocity_cost(prev.joints, curr.joints, qdlim, dt=curr.t - prev.t)
 
     # Cost with regard to singularity proximity
-    cost += singularity_proximity()
+    cost += singularity_proximity(curr.joints)
 
     return cost
 
