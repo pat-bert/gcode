@@ -13,13 +13,13 @@ def circular_segment_from_gcode(command: GCmd, current_pos, ds: float, is_absolu
                                 curr_acc: float) -> CircularSegment:
     """
     Generates a circular trajectory segment in task space from a linear G-code command.
-    :param command:
-    :param current_pos:
+    :param command: G-Code command for circular interpolation to be converted
+    :param current_pos: Start pose for the current segment (not contained within command)
     :param ds: Way delta for discretizing the segment in mm
     :param is_absolute: Flag to indicate whether the command specifies absolute or relative coordinates
     :param curr_vel: Velocity in mm/min
     :param curr_acc: Acceleration in mm/s^2
-    :return:
+    :return: Circular Segment containing points with distance ds
     """
     # Get end point and centre point
     target_pos = command.cartesian_abs
@@ -49,13 +49,13 @@ def linear_segment_from_gcode(command: GCmd, current_pose: np.ndarray, ds: float
                               curr_acc: float) -> LinearSegment:
     """
     Generates a linear trajectory segment in task space from a linear G-code command.
-    :param command:
-    :param current_pose:
+    :param command: G-Code command for circular interpolation to be converted
+    :param current_pose: Start pose for the current segment (not contained within command)
     :param ds: Way delta for discretizing the segment in mm
     :param is_absolute: Flag to indicate whether the command specifies absolute or relative coordinates
     :param curr_vel: Velocity in mm/min
     :param curr_acc: Acceleration in mm/s^2
-    :return:
+    :return: Linear Segment containing points with distance ds
     """
     current_position = Coordinate(current_pose[0:3, 3], 'XYZ')
     target_position = command.cartesian_abs

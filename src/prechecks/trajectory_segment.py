@@ -30,7 +30,7 @@ def get_violated_boundaries(point: Union[np.ndarray, List], boundaries: List) ->
     return violation_indices
 
 
-class CartesianTrajectorySegment(metaclass=abc.ABCMeta):
+class CartesianTrajSegment(metaclass=abc.ABCMeta):
     """
     Base class for parts of a trajectory within the cartesian task space
     """
@@ -76,7 +76,7 @@ class CartesianTrajectorySegment(metaclass=abc.ABCMeta):
         return self.trajectory_points[-1]
 
 
-class LinearSegment(CartesianTrajectorySegment):
+class LinearSegment(CartesianTrajSegment):
     """
     Represents a straight line segment within the task space
     """
@@ -105,7 +105,7 @@ class LinearSegment(CartesianTrajectorySegment):
         return start_violations
 
 
-class CircularSegment(CartesianTrajectorySegment):
+class CircularSegment(CartesianTrajSegment):
     """
     Represents a circular sector within the task space
     """
@@ -123,7 +123,7 @@ class CircularSegment(CartesianTrajectorySegment):
         return set((element for idx_list in all_violations for element in idx_list))
 
 
-class JointTrajectorySegment:
+class JointTrajSegment:
     """
     Represents a list of trajectory point solutions given in the joint space
     """
@@ -133,7 +133,7 @@ class JointTrajectorySegment:
         self.solutions = solutions
         self.time_points = time_points
         self.idx = self.IDX
-        JointTrajectorySegment.IDX = JointTrajectorySegment.IDX + 1
+        JointTrajSegment.IDX = JointTrajSegment.IDX + 1
 
     def is_within_joint_limits(self, limits: List) -> bool:
         """
@@ -180,7 +180,7 @@ class JointTrajectorySegment:
         return list(common_configurations)
 
 
-def check_cartesian_limits(task_trajectory: List[CartesianTrajectorySegment], clim: List[float]):
+def check_cartesian_limits(task_trajectory: List[CartesianTrajSegment], clim: List[float]):
     """
     Verify that a set of waypoints is within given cartesian limits.
     :param task_trajectory:

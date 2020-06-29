@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from src.prechecks.trajectory_segment import get_violated_boundaries, LinearSegment, CircularSegment, \
-    JointTrajectorySegment
+    JointTrajSegment
 
 
 @pytest.mark.parametrize("point,boundaries,within,exc",
@@ -182,7 +182,7 @@ class TestJointSegment:
                              ]
                              )
     def test_is_within_joint_limits(self, solutions, exp_within):
-        jseg = JointTrajectorySegment(solutions)
+        jseg = JointTrajSegment(solutions)
         assert jseg.solutions == solutions
 
         act_within = jseg.is_within_joint_limits(jlimits)
@@ -207,6 +207,6 @@ class TestJointSegment:
                              ]
                              )
     def test_get_common_configurations(self, solutions, commons):
-        jseg = JointTrajectorySegment(solutions)
+        jseg = JointTrajSegment(solutions)
         act_common = jseg.get_common_configurations()
         assert act_common == commons

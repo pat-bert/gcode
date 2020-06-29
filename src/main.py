@@ -6,7 +6,6 @@ Translate G-Code to Mitsubishi commands.
 
 Usage:
     main.py (-V | --validate) IN_FILE CONFIG_FILE [-o OUTPUT_FILE] [--quiet | --verbose]
-    main.py (-E | --execute) IN_FILE [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
     main.py --gi [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
     main.py --mi [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
     main.py --demo [--ip=<ip>] [--port=<port>] [--safe]
@@ -18,7 +17,6 @@ Options:
     -h --help       Show this screen.
     --version       Show version.
     -V --validate   Validate a G-code file and create an extended G-code file on success.
-    -E --execute    Execute a file containing R3-compatible (Mitsubishi robots) commands.
     -o OUTPUT_FILE  Specify output file [default: ./r3_cmd.txt].
     --gi            Launch interactive G-code shell.
     --mi            Launch interactive R3 shell (Mitsubishi robots).
@@ -41,19 +39,13 @@ import sys
 # Own libraries
 from src.ApplicationExceptions import ApiException
 from src.GRedirect import GRedirect
+from src.cli_commands.check_trajectory import check_trajectory
 from src.cli_commands.demo import demo_mode
-from src.cli_commands.execute_r3 import execute_r3
 from src.cli_commands.interactive_gcode import interactive_gcode
 from src.cli_commands.interactive_melfa import interactive_melfa
-from src.cli_commands.check_trajectory import check_trajectory
 from src.clients.TcpClientR3 import validate_ip, validate_port
-from src.exit_codes import (
-    EXIT_SUCCESS,
-    EXIT_BAD_INPUT,
-    EXIT_INTERNAL_ERROR,
-    EXIT_PACKAGE_ERROR,
-    EXIT_UNEXPECTED_ERROR,
-)
+from src.exit_codes import (EXIT_SUCCESS, EXIT_BAD_INPUT, EXIT_INTERNAL_ERROR, EXIT_PACKAGE_ERROR,
+                            EXIT_UNEXPECTED_ERROR)
 
 # Third-party libraries
 try:
@@ -113,10 +105,7 @@ def main(*argv):
             args.update(connection_schema.validate(args))
             ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
 
-            if args["--execute"]:
-                input_schema.validate(args)
-                execute_r3(args["IN_FILE"], ip, port)
-            elif args["--validate"]:
+            if args["--validate"]:
                 input_schema.validate(args)
                 config_schema.validate(args)
                 check_trajectory(config_f=args["CONFIG_FILE"], gcode_f=args["IN_FILE"])

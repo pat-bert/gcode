@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 from dijkstar import Graph
 
 from src.prechecks.exceptions import JointVelocityViolation, JOINT_SPEED_ALLOWABLE_RATIO
-from src.prechecks.trajectory_segment import JointTrajectorySegment
+from src.prechecks.trajectory_segment import JointTrajSegment
 
 START_NODE = -1
 STOP_NODE = -2
@@ -130,7 +130,7 @@ def calc_conf_from_node(node_idx, point_idx) -> int:
     raise ValueError('Point index must be positive.')
 
 
-def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float], qdlim: List[float]) \
+def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: List[float]) \
         -> Tuple[Graph, int, int]:
     """
     Constructs a graph for a given joint trajectory.
