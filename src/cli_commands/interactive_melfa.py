@@ -1,16 +1,20 @@
 from time import sleep
+from typing import Optional
 
 from src import ApplicationExceptions
 from src.clients.TcpClientR3 import TcpClientR3
 from src.printer_components.MelfaRobot import MelfaRobot
 
 
-def interactive_melfa(ip, port, log_file=None, safe_return=False) -> None:
-    print("Launching interactive R3 protocol shell...")
+def interactive_melfa(ip: str, port: int, safe_return: Optional[bool] = False) -> None:
+    """
 
-    if log_file is not None:
-        # TODO Implement logging
-        pass
+    :param ip:
+    :param port:
+    :param safe_return:
+    :return:
+    """
+    print("Launching interactive R3 protocol shell...")
 
     # Create robot object
     tcp = TcpClientR3(host=ip, port=port)

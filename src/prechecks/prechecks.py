@@ -1,19 +1,22 @@
+import sys
 from collections import namedtuple
 from math import pi
-from typing import List
+from typing import List, Optional
 
 from dijkstar import find_path
 
+from clients.TcpClientR3 import TcpClientR3
+from src.protocols.R3Protocol import R3Protocol
+from src.exit_codes import EXIT_INVALID_TRAJECTORY
 from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
 from src.prechecks.configs import melfa_rv_4a
-from src.prechecks.exceptions import CollisionViolation, CartesianLimitViolation, JointLimitViolation, \
-    ConfigurationChangesError
+from src.prechecks.exceptions import CollisionViolation, ConfigurationChangesError, CartesianLimitViolation
 from src.prechecks.graph_search import create_graph, calc_conf_from_node
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
-from src.prechecks.trajectory_segment import CartesianTrajectorySegment
+from src.prechecks.trajectory_segment import check_cartesian_limits, filter_joint_limits
 from src.prechecks.utils import print_progress, time_func_call
 
 Constraints = namedtuple('Constraints', 'pos_cartesian pos_joint vel_joint')
@@ -25,22 +28,15 @@ Constraints = namedtuple('Constraints', 'pos_cartesian pos_joint vel_joint')
 
 
 @time_func_call
-def check_trajectory(
-        cmds: List[GCmd],
-        config: List[BaseJoint],
-        limits: Constraints,
-        home_pos: List[float],
-        ds: float,
-        urdf_path: str,
-):
+def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, home: List[float], ds: float, urdf: str):
     """
     Validate a trajectory defined by a list of G-code commands.
     :param cmds: List of G-Code command objects.
     :param config: List of joints containing coordinate transformations.
     :param limits: Namedtuple containing all relevant trajectory constraints
-    :param home_pos: Home position given as list of joint values
+    :param home: Home position given as list of joint values
     :param ds: Float value for distance between pose points in mm
-    :param urdf_path:
+    :param urdf:
     :return: None
 
     The following checks are done in order:
@@ -69,7 +65,7 @@ def check_trajectory(
     4.  Check that the robot paths are free of collisions.
     """
     # Initialize the current position with the home position given in joint space
-    start_position = forward_kinematics(config, home_pos)
+    start_position = forward_kinematics(config, home)
 
     # Generate cartesian waypoints from command list and validate limits
     print('Generating task trajectory...')
@@ -104,7 +100,7 @@ def check_trajectory(
 
     # Init Matlab Runtime
     collider = MatlabCollisionChecker()
-    collisions = collider.check_collisions(home_pos, path=urdf_path)
+    collisions = collider.check_collisions(home, path=urdf)
     if collisions[0]:
         raise CollisionViolation('Home position is in collision.')
     print('Home position is not in collision.')
@@ -158,52 +154,13 @@ def get_common_configurations(joint_trajectory) -> List[List[int]]:
     return common_configurations
 
 
-LIMIT_IDS = 'XYZ'
-
-
-def check_cartesian_limits(task_trajectory: List[CartesianTrajectorySegment], clim: List[float]):
-    """
-    Verify that a set of waypoints is within given cartesian limits.
-    :param task_trajectory:
-    :param clim: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
-    :raises: CartesianLimitViolation if any point of a segment is violating the limits
-    """
-    print('Validating trajectory in task space...')
-    boundary_violations = [segment.get_violated_boundaries(clim) for segment in task_trajectory]
-    if any(boundary_violations):
-        # At least one set is not empty and contains the indices of the violated boundaries
-        error_msg = ''
-        for segment_idx, violation_indices in enumerate(boundary_violations):
-            if violation_indices:
-                limits = ''
-                for idx in violation_indices:
-                    limit_type = 'min' if (idx % 2 == 0) else 'max'
-                    limit_id = LIMIT_IDS[idx // 2]
-                    limits += f'{limit_id}{limit_type} '
-                error_msg += f'Segment #{segment_idx}: {limits}violated\n'
-        violation_idx = [idx for idx, val in enumerate(boundary_violations) if val]
-        raise CartesianLimitViolation('Found segments violating the cartesian limits.', violation_idx, error_msg)
-    print('All segments are located within the cartesian limits.')
-
-
-def filter_joint_limits(joint_trajectory, qlim: List[float]):
-    """
-    Eliminates solutions in joint space that violate the joint limits.
-    :param joint_trajectory:
-    :param qlim: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
-    :raises: JointLimitViolation if any point of a segment does not have a valid solution in joint space
-    """
-    print('Filtering positional joint limits...')
-    within_joint = [segment.is_within_joint_limits(qlim) for segment in joint_trajectory]
-    if not all(within_joint):
-        violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
-        raise JointLimitViolation('Found segments violating the joint limits.', violation_idx)
-    print('All segments have joint solutions within the limits.')
-
-
 if __name__ == '__main__':
     config_file = './../../config.ini'
     gcode_file = './../../test.gcode'
+
+    # This comes from the command line
+    ip: Optional[str] = None
+    port = 0
 
     with open(gcode_file, 'r') as f:
         cmd_raw = f.readlines()
@@ -211,34 +168,41 @@ if __name__ == '__main__':
     commands = [GCmd.read_cmd_str(cmd_str.strip()) for cmd_str in cmd_raw]
     robot_config = melfa_rv_4a()
 
-    # Can be read from the controller: R3Protocol.get_safe_pos()
-    home_position = [0, 0, pi / 2, 0, pi / 2, 0]
-
-    # Can be read from the controller: R3Protocol.get_xyz_borders()
-    cartesian_limits = [0, 1000, -500, 500, -100, 700]
-
-    # Can be read from the controller: R3Protocol.get_joint_borders()
-    joint_limits = [
-        -2.7925, 2.7925,
-        -1.5708, 2.4435,
-        +0.2618, 2.9496,
-        -2.7925, 2.7925,
-        -2.0944, 2.0944,
-        -3.4907, 3.4907
-    ]
-
     from configparser import ConfigParser
 
-    config = ConfigParser()
-    config.read(config_file)
+    config_parser = ConfigParser()
+    config_parser.read(config_file)
 
-    max_jnt_speed = config.get('prechecks', 'max_joint_speed')
+    if ip is not None:
+        tcp_client = TcpClientR3(host=ip, port=port)
+        protocol = R3Protocol(tcp_client)
+        home_position = protocol.get_safe_pos().values
+        cartesian_limits = protocol.get_xyz_borders()
+        joint_limits = protocol.get_joint_borders()
+    else:
+        home_position = [0, 0, pi / 2, 0, pi / 2, 0]
+        cartesian_limits = [0, 10, -500, 5, -100, 700]
+        joint_limits = [
+            -2.7925, 2.7925,
+            -1.5708, 2.4435,
+            +0.2618, 2.9496,
+            -2.7925, 2.7925,
+            -2.0944, 2.0944,
+            -3.4907, 3.4907
+        ]
+
+    max_jnt_speed = config_parser.get('prechecks', 'max_joint_speed')
     joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
-    inc_distance_mm = float(config.get('prechecks', 'ds_mm'))
-    urdf_file_path = config.get('prechecks', 'urdf_path')
+    inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
+    urdf_file_path = config_parser.get('prechecks', 'urdf_path')
 
     # Create the constraints
     traj_constraints = Constraints(cartesian_limits, joint_limits, joint_velocity_limits)
 
     # Check the trajectory
-    check_trajectory(commands, robot_config, traj_constraints, home_position, inc_distance_mm, urdf_file_path)
+    try:
+        check_traj(commands, robot_config, traj_constraints, home_position, inc_distance_mm, urdf_file_path)
+    except CartesianLimitViolation as e:
+        print('Fatal error occured: {}'.format("\n".join(e.args)))
+        print('Please verify that the limits are correct and check the positioning of the part.')
+        sys.exit(EXIT_INVALID_TRAJECTORY)

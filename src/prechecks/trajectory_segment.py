@@ -4,6 +4,7 @@ from typing import List, Union, Iterator, Set
 import numpy as np
 
 from src.kinematics.inverse_kinematics import JointSolution
+from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation
 from src.prechecks.speed_profile import trapezoidal_speed_profile
 
 
@@ -177,3 +178,42 @@ class JointTrajectorySegment:
             # Only keep the configurations that are also viable for the next point
             common_configurations &= set(current_point_solutions.keys())
         return list(common_configurations)
+
+
+def check_cartesian_limits(task_trajectory: List[CartesianTrajectorySegment], clim: List[float]):
+    """
+    Verify that a set of waypoints is within given cartesian limits.
+    :param task_trajectory:
+    :param clim: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
+    :raises: CartesianLimitViolation if any point of a segment is violating the limits
+    """
+    print('Validating trajectory in task space...')
+    boundary_violations = [segment.get_violated_boundaries(clim) for segment in task_trajectory]
+    if any(boundary_violations):
+        # At least one set is not empty and contains the indices of the violated boundaries
+        error_msg = '\n'
+        for segment_idx, violation_indices in enumerate(boundary_violations):
+            if violation_indices:
+                limits = ''
+                for idx in violation_indices:
+                    limit_type = 'min' if (idx % 2 == 0) else 'max'
+                    limit_id = 'XYZ'[idx // 2]
+                    limits += f'{limit_id}{limit_type} '
+                error_msg += f'Segment #{segment_idx}: {limits}violated\n'
+        raise CartesianLimitViolation(f'Found segments violating the cartesian limits ({clim}).', error_msg)
+    print('All segments are located within the cartesian limits.')
+
+
+def filter_joint_limits(joint_trajectory, qlim: List[float]):
+    """
+    Eliminates solutions in joint space that violate the joint limits.
+    :param joint_trajectory:
+    :param qlim: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
+    :raises: JointLimitViolation if any point of a segment does not have a valid solution in joint space
+    """
+    print('Filtering positional joint limits...')
+    within_joint = [segment.is_within_joint_limits(qlim) for segment in joint_trajectory]
+    if not all(within_joint):
+        violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
+        raise JointLimitViolation('Found segments violating the joint limits.', violation_idx)
+    print('All segments have joint solutions within the limits.')
