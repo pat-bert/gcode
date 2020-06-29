@@ -145,16 +145,17 @@ def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float], qd
     """
     joint_network = Graph()
     current_parents = {}
+    prev_seg_idx = 0
     t_prev_point = 0
     total_point_count = sum((len(segment.solutions) for segment in joint_traj))
 
     point_idx = 0
     # Iterate over all segments
-    for joint_segment in joint_traj:
+    for seg_idx, joint_segment in enumerate(joint_traj):
         # Iterate over points in task space and corresponding points in time per segment
         for ik_solutions_point, t_curr_point in zip(joint_segment.solutions, joint_segment.time_points):
             # Iterate over all nodes of the current point
-            for curr_conf, curr_joints in ik_solutions_point.items():
+            for curr_conf, curr_j in ik_solutions_point.items():
                 node_idx = calculate_node_idx(point_idx, curr_conf)
                 if point_idx == 0:
                     # First point nodes are all connected to start node (zero cost) and do not have distinct parent
@@ -162,14 +163,13 @@ def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float], qd
                     joint_network.add_edge(START_NODE, node_idx, edge=0)
                 else:
                     # Following point nodes are connected to all nodes of the previous point
-                    for prev_conf, prev_joints in current_parents.items():
+                    for prev_conf, prev_j in current_parents.items():
                         # Calculate the index of the previous node
                         previous_node_idx = calculate_node_idx(point_idx - 1, prev_conf)
                         # Call a cost function to determine the transition cost between the nodes based on the robot
                         # configurations and the joint values.
-                        # TODO Use correct segment indices
-                        curr_node_info = NodeInfo(conf=curr_conf, joints=curr_joints, seg_idx=None, t=t_curr_point)
-                        prev_node_info = NodeInfo(conf=prev_conf, joints=prev_joints, seg_idx=None, t=t_prev_point)
+                        curr_node_info = NodeInfo(conf=curr_conf, joints=curr_j, seg_idx=seg_idx, t=t_curr_point)
+                        prev_node_info = NodeInfo(conf=prev_conf, joints=prev_j, seg_idx=prev_seg_idx, t=t_prev_point)
                         cost = calc_cost(curr_node_info, prev_node_info, qlim, qdlim)
                         # Add the edge to the graph
                         joint_network.add_edge(previous_node_idx, node_idx, edge=cost)
@@ -185,5 +185,8 @@ def create_graph(joint_traj: List[JointTrajectorySegment], qlim: List[float], qd
             current_parents = ik_solutions_point
             t_prev_point = t_curr_point
             point_idx += 1
+
+        # Move forward to the next segment
+        prev_seg_idx = seg_idx
 
     return joint_network, START_NODE, STOP_NODE,

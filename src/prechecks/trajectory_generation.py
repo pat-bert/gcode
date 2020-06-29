@@ -23,7 +23,7 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
 
     # TODO Initialize default values
     current_vel = 0
-    current_acc = 100
+    current_acc = 40
 
     # TODO Distinguish movements without extrusion
     for line_number, command in enumerate(cmds):

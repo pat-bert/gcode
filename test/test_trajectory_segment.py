@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.prechecks.trajectory_segment import is_point_within_boundaries, LinearSegment, CircularSegment, \
+from src.prechecks.trajectory_segment import get_violated_boundaries, LinearSegment, CircularSegment, \
     JointTrajectorySegment
 
 
@@ -53,11 +53,11 @@ from src.prechecks.trajectory_segment import is_point_within_boundaries, LinearS
                          )
 def test_is_point_within_boundaries(point, boundaries, within, exc):
     if exc is None:
-        actual_within = is_point_within_boundaries(point, boundaries)
-        assert actual_within == within
+        actual_within = get_violated_boundaries(point, boundaries)
+        assert (len(actual_within) == 0) == within
     else:
         with pytest.raises(exc):
-            is_point_within_boundaries(point, boundaries)
+            get_violated_boundaries(point, boundaries)
 
 
 class TestLinearSegment:
@@ -102,8 +102,8 @@ class TestLinearSegment:
         traj = [np.array(point) for point in traj]
         if exc is None:
             linear_segment = LinearSegment(traj)
-            actual_within = linear_segment.is_within_cartesian_boundaries(boundaries)
-            assert actual_within == within
+            actual_within = linear_segment.get_violated_boundaries(boundaries)
+            assert (len(actual_within) == 0) == within
         else:
             with pytest.raises(exc):
                 LinearSegment(traj)
@@ -149,8 +149,8 @@ class TestCircularSegment:
         traj = [np.array(point) for point in traj]
         if exc is None:
             circular_segment = CircularSegment(traj)
-            actual_within = circular_segment.is_within_cartesian_boundaries(boundaries)
-            assert actual_within == within
+            actual_within = circular_segment.get_violated_boundaries(boundaries)
+            assert (len(actual_within) == 0) == within
         else:
             with pytest.raises(exc):
                 CircularSegment(traj)

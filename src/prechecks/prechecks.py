@@ -1,3 +1,4 @@
+from collections import namedtuple
 from math import pi
 from typing import List
 
@@ -12,16 +13,22 @@ from src.prechecks.exceptions import CollisionViolation, CartesianLimitViolation
     ConfigurationChangesError
 from src.prechecks.graph_search import create_graph, calc_conf_from_node
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
+from src.prechecks.trajectory_segment import CartesianTrajectorySegment
 from src.prechecks.utils import print_progress, time_func_call
+
+Constraints = namedtuple('Constraints', 'pos_cartesian pos_joint vel_joint')
+"""
+:param pos_cartesian: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
+:param pos_joint: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
+:param vel_joint: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
+"""
 
 
 @time_func_call
 def check_trajectory(
         cmds: List[GCmd],
         config: List[BaseJoint],
-        clim: List[float],
-        qlim: List[float],
-        qdlim: List[float],
+        limits: Constraints,
         home_pos: List[float],
         ds: float,
         urdf_path: str,
@@ -30,9 +37,7 @@ def check_trajectory(
     Validate a trajectory defined by a list of G-code commands.
     :param cmds: List of G-Code command objects.
     :param config: List of joints containing coordinate transformations.
-    :param clim: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
-    :param qlim: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
-    :param qdlim: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
+    :param limits: Namedtuple containing all relevant trajectory constraints
     :param home_pos: Home position given as list of joint values
     :param ds: Float value for distance between pose points in mm
     :param urdf_path:
@@ -69,11 +74,11 @@ def check_trajectory(
     # Generate cartesian waypoints from command list and validate limits
     print('Generating task trajectory...')
     task_trajectory = generate_task_trajectory(cmds, start_position, ds)
-    check_cartesian_limits(task_trajectory, clim)
+    check_cartesian_limits(task_trajectory, limits.pos_cartesian)
 
     # Convert to joint space and filter out solutions exceeding the limits
     joint_traj = generate_joint_trajectory(task_trajectory, config)
-    filter_joint_limits(joint_traj, qlim)
+    filter_joint_limits(joint_traj, limits.pos_joint)
 
     # Check the configurations of the solutions
     common_configurations = get_common_configurations(joint_traj)
@@ -84,7 +89,7 @@ def check_trajectory(
     # configurations. The nodes of the same points stay unconnected but all nodes of adjacent points are connected at
     # the beginning. The edges between the nodes represent the cost required. The cost is calculated based on the joint
     # coordinates and the robot configurations of the connected nodes.
-    graph, start_node, stop_node = create_graph(joint_traj, qlim, qdlim)
+    graph, start_node, stop_node = create_graph(joint_traj, limits.pos_joint, limits.vel_joint)
 
     # Find the initially shortest path to be checked for collisions. Nodes in collision can be removed to query for the
     # next best path.
@@ -153,7 +158,10 @@ def get_common_configurations(joint_trajectory) -> List[List[int]]:
     return common_configurations
 
 
-def check_cartesian_limits(task_trajectory, clim: List[float]):
+LIMIT_IDS = 'XYZ'
+
+
+def check_cartesian_limits(task_trajectory: List[CartesianTrajectorySegment], clim: List[float]):
     """
     Verify that a set of waypoints is within given cartesian limits.
     :param task_trajectory:
@@ -161,10 +169,20 @@ def check_cartesian_limits(task_trajectory, clim: List[float]):
     :raises: CartesianLimitViolation if any point of a segment is violating the limits
     """
     print('Validating trajectory in task space...')
-    within_cartesian = [segment.is_within_cartesian_boundaries(clim) for segment in task_trajectory]
-    if not all(within_cartesian):
-        violation_idx = [idx for idx, val in enumerate(within_cartesian) if not val]
-        raise CartesianLimitViolation('Found segments violating the cartesian limits.', violation_idx)
+    boundary_violations = [segment.get_violated_boundaries(clim) for segment in task_trajectory]
+    if any(boundary_violations):
+        # At least one set is not empty and contains the indices of the violated boundaries
+        error_msg = ''
+        for segment_idx, violation_indices in enumerate(boundary_violations):
+            if violation_indices:
+                limits = ''
+                for idx in violation_indices:
+                    limit_type = 'min' if (idx % 2 == 0) else 'max'
+                    limit_id = LIMIT_IDS[idx // 2]
+                    limits += f'{limit_id}{limit_type} '
+                error_msg += f'Segment #{segment_idx}: {limits}violated\n'
+        violation_idx = [idx for idx, val in enumerate(boundary_violations) if val]
+        raise CartesianLimitViolation('Found segments violating the cartesian limits.', violation_idx, error_msg)
     print('All segments are located within the cartesian limits.')
 
 
@@ -184,18 +202,22 @@ def filter_joint_limits(joint_trajectory, qlim: List[float]):
 
 
 if __name__ == '__main__':
-    cmd_raw = 'G91\n' \
-              'G01 X100 Z-50 F500\n' \
-              'G01 Y50 Z-50\n' \
-              'G01 Z-200\n' \
-              'G01 Y300\n' \
-              'G01 Y-700\n' \
-              'G90\n' \
-              'G01 Y0\n' \
-              'G01 X500 Z-50'
-    commands = [GCmd.read_cmd_str(cmd_str) for cmd_str in cmd_raw.splitlines()]
+    config_file = './../../config.ini'
+    gcode_file = './../../test.gcode'
+
+    with open(gcode_file, 'r') as f:
+        cmd_raw = f.readlines()
+
+    commands = [GCmd.read_cmd_str(cmd_str.strip()) for cmd_str in cmd_raw]
     robot_config = melfa_rv_4a()
+
+    # Can be read from the controller: R3Protocol.get_safe_pos()
+    home_position = [0, 0, pi / 2, 0, pi / 2, 0]
+
+    # Can be read from the controller: R3Protocol.get_xyz_borders()
     cartesian_limits = [0, 1000, -500, 500, -100, 700]
+
+    # Can be read from the controller: R3Protocol.get_joint_borders()
     joint_limits = [
         -2.7925, 2.7925,
         -1.5708, 2.4435,
@@ -204,10 +226,19 @@ if __name__ == '__main__':
         -2.0944, 2.0944,
         -3.4907, 3.4907
     ]
-    joint_velocity_limits = [3.7699, 4.7124, 4.7124, 4.7124, 4.7124, 7.5398]
-    home_position = [0, 0, pi / 2, 0, pi / 2, 0]
-    inc_distance = 1
-    urdf_file_path = './../../ressource/robot.urdf'
 
-    check_trajectory(commands, robot_config, cartesian_limits, joint_limits, joint_velocity_limits, home_position,
-                     inc_distance, urdf_file_path)
+    from configparser import ConfigParser
+
+    config = ConfigParser()
+    config.read(config_file)
+
+    max_jnt_speed = config.get('prechecks', 'max_joint_speed')
+    joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
+    inc_distance_mm = float(config.get('prechecks', 'ds_mm'))
+    urdf_file_path = config.get('prechecks', 'urdf_path')
+
+    # Create the constraints
+    traj_constraints = Constraints(cartesian_limits, joint_limits, joint_velocity_limits)
+
+    # Check the trajectory
+    check_trajectory(commands, robot_config, traj_constraints, home_position, inc_distance_mm, urdf_file_path)
