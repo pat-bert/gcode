@@ -5,25 +5,27 @@ import numpy as np
 from src.gcode.GCmd import GCmd
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
-from src.prechecks.gcode2segment import linear_segment_from_gcode, circular_segment_from_gcode
 from src.prechecks.exceptions import WorkspaceViolation
+from src.prechecks.gcode2segment import linear_segment_from_gcode, circular_segment_from_gcode
 from src.prechecks.trajectory_segment import CartesianTrajectorySegment, JointTrajectorySegment
 
 
-def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: float) -> List[CartesianTrajectorySegment]:
+def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: float, acc: float) \
+        -> List[CartesianTrajectorySegment]:
     """
     Generates trajectory points for a list of G-code commands.
     :param cmds: List of G-Code command objects.
     :param current_pos: Start pose point given as 4x4 homogeneous matrix
     :param ds: Float value for distance between pose points in mm
+    :param acc: Float value for the default robot acceleration in mm/s^2
     :return: Task trajectory given as list of CartesianTrajectorySegments
     """
     is_absolute = True
     all_trajectory_pose_points = []
 
-    # TODO Initialize default values
+    # Initialize default values
     current_vel = 0
-    current_acc = 40
+    current_acc = acc
 
     # TODO Distinguish movements without extrusion
     for line_number, command in enumerate(cmds):

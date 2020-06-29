@@ -52,13 +52,14 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
     inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
     urdf_file_path = config_parser.get('prechecks', 'urdf_path')
+    default_acc = float(config_parser.get('prechecks', 'default_acc'))
 
     # Create the constraints
-    traj_constraints = Constraints(cartesian_limits, joint_limits, joint_velocity_limits)
+    traj_constraint = Constraints(cartesian_limits, joint_limits, joint_velocity_limits)
 
     try:
         # Check the trajectory
-        check_traj(commands, robot_config, traj_constraints, home_position, inc_distance_mm, urdf_file_path)
+        check_traj(commands, robot_config, traj_constraint, home_position, inc_distance_mm, default_acc, urdf_file_path)
     except CartesianLimitViolation as e:
         print('Fatal error occured: {}'.format("\n".join(e.args)))
         print('Please verify that the limits are correct and check the positioning of the part.')

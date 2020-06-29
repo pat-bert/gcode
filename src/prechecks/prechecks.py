@@ -22,7 +22,8 @@ Constraints = namedtuple('Constraints', 'pos_cartesian pos_joint vel_joint')
 
 
 @time_func_call
-def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, home: List[float], ds: float, urdf: str):
+def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, home: List[float], ds: float,
+               default_acc: float, urdf: str):
     """
     Validate a trajectory defined by a list of G-code commands.
     :param cmds: List of G-Code command objects.
@@ -30,6 +31,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     :param limits: Namedtuple containing all relevant trajectory constraints
     :param home: Home position given as list of joint values
     :param ds: Float value for distance between pose points in mm
+    :param default_acc: Float value for the default robot acceleration in mm/s^2
     :param urdf:
     :return: None
 
@@ -63,7 +65,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
 
     # Generate cartesian waypoints from command list and validate limits
     print('Generating task trajectory...')
-    task_trajectory = generate_task_trajectory(cmds, start_position, ds)
+    task_trajectory = generate_task_trajectory(cmds, start_position, ds, default_acc)
     check_cartesian_limits(task_trajectory, limits.pos_cartesian)
 
     # Convert to joint space and filter out solutions exceeding the limits

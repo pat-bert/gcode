@@ -137,131 +137,110 @@ class MelfaRobot(PrinterComponent):
 
         self.work_coordinate_active = active
 
-    def handle_gcode(
-            self,
-            gcode: GCmd,
-            interactive=True,
-            gcode_prev: Union[GCmd, None] = None,
-            *args,
-            **kwargs
-    ) -> Union[AnyStr, None]:
+    def handle_gcode(self, gcode: GCmd, gcode_prev: Union[GCmd, None] = None, *args, **kwargs) -> None:
         """
         Translates a G-Code to a Mitsubishi Melfa R3 command.
         :param gcode: G-Code object
-        :param interactive: Flag indicating whether the command should be executed or stored
         :param gcode_prev: Optional object for previous G-Code to be considered for speed setting
         :return:
         """
-        if interactive:
-            # G-Code is executed directly
-            current_pos = self.protocol.get_current_xyzabc()
-            current_pos = current_pos.reduce_to_axes("XYZ")
+        # G-Code is executed directly
+        current_pos = self.protocol.get_current_xyzabc()
+        current_pos = current_pos.reduce_to_axes("XYZ")
 
-            # Inch conversion
-            if self.inch_active:
-                self.adjust_units(gcode)
+        # Inch conversion
+        if self.inch_active:
+            self.adjust_units(gcode)
 
-            # Speed conversion mm/min to mm/s
-            if gcode.speed is not None:
-                gcode.speed /= 60
+        # Speed conversion mm/min to mm/s
+        if gcode.speed is not None:
+            gcode.speed /= 60
 
-            # Movement G-code
-            if gcode.id in ["G00", "G0", "G01", "G1"]:
-                if not self.absolute_coordinates:
-                    self.linear_move_poll(
-                        gcode.cartesian_abs + current_pos,
-                        gcode.speed,
-                        current_pos=current_pos,
-                    )
-                else:
-                    self.linear_move_poll(
-                        gcode.cartesian_abs, gcode.speed, current_pos=current_pos
-                    )
-            elif gcode.id in ["G02", "G2"]:
-                if not self.absolute_coordinates:
-                    self.circular_move_poll(
-                        gcode.cartesian_abs + current_pos,
-                        current_pos + gcode.cartesian_rel,
-                        True,
-                        gcode.speed,
-                        start_pos=current_pos,
-                    )
-                else:
-                    self.circular_move_poll(
-                        gcode.cartesian_abs,
-                        current_pos + gcode.cartesian_rel,
-                        True,
-                        gcode.speed,
-                        start_pos=current_pos,
-                    )
-            elif gcode.id in ["G03", "G3"]:
-                if not self.absolute_coordinates:
-                    self.circular_move_poll(
-                        gcode.cartesian_abs + current_pos,
-                        current_pos + gcode.cartesian_rel,
-                        False,
-                        gcode.speed,
-                    )
-                else:
-                    self.circular_move_poll(
-                        gcode.cartesian_abs,
-                        current_pos + gcode.cartesian_rel,
-                        False,
-                        gcode.speed,
-                    )
-            elif gcode.id in ["G04", "G4"]:
-                self.wait(gcode.time_ms)
-
-            elif gcode.id in ["G04", "G4"]:
-                # Adjust the offsets for the current tool
-                # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
-                pass
-
-            # Plane selection
-            elif gcode.id == "G17":
-                self.active_plane = Plane.XY
-            elif gcode.id == "G18":
-                self.active_plane = Plane.XZ
-            elif gcode.id == "G19":
-                self.active_plane = Plane.YZ
-
-            # Units
-            elif gcode.id == "G20":
-                self.inch_active = True
-            elif gcode.id == "G21":
-                self.inch_active = False
-
-            # Homing
-            elif gcode.id == "G28":
-                self.go_home(option=gcode.home_opt)
-
-            # Absolute/Relative mode
-            elif gcode.id == "G90":
-                self.absolute_coordinates = True
-            elif gcode.id == "G91":
-                self.absolute_coordinates = False
-
-            # Tools
-            elif gcode.id.startswith('T'):
-                # Tool commands start with T followed by the tool number.
-                # G-Code starts counting at zero, Mitsubishi starts at one
-                self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
-
-            # Unsupported G-code
-            else:
-                raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
-        else:
-            # Melfa code is saved for later usage
-            if gcode.id in ["G00", "G0", "G01", "G1"]:
-                return (
-                        R3Protocol_Cmd.LINEAR_INTRP + gcode.cartesian_abs.to_melfa_point()
+        # Movement G-code
+        if gcode.id in ["G00", "G0", "G01", "G1"]:
+            if not self.absolute_coordinates:
+                self.linear_move_poll(
+                    gcode.cartesian_abs + current_pos,
+                    gcode.speed,
+                    current_pos=current_pos,
                 )
-            elif gcode.id in ["G02", "G2"]:
-                raise NotImplementedError
-            elif gcode.id in ["G03", "G3"]:
-                raise NotImplementedError
             else:
-                raise NotImplementedError
+                self.linear_move_poll(
+                    gcode.cartesian_abs, gcode.speed, current_pos=current_pos
+                )
+        elif gcode.id in ["G02", "G2"]:
+            if not self.absolute_coordinates:
+                self.circular_move_poll(
+                    gcode.cartesian_abs + current_pos,
+                    current_pos + gcode.cartesian_rel,
+                    True,
+                    gcode.speed,
+                    start_pos=current_pos,
+                )
+            else:
+                self.circular_move_poll(
+                    gcode.cartesian_abs,
+                    current_pos + gcode.cartesian_rel,
+                    True,
+                    gcode.speed,
+                    start_pos=current_pos,
+                )
+        elif gcode.id in ["G03", "G3"]:
+            if not self.absolute_coordinates:
+                self.circular_move_poll(
+                    gcode.cartesian_abs + current_pos,
+                    current_pos + gcode.cartesian_rel,
+                    False,
+                    gcode.speed,
+                )
+            else:
+                self.circular_move_poll(
+                    gcode.cartesian_abs,
+                    current_pos + gcode.cartesian_rel,
+                    False,
+                    gcode.speed,
+                )
+        elif gcode.id in ["G04", "G4"]:
+            self.wait(gcode.time_ms)
+
+        elif gcode.id in ["G04", "G4"]:
+            # Adjust the offsets for the current tool
+            # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
+            pass
+
+        # Plane selection
+        elif gcode.id == "G17":
+            self.active_plane = Plane.XY
+        elif gcode.id == "G18":
+            self.active_plane = Plane.XZ
+        elif gcode.id == "G19":
+            self.active_plane = Plane.YZ
+
+        # Units
+        elif gcode.id == "G20":
+            self.inch_active = True
+        elif gcode.id == "G21":
+            self.inch_active = False
+
+        # Homing
+        elif gcode.id == "G28":
+            self.go_home(option=gcode.home_opt)
+
+        # Absolute/Relative mode
+        elif gcode.id == "G90":
+            self.absolute_coordinates = True
+        elif gcode.id == "G91":
+            self.absolute_coordinates = False
+
+        # Tools
+        elif gcode.id.startswith('T'):
+            # Tool commands start with T followed by the tool number.
+            # G-Code starts counting at zero, Mitsubishi starts at one
+            self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
+
+        # Unsupported G-code
+        else:
+            raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
 
     def adjust_units(self, gcode: GCmd):
         if (
@@ -586,15 +565,14 @@ class MelfaRobot(PrinterComponent):
         else:
             print("Speed of {}%. Okay!".format(speed))
 
-    def wait(self, time_ms):
+    @staticmethod
+    def wait(time_ms):
         """
         Waits for a specified time.
         :param time_ms:
         :return:
         """
-        # TODO Implement waiting (G04)
-        # self.client.wait_send('DLY')
-        raise NotImplementedError
+        sleep(1000 * time_ms)
 
     def _zero(self):
         return Coordinate(self.zero.values, self.zero.axes)
