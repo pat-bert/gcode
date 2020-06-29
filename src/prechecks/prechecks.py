@@ -1,19 +1,13 @@
-import sys
 from collections import namedtuple
-from math import pi
-from typing import List, Optional
+from typing import List
 
 from dijkstar import find_path
 
-from clients.TcpClientR3 import TcpClientR3
-from src.protocols.R3Protocol import R3Protocol
-from src.exit_codes import EXIT_INVALID_TRAJECTORY
 from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
-from src.prechecks.configs import melfa_rv_4a
-from src.prechecks.exceptions import CollisionViolation, ConfigurationChangesError, CartesianLimitViolation
+from src.prechecks.exceptions import CollisionViolation, ConfigurationChangesError
 from src.prechecks.graph_search import create_graph, calc_conf_from_node
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
 from src.prechecks.trajectory_segment import check_cartesian_limits, filter_joint_limits
@@ -59,7 +53,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
         d.) The solutions are within the same configuration
             Optional Fix: Configuration changes are inserted
 
-    3.  TODO Check that the TCP can reach the specified speed within the joint velocities.
+    3.  Check that the TCP can reach the specified speed within the joint velocities.
         Prerequisite: Speed profile for fixed time steps, inverse Jacobian (difference based on IK)
 
     4.  Check that the robot paths are free of collisions.
@@ -152,57 +146,3 @@ def get_common_configurations(joint_trajectory) -> List[List[int]]:
                                         violation_idx)
     print('Each segment can be executed without configuration change.')
     return common_configurations
-
-
-if __name__ == '__main__':
-    config_file = './../../config.ini'
-    gcode_file = './../../test.gcode'
-
-    # This comes from the command line
-    ip: Optional[str] = None
-    port = 0
-
-    with open(gcode_file, 'r') as f:
-        cmd_raw = f.readlines()
-
-    commands = [GCmd.read_cmd_str(cmd_str.strip()) for cmd_str in cmd_raw]
-    robot_config = melfa_rv_4a()
-
-    from configparser import ConfigParser
-
-    config_parser = ConfigParser()
-    config_parser.read(config_file)
-
-    if ip is not None:
-        tcp_client = TcpClientR3(host=ip, port=port)
-        protocol = R3Protocol(tcp_client)
-        home_position = protocol.get_safe_pos().values
-        cartesian_limits = protocol.get_xyz_borders()
-        joint_limits = protocol.get_joint_borders()
-    else:
-        home_position = [0, 0, pi / 2, 0, pi / 2, 0]
-        cartesian_limits = [0, 10, -500, 5, -100, 700]
-        joint_limits = [
-            -2.7925, 2.7925,
-            -1.5708, 2.4435,
-            +0.2618, 2.9496,
-            -2.7925, 2.7925,
-            -2.0944, 2.0944,
-            -3.4907, 3.4907
-        ]
-
-    max_jnt_speed = config_parser.get('prechecks', 'max_joint_speed')
-    joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
-    inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
-    urdf_file_path = config_parser.get('prechecks', 'urdf_path')
-
-    # Create the constraints
-    traj_constraints = Constraints(cartesian_limits, joint_limits, joint_velocity_limits)
-
-    # Check the trajectory
-    try:
-        check_traj(commands, robot_config, traj_constraints, home_position, inc_distance_mm, urdf_file_path)
-    except CartesianLimitViolation as e:
-        print('Fatal error occured: {}'.format("\n".join(e.args)))
-        print('Please verify that the limits are correct and check the positioning of the part.')
-        sys.exit(EXIT_INVALID_TRAJECTORY)

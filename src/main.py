@@ -5,7 +5,7 @@ Control your robot remotely using the Mitsubishi R3 protocol.
 Translate G-Code to Mitsubishi commands.
 
 Usage:
-    main.py (-I | --interpret) IN_FILE [-o OUTPUT_FILE] [--quiet | --verbose]
+    main.py (-V | --validate) IN_FILE CONFIG_FILE [-o OUTPUT_FILE] [--quiet | --verbose]
     main.py (-E | --execute) IN_FILE [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
     main.py --gi [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
     main.py --mi [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
@@ -17,7 +17,7 @@ Usage:
 Options:
     -h --help       Show this screen.
     --version       Show version.
-    -I --interpret  Interpret a G-code file and create an R3-protocol (Mitsubishi robots) file.
+    -V --validate   Validate a G-code file and create an extended G-code file on success.
     -E --execute    Execute a file containing R3-compatible (Mitsubishi robots) commands.
     -o OUTPUT_FILE  Specify output file [default: ./r3_cmd.txt].
     --gi            Launch interactive G-code shell.
@@ -45,7 +45,7 @@ from src.cli_commands.demo import demo_mode
 from src.cli_commands.execute_r3 import execute_r3
 from src.cli_commands.interactive_gcode import interactive_gcode
 from src.cli_commands.interactive_melfa import interactive_melfa
-from src.cli_commands.interpret_gcode import interpret_gcode
+from src.cli_commands.check_trajectory import check_trajectory
 from src.clients.TcpClientR3 import validate_ip, validate_port
 from src.exit_codes import (
     EXIT_SUCCESS,
@@ -81,8 +81,8 @@ def main(*argv):
         {"IN_FILE": And(os.path.exists, error="IN_FILE should exist")},
         ignore_extra_keys=True,
     )
-    output_schema = Schema(
-        {"-o": And(os.path.exists, error="Output file should exist")},
+    config_schema = Schema(
+        {"CONFIG_FILE": And(os.path.exists, error="CONFIG_FILE should exist")},
         ignore_extra_keys=True,
     )
     connection_schema = Schema(
@@ -109,27 +109,25 @@ def main(*argv):
             print("Supported G-Codes:")
             print(GRedirect.supported_gcodes())
         else:
-            if args["--interpret"]:
-                # Functions without TCP/IP-connection
-                input_schema.validate(args)
-                output_schema.validate(args)
-                interpret_gcode(args["IN_FILE"], args["-o"])
-            else:
-                # Functions using TCP/IP-connection
-                args.update(connection_schema.validate(args))
-                ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
+            # Functions using TCP/IP-connection
+            args.update(connection_schema.validate(args))
+            ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
 
-                if args["--execute"]:
-                    input_schema.validate(args)
-                    execute_r3(args["IN_FILE"], ip, port)
-                elif args["--gi"]:
-                    interactive_gcode(ip, port, safe_return=safe)
-                elif args["--mi"]:
-                    interactive_melfa(ip, port, safe_return=safe)
-                elif args["--demo"]:
-                    demo_mode(ip, port, safe_return=safe)
-                else:
-                    raise ApiException("Unknown option passed. Type --help for more info.")
+            if args["--execute"]:
+                input_schema.validate(args)
+                execute_r3(args["IN_FILE"], ip, port)
+            elif args["--validate"]:
+                input_schema.validate(args)
+                config_schema.validate(args)
+                check_trajectory(config_f=args["CONFIG_FILE"], gcode_f=args["IN_FILE"])
+            elif args["--gi"]:
+                interactive_gcode(ip, port, safe_return=safe)
+            elif args["--mi"]:
+                interactive_melfa(ip, port, safe_return=safe)
+            elif args["--demo"]:
+                demo_mode(ip, port, safe_return=safe)
+            else:
+                raise ApiException("Unknown option passed. Type --help for more info.")
     except SchemaError:
         # Input validation error
         logging.exception("Input data invalid.")

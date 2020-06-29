@@ -157,7 +157,7 @@ class JointTrajectorySegment:
             # Update solutions for point
             self.solutions[point_number] = remaining_solutions
 
-            # Update return value
+            # Update return value but keep removing values
             if len(remaining_solutions) == 0:
                 # No solution left for a point on the segment
                 within = False
