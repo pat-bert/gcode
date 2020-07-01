@@ -3,6 +3,7 @@ from time import sleep
 from typing import AnyStr, Union, List, Optional
 
 import numpy as np
+from numpy import ndarray
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
@@ -161,47 +162,22 @@ class MelfaRobot(PrinterComponent):
         # Movement G-code
         if gcode.id in ["G00", "G0", "G01", "G1"]:
             if not self.absolute_coordinates:
-                self.linear_move_poll(
-                    gcode.cartesian_abs + current_pos,
-                    gcode.speed,
-                    current_pos=current_pos,
-                )
+                self.linear_move_poll(gcode.cartesian_abs + current_pos, gcode.speed, current_pos=current_pos)
             else:
-                self.linear_move_poll(
-                    gcode.cartesian_abs, gcode.speed, current_pos=current_pos
-                )
+                self.linear_move_poll(gcode.cartesian_abs, gcode.speed, current_pos=current_pos)
         elif gcode.id in ["G02", "G2"]:
             if not self.absolute_coordinates:
-                self.circular_move_poll(
-                    gcode.cartesian_abs + current_pos,
-                    current_pos + gcode.cartesian_rel,
-                    True,
-                    gcode.speed,
-                    start_pos=current_pos,
-                )
+                self.circular_move_poll(gcode.cartesian_abs + current_pos, current_pos + gcode.cartesian_rel, True,
+                                        gcode.speed, start_pos=current_pos)
             else:
-                self.circular_move_poll(
-                    gcode.cartesian_abs,
-                    current_pos + gcode.cartesian_rel,
-                    True,
-                    gcode.speed,
-                    start_pos=current_pos,
-                )
+                self.circular_move_poll(gcode.cartesian_abs, current_pos + gcode.cartesian_rel, True, gcode.speed,
+                                        start_pos=current_pos)
         elif gcode.id in ["G03", "G3"]:
             if not self.absolute_coordinates:
-                self.circular_move_poll(
-                    gcode.cartesian_abs + current_pos,
-                    current_pos + gcode.cartesian_rel,
-                    False,
-                    gcode.speed,
-                )
+                self.circular_move_poll(gcode.cartesian_abs + current_pos, current_pos + gcode.cartesian_rel, False,
+                                        gcode.speed)
             else:
-                self.circular_move_poll(
-                    gcode.cartesian_abs,
-                    current_pos + gcode.cartesian_rel,
-                    False,
-                    gcode.speed,
-                )
+                self.circular_move_poll(gcode.cartesian_abs, current_pos + gcode.cartesian_rel, False, gcode.speed)
         elif gcode.id in ["G04", "G4"]:
             self.wait(gcode.time_ms)
 
@@ -248,15 +224,9 @@ class MelfaRobot(PrinterComponent):
             raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
 
     def adjust_units(self, gcode: GCmd):
-        if (
-                gcode.cartesian_abs is not None
-                and len(gcode.cartesian_abs.coordinate) > 0
-        ):
+        if gcode.cartesian_abs is not None and len(gcode.cartesian_abs.coordinate) > 0:
             gcode.cartesian_abs *= self.INCH_IN_MM
-        if (
-                gcode.cartesian_rel is not None
-                and len(gcode.cartesian_rel.coordinate) > 0
-        ):
+        if gcode.cartesian_rel is not None and len(gcode.cartesian_rel.coordinate) > 0:
             gcode.cartesian_rel *= self.INCH_IN_MM
         if gcode.speed is not None:
             gcode.speed *= self.INCH_IN_MM
@@ -271,9 +241,7 @@ class MelfaRobot(PrinterComponent):
         try:
             self.protocol.define_variable(var_name, var_type="position")
         except ApplicationExceptions.MelfaBaseException as e:
-            if str(e.status).startswith(
-                    ApplicationExceptions.DuplicateVariableDeclaration
-            ):
+            if str(e.status).startswith(ApplicationExceptions.DuplicateVariableDeclaration):
                 self.protocol.reset_alarm()
             else:
                 raise
@@ -420,12 +388,8 @@ class MelfaRobot(PrinterComponent):
             self.protocol.linear_move(target_pos)
 
             # Wait until position is reached
-            t, v = cmp_response(
-                R3Protocol_Cmd.CURRENT_XYZABC,
-                target_pos.to_melfa_response(),
-                self.protocol.reader,
-                track_speed=track_speed,
-            )
+            t, v = cmp_response(R3Protocol_Cmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.protocol.reader,
+                                track_speed=track_speed)
             return t, v
         return None, None
 
@@ -454,14 +418,14 @@ class MelfaRobot(PrinterComponent):
             target_pos.update_empty(start_pos)
             center_pos.update_empty(start_pos)
 
-            angle = self.get_directed_angle(start_pos, target_pos, center_pos, is_clockwise)
+            start_pos_np = np.array(start_pos.values)
+            target_pos_np = np.array(target_pos.values)
+            center_pos_np = np.array(center_pos.values)
+
+            angle = self.get_directed_angle(start_pos_np, target_pos_np, center_pos_np, is_clockwise)
 
             if abs(angle) >= pi:
                 # Intermediate points for angles >= 180°
-                start_pos_np = np.array(start_pos.values)
-                target_pos_np = np.array(target_pos.values)
-                center_pos_np = np.array(center_pos.values)
-
                 im_pos_np = get_intermediate_point(angle, start_pos_np, target_pos_np, center_pos_np, self.active_plane)
 
                 im_pos = Coordinate(list(im_pos_np), 'XYZ')
@@ -470,7 +434,7 @@ class MelfaRobot(PrinterComponent):
                 # Position assignments
                 if abs(angle) == 2 * pi:
                     # Calculate additional intermediate point
-                    angle = self.get_directed_angle(start_pos, im_pos, center_pos, is_clockwise)
+                    angle = self.get_directed_angle(start_pos_np, im_pos_np, center_pos_np, is_clockwise)
                     im_pos2_np = get_intermediate_point(angle, start_pos_np, im_pos_np, center_pos_np,
                                                         self.active_plane)
 
@@ -498,14 +462,10 @@ class MelfaRobot(PrinterComponent):
             # Wait until position is reached
             cmp_response(R3Protocol_Cmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.protocol.reader)
 
-    def get_directed_angle(self, start_pos: Coordinate, target_pos: Coordinate, center_pos: Coordinate,
-                           is_clockwise: bool):
+    def get_directed_angle(self, start_pos: ndarray, target_pos: ndarray, center_pos: ndarray, is_clockwise: bool):
         # Determine the angle
-        start_pos = np.array(start_pos.values)
-        target_pos = np.array(target_pos.values)
-        center_pos = np.array(center_pos.values)
-
         angle = get_angle(start_pos, target_pos, center_pos, self.active_plane)
+
         # Adjust the angle according to the direction
         if not is_clockwise:
             # Angle needs to be positive
@@ -527,9 +487,7 @@ class MelfaRobot(PrinterComponent):
             for var_name, coordinate in zip(var_names, coordinates):
                 self.protocol.set_position(var_name, coordinate)
         else:
-            raise MelfaBaseException(
-                "Variable names and coordinates must be of same length."
-            )
+            raise MelfaBaseException("Variable names and coordinates must be of same length.")
 
     def _check_speed_threshold(self, speed_threshold: float) -> None:
         """
@@ -563,11 +521,11 @@ class MelfaRobot(PrinterComponent):
     def _zero(self) -> Coordinate:
         return Coordinate(self.zero.values, self.zero.axes)
 
-    def move_joint(self, joints: Coordinate) -> None:
+    def move_joint(self, joint_values: List[float]) -> None:
         """
         Move to a position in joint coordinates.
-        :param joints: Coordinate
+        :param joint_values: Coordinate
         """
-        if len(joints.values) != len(self.joints):
+        if len(joint_values) != len(self.joints):
             raise ValueError('Joint movements need to specify all axes.')
-        self.protocol.joint_move(joints)
+        self.protocol.joint_move(joint_values, self.joints)

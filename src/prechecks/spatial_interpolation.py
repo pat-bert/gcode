@@ -49,26 +49,26 @@ def linear_interpolation(start: ndarray, end: ndarray, *, ds: float) -> Iterator
         yield end
 
 
-def circular_interpolation(start: ndarray, end: ndarray, centre: List[float], *, ds: float) -> Iterator[ndarray]:
+def circular_interpolation(start: ndarray, end: ndarray, center: List[float], *, ds: float) -> Iterator[ndarray]:
     """
     Calculate equidistant interpolated waypoints on a circle segment.
     :param start: Start pose (x,y,z,phi,theta,psi) given as 4x4 homogeneous matrix
     :param end: End pose (x,y,z,phi,theta,psi) given as 4x4 homogeneous matrix
-    :param centre: End position (x,y,z,phi,theta,psi)
+    :param center: End position (x,y,z,phi,theta,psi)
     :param ds: Constant distance between points in mm
     :return: Generator with all pose points (x,y,z,phi,theta,psi) on a straight line including start and end.
     """
     # Convert the list to an array
-    centre = np.array(centre)
+    center = np.array(center)
 
-    # TODO Check dimensions of centre
+    # TODO Check dimensions of center
 
     # Get the radius and angle
-    radius = np.linalg.norm(end[0:3, 3] - centre)
+    radius = np.linalg.norm(end[0:3, 3] - center)
 
     # TODO Use correct plane or normal vector
     plane = Plane.XY
-    centri_angle = get_angle(start[0:3, 3], end[0:3, 3], centre, plane=plane)
+    centri_angle = get_angle(start[0:3, 3], end[0:3, 3], center, plane=plane)
 
     # Cartesian travel distance is length of arc
     total_way_len = radius * centri_angle

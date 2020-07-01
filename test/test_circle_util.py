@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from src.ApplicationExceptions import UnknownPlaneError, IllegalAngleError
-from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import Plane
 from src.circle_util import get_angle, get_intermediate_point, RIGHTHAND_AXES
 
@@ -111,7 +110,7 @@ def test_get_angle_illegal_plane():
     Test that an exception is raised if an unknown plane is passed.
     :return:
     """
-    zero = Coordinate((0, 0, 0), RIGHTHAND_AXES)
+    zero = np.array((0, 0, 0))
     with pytest.raises(UnknownPlaneError):
         # noinspection PyTypeChecker
         get_angle(zero, zero, zero, -1, None)

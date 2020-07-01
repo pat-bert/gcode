@@ -29,7 +29,7 @@ def circular_segment_from_gcode(command: GCmd, current_pos, ds: float, is_absolu
     :param curr_acc: Acceleration in mm/s^2
     :return: Circular Segment containing points with distance ds
     """
-    # Get end point and centre point
+    # Get end point and center point
     target_pos = command.cartesian_abs
     centre_pos = target_pos + command.cartesian_rel
     if not is_absolute:

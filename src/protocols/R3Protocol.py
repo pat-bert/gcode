@@ -171,15 +171,17 @@ class R3Positions(R3SubApi):
         self._protocol_send(f"{DIRECT_CMD}MVS{coord_str}")
         self.client.receive()
 
-    def joint_move(self, target: Coordinate) -> None:
+    def joint_move(self, values: List[float], identifiers: List[str]) -> None:
         """
         Move to a position using joint interpolation.
-        :param target: End position of the movement
+        :param values: List of joint values
+        :param identifiers: List of joint names, e.g. J1, J2, ..
         :return: None
         """
-        coord_str = self.from_coord_to_cmd(target)
-        self._protocol_send(f"{DIRECT_CMD}MOV{coord_str}")
-        self.client.receive()
+        raise NotImplementedError
+        # coord_str = ''.join(f"{identifier}{val}" for identifier, val in zip(identifiers, values))
+        # self._protocol_send(f"{DIRECT_CMD}MOV ({coord_str})")
+        # self.client.receive()
 
     def circular_move_centre(self, start: str, target: str, center: str) -> None:
         """
