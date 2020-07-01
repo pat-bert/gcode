@@ -48,7 +48,10 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
         if len(self.trajectory_points) == 0:
             raise ValueError('Trajectory may not be empty.')
 
-        self.s_total = ds * (len(self.trajectory_points) - 1)
+        if ds is not None:
+            self.s_total = ds * (len(self.trajectory_points) - 1)
+        else:
+            self.s_total = None
         self.ds = ds
         if velocity is not None and acceleration is not None and ds is not None and self.s_total > 0.0:
             self.time_points = trapezoidal_speed_profile(velocity / 60, acceleration, self.s_total, self.ds)
