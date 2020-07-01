@@ -36,9 +36,7 @@ def get_circle_cs(veca: np.ndarray, vecb: np.ndarray, plane: Plane, normal_vec: 
     elif plane is Plane.ANY:
         # Angle sign depends on direction of normal vector so it cannot be detected from the points alone
         if normal_vec is None:
-            raise ApplicationExceptions.MelfaBaseException(
-                "Normal vector must be supplied if vectors are collinear."
-            )
+            raise ApplicationExceptions.MelfaBaseException("Normal vector must be supplied if vectors are collinear.")
         if normal_vec.dot(veca) != 0 or normal_vec.dot(vecb) != 0:
             raise ApplicationExceptions.MelfaBaseException("Normal vector supplied is not normal to circle.")
         z_axis = normal_vec

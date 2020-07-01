@@ -250,13 +250,14 @@ class R3Reader(R3SubApi):
         :return: Current tool number as integer
         """
         tool_no = self.read_variable(CURRENT_TOOL_NO)
-        # TODO Verify response with actual hardware
         return int(tool_no.split("=")[-1])
 
-    def get_current_tool_data(self) -> str:
-        # TODO Do conversion to Coordinate
-        tool_data = self.read_variable('P_TOOL')
-        return tool_data
+    def get_current_tool_data(self) -> List[float]:
+        # TODO Verify response with actual hardware
+        tool_response = self.read_variable('P_TOOL')
+        tool_data = tool_response.split("=")[-1]
+        tool_offsets = self.parse_comma_string(tool_data)
+        return [float(i) for i in tool_offsets]
 
     def get_override(self) -> float:
         """

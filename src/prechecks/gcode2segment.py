@@ -44,11 +44,14 @@ def circular_segment_from_gcode(command: GCmd, current_pos, ds: float, is_absolu
     target_position = target_pos.values
 
     x_angle, y_angle, z_angle = normal2euler()
+    normal_vec = [0, 0, 1]
     target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
 
+    is_clockwise = command.id == 'G02'
+
     centre_position = centre_pos.values
-    trajectory_pose_points = circular_interpolation(current_pos, target_pose, centre_position, ds=ds)
-    circ_segment = CircularSegment(trajectory_pose_points, curr_vel, curr_acc, ds)
+    traj_poses = circular_interpolation(current_pos, target_pose, centre_position, normal_vec, is_clockwise, ds=ds)
+    circ_segment = CircularSegment(traj_poses, curr_vel, curr_acc, ds)
     return circ_segment
 
 
