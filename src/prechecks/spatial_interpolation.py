@@ -4,7 +4,6 @@ from typing import List, Iterator
 import numpy as np
 from numpy import ndarray
 
-from Coordinate import Coordinate
 from MelfaCoordinateService import Plane
 from circle_util import get_angle
 from src.kinematics.forward_kinematics import get_tform
@@ -59,17 +58,17 @@ def circular_interpolation(start: ndarray, end: ndarray, centre: List[float], *,
     :param ds: Constant distance between points in mm
     :return: Generator with all pose points (x,y,z,phi,theta,psi) on a straight line including start and end.
     """
-    # Convert the arrays to coordinates
-    start_c = Coordinate(start[0:3, 3], 'XYZ')
-    end_c = Coordinate(end[0:3, 3], 'XYZ')
-    centre_c = start = Coordinate(centre[0:3, 3], 'XYZ')
+    # Convert the list to an array
+    centre = np.array(centre)
+
+    # TODO Check dimensions of centre
 
     # Get the radius and angle
-    radius = np.linalg.norm(end[0:3, 3] - centre[0:3, 3])
+    radius = np.linalg.norm(end[0:3, 3] - centre)
 
     # TODO Use correct plane or normal vector
     plane = Plane.XY
-    centri_angle = get_angle(start_c, end_c, centre_c, plane=plane)
+    centri_angle = get_angle(start[0:3, 3], end[0:3, 3], centre, plane=plane)
 
     # Cartesian travel distance is length of arc
     total_way_len = radius * centri_angle

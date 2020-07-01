@@ -1,6 +1,8 @@
 from math import pi
 from time import sleep
-from typing import AnyStr, Union, List
+from typing import AnyStr, Union, List, Optional
+
+import numpy as np
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
@@ -392,11 +394,7 @@ class MelfaRobot(PrinterComponent):
         self.protocol.go_safe_pos()
 
         # Wait until position is reached
-        cmp_response(
-            R3Protocol_Cmd.CURRENT_JOINT,
-            safe_pos.to_melfa_response(),
-            self.protocol.reader,
-        )
+        cmp_response(R3Protocol_Cmd.CURRENT_JOINT, safe_pos.to_melfa_response(), self.protocol.reader)
 
     def linear_move_poll(self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None):
         """
@@ -408,7 +406,6 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         if speed is not None:
-            # Set speed
             self.set_speed(speed, "linear")
 
         # Only send command if any coordinates are passed, otherwise just set the speed
@@ -433,7 +430,7 @@ class MelfaRobot(PrinterComponent):
         return None, None
 
     def circular_move_poll(self, target_pos: Coordinate, center_pos: Coordinate, is_clockwise: bool,
-                           speed: float = None, start_pos=None, ) -> None:
+                           speed: Optional[float] = None, start_pos: Optional[Coordinate] = None) -> None:
         """
         Moves the robot on a (counter-)clockwise arc around a center position to a target position.
         :param start_pos: Coordinate for the start position, defaults to current position if None.
@@ -457,61 +454,57 @@ class MelfaRobot(PrinterComponent):
             target_pos.update_empty(start_pos)
             center_pos.update_empty(start_pos)
 
-            angle = self.get_directed_angle(
-                start_pos, target_pos, center_pos, is_clockwise
-            )
+            angle = self.get_directed_angle(start_pos, target_pos, center_pos, is_clockwise)
 
             if abs(angle) >= pi:
                 # Intermediate points for angles >= 180°
-                im_pos = get_intermediate_point(
-                    angle, start_pos, target_pos, center_pos, self.active_plane
-                )
+                start_pos_np = np.array(start_pos.values)
+                target_pos_np = np.array(target_pos.values)
+                center_pos_np = np.array(center_pos.values)
+
+                im_pos_np = get_intermediate_point(angle, start_pos_np, target_pos_np, center_pos_np, self.active_plane)
+
+                im_pos = Coordinate(list(im_pos_np), 'XYZ')
                 im_pos.update_empty(start_pos)
 
                 # Position assignments
                 if abs(angle) == 2 * pi:
                     # Calculate additional intermediate point
-                    angle = self.get_directed_angle(
-                        start_pos, im_pos, center_pos, is_clockwise
-                    )
-                    im_pos2 = get_intermediate_point(
-                        angle, start_pos, im_pos, center_pos, self.active_plane
-                    )
+                    angle = self.get_directed_angle(start_pos, im_pos, center_pos, is_clockwise)
+                    im_pos2_np = get_intermediate_point(angle, start_pos_np, im_pos_np, center_pos_np,
+                                                        self.active_plane)
+
+                    im_pos2 = Coordinate(list(im_pos2_np), 'XYZ')
                     im_pos2.update_empty(start_pos)
 
                     # Global variables
-                    self.set_global_positions(
-                        ["P1", "P2", "P3"], [start_pos, im_pos2, im_pos]
-                    )
+                    self.set_global_positions(["P1", "P2", "P3"], [start_pos, im_pos2, im_pos])
 
                     # Send move command
                     self.protocol.circular_move_full("P1", "P2", "P3")
                 else:
                     # Global variables
-                    self.set_global_positions(
-                        ["P1", "P2", "P3"], [start_pos, im_pos, target_pos]
-                    )
+                    self.set_global_positions(["P1", "P2", "P3"], [start_pos, im_pos, target_pos])
 
                     # Send move command
                     self.protocol.circular_move_intermediate("P1", "P2", "P3")
             else:
                 # Global variables
-                self.set_global_positions(
-                    ["P1", "P2", "P3"], [start_pos, target_pos, center_pos]
-                )
+                self.set_global_positions(["P1", "P2", "P3"], [start_pos, target_pos, center_pos])
 
                 # Send move command
                 self.protocol.circular_move_centre("P1", "P2", "P3")
 
             # Wait until position is reached
-            cmp_response(
-                R3Protocol_Cmd.CURRENT_XYZABC,
-                target_pos.to_melfa_response(),
-                self.protocol.reader,
-            )
+            cmp_response(R3Protocol_Cmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.protocol.reader)
 
-    def get_directed_angle(self, start_pos, target_pos, center_pos, is_clockwise):
+    def get_directed_angle(self, start_pos: Coordinate, target_pos: Coordinate, center_pos: Coordinate,
+                           is_clockwise: bool):
         # Determine the angle
+        start_pos = np.array(start_pos.values)
+        target_pos = np.array(target_pos.values)
+        center_pos = np.array(center_pos.values)
+
         angle = get_angle(start_pos, target_pos, center_pos, self.active_plane)
         # Adjust the angle according to the direction
         if not is_clockwise:
