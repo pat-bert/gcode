@@ -47,17 +47,10 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
 
         if len(self.trajectory_points) == 0:
             raise ValueError('Trajectory may not be empty.')
-        s_total = self.trajectory_points[-1] - self.trajectory_points[0]
 
-        if s_total.shape == (4, 4,):
-            # Homogeneous transformation matrix
-            self.s_total = np.linalg.norm(s_total[0:3, 3])
-        else:
-            # Assume single element
-            self.s_total = np.linalg.norm(s_total)
-
+        self.s_total = ds * (len(self.trajectory_points) - 1)
         self.ds = ds
-        if velocity is not None and acceleration is not None and ds is not None:
+        if velocity is not None and acceleration is not None and ds is not None and self.s_total > 0.0:
             self.time_points = trapezoidal_speed_profile(velocity / 60, acceleration, self.s_total, self.ds)
         else:
             self.time_points = None
@@ -180,7 +173,7 @@ class JointTrajSegment:
         return list(common_configurations)
 
 
-def check_cartesian_limits(task_trajectory: List[CartesianTrajSegment], clim: List[float]):
+def check_cartesian_limits(task_trajectory: List[CartesianTrajSegment], clim: List[float]) -> None:
     """
     Verify that a set of waypoints is within given cartesian limits.
     :param task_trajectory:
@@ -204,7 +197,7 @@ def check_cartesian_limits(task_trajectory: List[CartesianTrajSegment], clim: Li
     print('All segments are located within the cartesian limits.')
 
 
-def filter_joint_limits(joint_trajectory, qlim: List[float]):
+def filter_joint_limits(joint_trajectory: List[JointTrajSegment], qlim: List[float]):
     """
     Eliminates solutions in joint space that violate the joint limits.
     :param joint_trajectory:

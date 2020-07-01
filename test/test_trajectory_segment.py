@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
 
+from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation
 from src.prechecks.trajectory_segment import get_violated_boundaries, LinearSegment, CircularSegment, \
-    JointTrajSegment
+    JointTrajSegment, check_cartesian_limits, filter_joint_limits
 
 
 @pytest.mark.parametrize("point,boundaries,within,exc",
@@ -203,10 +204,54 @@ class TestJointSegment:
                                  (
                                          [{0: invalid_solution, 1: valid_solution},
                                           {2: invalid_solution, 3: invalid_solution}],
-                                         [])
+                                         []
+                                 ),
+                                 # Empty from the start
+                                 (
+                                         [{}], []
+                                 )
                              ]
                              )
     def test_get_common_configurations(self, solutions, commons):
         jseg = JointTrajSegment(solutions)
         act_common = jseg.get_common_configurations()
         assert act_common == commons
+
+
+@pytest.mark.parametrize("points,clim,exc",
+                         [
+                             (
+                                     [-3, 4, 6], [-10, 10], None
+                             ),
+                             (
+                                     [5, 6, 11, 4], [-10, 10], CartesianLimitViolation
+                             )
+                         ]
+                         )
+def test_check_cartesian_limits(points, clim, exc):
+    points = [np.array([point]) for point in points]
+    traj = [LinearSegment(points), CircularSegment(points)]
+    if exc is None:
+        check_cartesian_limits(traj, clim)
+    else:
+        with pytest.raises(exc):
+            check_cartesian_limits(traj, clim)
+
+
+@pytest.mark.parametrize("points,qlim,exc",
+                         [
+                             (
+                                     [{1: [0]}, {2: [10], 3: [4]}], [-1, 5], None
+                             ),
+                             (
+                                     [{1: [0]}, {2: [10], 3: [4]}], [-1, 3], JointLimitViolation
+                             )
+                         ]
+                         )
+def test_filter_joint_limits(points, qlim, exc):
+    traj = [JointTrajSegment(points), JointTrajSegment(points)]
+    if exc is None:
+        filter_joint_limits(traj, qlim)
+    else:
+        with pytest.raises(exc):
+            filter_joint_limits(traj, qlim)

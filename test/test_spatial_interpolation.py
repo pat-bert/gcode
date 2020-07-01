@@ -92,7 +92,7 @@ def test_linear_interpolation(start, end, ds, expected_points):
                                      [[1, 0, 0], [0, 1, 0], [0, 0, 1], [-1, 0, 0]],
                                      [[1, 0, 0], [0, 1, 0], [0, 0, 1], [-1, 0, 0]],
                                      [0, 0, 1],
-                                     True,
+                                     False,
                                      2 / 3 * pi,
                                      4
                              ),
