@@ -411,7 +411,7 @@ class R3Setter(R3SubApi):
         :param tool_offset:
         :return: None
         """
-        # TODO Check conversion
+        # TODO Check conversion from coordinate to tool offset
         self._protocol_send(f"{DIRECT_CMD}{TOOL_OFFSET_CMD} {tool_offset}")
         self.client.receive()
 
@@ -421,7 +421,7 @@ class R3Setter(R3SubApi):
         :param offset:
         :return: None
         """
-        # TODO Check conversion
+        # TODO Check conversion from coordinate to offset
         self._protocol_send(f"{DIRECT_CMD}{BASE_COORDINATE_CMD} {offset}")
         self.client.receive()
 

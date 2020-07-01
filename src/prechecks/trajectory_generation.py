@@ -27,7 +27,6 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
     current_vel = 0
     current_acc = acc
 
-    # TODO Distinguish movements without extrusion
     for line_number, command in enumerate(cmds):
         # Movement commands
         if command.id in ['G01', 'G1']:
@@ -47,10 +46,10 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
             is_absolute = False
         elif command.id == 'G92':
             # Consider coordinate origin shifting
-            raise NotImplementedError
-        elif command.id.startswith('T'):
+            raise NotImplementedError('Origin shifting is not supported.')
+        elif command.id[0] == 'T' and command.id[1:] != 0:
             # Consider tool changes
-            raise NotImplementedError
+            raise NotImplementedError('Tool changes are not supported.')
 
     return all_trajectory_pose_points
 

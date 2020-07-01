@@ -238,6 +238,9 @@ class MelfaRobot(PrinterComponent):
             # G-Code starts counting at zero, Mitsubishi starts at one
             self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
 
+        elif gcode.id == 'G200':
+            self.move_joint(gcode.joints)
+
         # Unsupported G-code
         else:
             raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
@@ -429,14 +432,8 @@ class MelfaRobot(PrinterComponent):
             return t, v
         return None, None
 
-    def circular_move_poll(
-            self,
-            target_pos: Coordinate,
-            center_pos: Coordinate,
-            is_clockwise: bool,
-            speed: float = None,
-            start_pos=None,
-    ) -> None:
+    def circular_move_poll(self, target_pos: Coordinate, center_pos: Coordinate, is_clockwise: bool,
+                           speed: float = None, start_pos=None, ) -> None:
         """
         Moves the robot on a (counter-)clockwise arc around a center position to a target position.
         :param start_pos: Coordinate for the start position, defaults to current position if None.
@@ -445,7 +442,6 @@ class MelfaRobot(PrinterComponent):
         :param center_pos: Coordinate for the center of the arc.
         :param is_clockwise: Flag to indicate clockwise|counter-clockwise direction.
         :param speed: Movement speed for tool.
-        :return:
         """
         # Determine start position
         if start_pos is None:
@@ -533,7 +529,6 @@ class MelfaRobot(PrinterComponent):
         Write coordinates to a global variable name in the robot memory.
         :param var_names: List of the variable names
         :param coordinates:
-        :return:
         """
         if len(var_names) == len(coordinates):
             for var_name, coordinate in zip(var_names, coordinates):
@@ -543,11 +538,10 @@ class MelfaRobot(PrinterComponent):
                 "Variable names and coordinates must be of same length."
             )
 
-    def _check_speed_threshold(self, speed_threshold: float):
+    def _check_speed_threshold(self, speed_threshold: float) -> None:
         """
         Verify that the speed setting meets the current threshold
         :param speed_threshold:
-        :return:
         """
         # Reset all speed factors for clean initial state
         self.protocol.reset_all_speeds()
@@ -566,13 +560,21 @@ class MelfaRobot(PrinterComponent):
             print("Speed of {}%. Okay!".format(speed))
 
     @staticmethod
-    def wait(time_ms):
+    def wait(time_ms) -> None:
         """
         Waits for a specified time.
-        :param time_ms:
-        :return:
+        :param time_ms: Time to wait in ms.
         """
         sleep(1000 * time_ms)
 
-    def _zero(self):
+    def _zero(self) -> Coordinate:
         return Coordinate(self.zero.values, self.zero.axes)
+
+    def move_joint(self, joints: Coordinate) -> None:
+        """
+        Move to a position in joint coordinates.
+        :param joints: Coordinate
+        """
+        if len(joints.values) != len(self.joints):
+            raise ValueError('Joint movements need to specify all axes.')
+        self.protocol.joint_move(joints)

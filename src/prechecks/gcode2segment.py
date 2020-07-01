@@ -9,6 +9,14 @@ from src.prechecks.spatial_interpolation import circular_interpolation, linear_i
 from src.prechecks.trajectory_segment import CircularSegment, LinearSegment
 
 
+def normal2euler(normal_vec=None, rotation=None):
+    # TODO Calculate angles from normal vector
+    x_angle = -pi
+    y_angle = 0
+    z_angle = -pi
+    return x_angle, y_angle, z_angle
+
+
 def circular_segment_from_gcode(command: GCmd, current_pos, ds: float, is_absolute: bool, curr_vel: float,
                                 curr_acc: float) -> CircularSegment:
     """
@@ -32,13 +40,12 @@ def circular_segment_from_gcode(command: GCmd, current_pos, ds: float, is_absolu
     curr_vel = command.speed or curr_vel
 
     # Circular interpolation (constant way-interval)
-    # TODO Ensure order
+    # TODO Ensure correct order of coordinate values
     target_position = target_pos.values
-    # TODO Get angles
-    x_angle = 0
-    y_angle = 0
-    z_angle = 0
+
+    x_angle, y_angle, z_angle = normal2euler()
     target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
+
     centre_position = centre_pos.values
     trajectory_pose_points = circular_interpolation(current_pos, target_pose, centre_position, ds=ds)
     circ_segment = CircularSegment(trajectory_pose_points, curr_vel, curr_acc, ds)
@@ -74,10 +81,8 @@ def linear_segment_from_gcode(command: GCmd, current_pose: np.ndarray, ds: float
     curr_vel = command.speed or curr_vel
 
     # Get end point (TODO Ensure order)
-    # TODO Get angles from tool vector (initial rotation)
-    x_angle = -pi
-    y_angle = 0
-    z_angle = -pi
+
+    x_angle, y_angle, z_angle = normal2euler()
     target_pose = pose2tform(target_position.values, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
 
     # Linear interpolation (constant way-interval)

@@ -89,7 +89,6 @@ def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[flo
             return float('Inf')
 
         # Currently, configuration changes between segments are not allowed either.
-        # TODO Study different configuration changes, apply penalty instead.
         return float('Inf')
 
     # Common configurations are fine

@@ -80,7 +80,7 @@ def circular_interpolation(start: ndarray, end: ndarray, centre: List[float], *,
     else:
         yield start
 
-        # TODO Calculate intermediate points
+        # TODO Calculate intermediate points for circular interpolation (orientation maintained)
         total_increments = floor(total_way_len / ds)
 
         yield end
