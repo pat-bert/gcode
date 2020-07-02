@@ -40,7 +40,7 @@ jobs:
           name: Install Matlab Runtime
           command: |
             sudo chmod -R 777 mcr_extracted &&
-            mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder /matlab_runtime/
+            sudo mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder /matlab_runtime/
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
