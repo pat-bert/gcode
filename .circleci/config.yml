@@ -27,9 +27,10 @@ jobs:
           # Download the files from the official website and unzip them
           name: Download Matlab 2020a Runtime
           command: |
-            wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip &&
-            7z x ./mcr.zip -o./mcr_extracted\ &&
-            chmod -R 777 mcr_extracted\ /
+            DIR="mcr_extracted/"
+            if [ ! -d "$DIR" ]; then
+              wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o./mcr_extracted\ -y
+            fi
       - save_cache: &save-cache-mcr-template
           key: mcr2020a-{{ arch }}
           paths:
@@ -37,7 +38,8 @@ jobs:
       - run:
           name: Install Matlab Runtime
           command: |
-            ./mcr_extracted\ /install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/ &&
+            chmod -R 777 mcr_extracted\ / &&
+            ./mcr_extracted\ /install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
@@ -92,7 +94,7 @@ jobs:
           name: Download Matlab 2020a Runtime
           shell: cmd.exe
           command: |
-            curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip && 7z x .\mcr.zip -o.\mcr_extracted\
+            IF NOT exist .\mcr_extracted\ (curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip && 7z x .\mcr.zip -o.\mcr_extracted\ -y)
       - save_cache: *save-cache-mcr-template
       - run:
           name: Install Matlab 2020a Runtime
