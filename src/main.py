@@ -50,8 +50,7 @@ from src.exit_codes import (EXIT_SUCCESS, EXIT_BAD_INPUT, EXIT_INTERNAL_ERROR, E
 # Third-party libraries
 try:
     from docopt import docopt
-    from schema import Schema, And, Or, Use, SchemaError
-    from schema import Optional as Opt
+    from schema import Schema, And, Use, SchemaError
 except ImportError:
     print(
         "This application requires some modules that you can install using the requirements.txt file."

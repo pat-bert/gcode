@@ -115,7 +115,7 @@ class CircularSegment(CartesianTrajSegment):
             all_violations = [get_violated_boundaries(point[0:3, 3], boundaries) for point in self.trajectory_points]
         else:
             all_violations = [get_violated_boundaries(point, boundaries) for point in self.trajectory_points]
-        return set((element for idx_list in all_violations for element in idx_list))
+        return {element for idx_list in all_violations for element in idx_list}
 
 
 class JointTrajSegment:

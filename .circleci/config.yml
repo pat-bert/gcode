@@ -29,7 +29,7 @@ jobs:
           command: |
             DIR="mcr_extracted/"
             if [ ! -d "$DIR" ]; then
-              wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o./mcr_extracted\ -y
+              wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o./mcr_extracted\
             fi
       - save_cache: &save-cache-mcr-template
           key: mcr2020a-{{ arch }}
