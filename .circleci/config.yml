@@ -12,21 +12,31 @@ jobs:
       - image: themattrix/tox
     steps:
       - checkout
-      - restore_cache: &restore-cache-template
+      - restore_cache: &restore-cache-pip-template
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
+      - restore_cache: &restore-cache-mcr-template
+          key: mcr2020a-{{ arch }}
       - run:
           name: Install 7-Zip
           command: |
             apt-get update
             apt-get install p7zip-full
       - run:
-          name: Install Matlab 2020a Runtime and set path
+          # Download the files from the official website and unzip them
+          name: Download Matlab 2020a Runtime
           command: |
             wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip &&
             7z x ./mcr.zip -o./mcr_extracted\ &&
             chmod -R 777 mcr_extracted\ /
+      - save_cache: &save-cache-mcr-template
+      - run:
+          name: Install Matlab Runtime and set path
+          command: |
             ./mcr_extracted\ /install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/ &&
             setenv LD_LIBRARY_PATH ./mcr_extracted\ /bin/glnxa64:./mcr_extracted\ /sys/os/glnxa64:./mcr_extracted\ /sys/opengl/lib/glnxa64
+          key: mcr2020a-{{ arch }}
+          paths:
+            - "mcr_extracted"
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
@@ -35,7 +45,7 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
-      - save_cache: &save-cache-template
+      - save_cache: &save-cache-pip-template
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
           paths:
             - "venv"
@@ -65,21 +75,6 @@ jobs:
       - store_artifacts:
           path: ~/test-results/pytest/
 
-  # Install Matlab Runtime
-  mcr-win:
-    executor:
-      name: win/default
-    steps:
-      - run:
-          name: Install Matlab 2020a Runtime
-          shell: cmd.exe
-          command: |
-            curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip && 7z x .\mcr.zip -o.\mcr_extracted\ && .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
-      - persist_to_workspace:
-          root: .
-          paths:
-            - mcr_extracted
-
   # Windows job
   test-win:
     parameters:
@@ -90,12 +85,19 @@ jobs:
       name: win/default
     steps:
       - checkout
-      - restore_cache: *restore-cache-template
+      - restore_cache: *restore-cache-mcr-template
+      - run:
+          # This will skip the download if the directory is already restored from cache (TODO)
+          name: Download Matlab 2020a Runtime
+          shell: cmd.exe
+          command: |
+            curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip && 7z x .\mcr.zip -o.\mcr_extracted\
+      - save_cache: *save-cache-mcr-template
       - run:
           name: Install Matlab 2020a Runtime
           shell: cmd.exe
-          command: |
-            curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip && 7z x .\mcr.zip -o.\mcr_extracted\ && .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
+          command: .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
+      - restore_cache: *restore-cache-pip-template
       - run:
           # Python needs to be installed
           # Install a virtual environment using the installed python interpreter
@@ -112,7 +114,7 @@ jobs:
             cd ./src_matlab/CollisionChecking/for_redistribution_files_only/
             python setup.py install
             cd ./../../../
-      - save_cache: *save-cache-template
+      - save_cache: *save-cache-pip-template
       - run:
           # Verify that no cyclic or otherwise invalid dependencies are present
           # This is extraordinarily useful to verify automatic module update proposals
@@ -143,15 +145,11 @@ workflows:
   version: 2
   main:
     jobs:
-      # Install the Matlab Runtime
-      - mcr-win
       # Run the tests on windows (requires separate installation of python to be done)
       - test-win:
           # Run the tests as matrix for easier setup
           matrix:
             parameters:
               python-version: ["3.6.4", "3.7.6"]
-          requires:
-            - mcr-win
       # Run the tests on linux
       - test-linux
