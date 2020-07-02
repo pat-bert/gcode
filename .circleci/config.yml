@@ -65,6 +65,21 @@ jobs:
       - store_artifacts:
           path: ~/test-results/pytest/
 
+  # Install Matlab Runtime
+  mcr-win:
+    executor:
+      name: win/default
+    steps:
+      - run:
+          name: Install Matlab 2020a Runtime
+          shell: cmd.exe
+          command: |
+            curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip && 7z x .\mcr.zip -o.\mcr_extracted\ && .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
+      - persist_to_workspace:
+          root: .
+          paths:
+            - mcr_extracted
+
   # Windows job
   test-win:
     parameters:
@@ -133,6 +148,8 @@ workflows:
           # Run the tests as matrix for easier setup
           matrix:
             parameters:
-              python-version: ["3.6.4", "3.7.6", "3.8.1"]
+              python-version: ["3.6.4", "3.7.6"]
+          requires:
+            - mcr-win
       # Run the tests on linux
       - test-linux
