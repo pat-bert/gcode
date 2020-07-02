@@ -38,9 +38,6 @@ jobs:
           command: |
             chmod -R 777 mcr_extracted &&
             mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder /matlab_runtime/
-            echo $LD_LIBRARY_PATH
-            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/matlab_runtime/v98/runtime/glnxa64:/matlab_runtime/v98/bin/glnxa64:/matlab_runtime/v98/sys/os/glnxa64:/matlab_runtime/v98/extern/bin/glnxa64 >> $BASH_ENV
-            source $BASH_ENV
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
@@ -68,7 +65,7 @@ jobs:
           # Missing interpreters will be skipped
           name: Run tests with tox
           command: |
-            echo $LD_LIBRARY_PATH
+            export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/matlab_runtime/v98/runtime/glnxa64:/matlab_runtime/v98/bin/glnxa64:/matlab_runtime/v98/sys/os/glnxa64:/matlab_runtime/v98/extern/bin/glnxa64
             . venv/bin/activate
             tox
       - run: &codecov-template
