@@ -70,7 +70,7 @@ jobs:
           command: |
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/matlab_runtime/v98/runtime/glnxa64:/matlab_runtime/v98/bin/glnxa64:/matlab_runtime/v98/sys/os/glnxa64:/matlab_runtime/v98/extern/bin/glnxa64
             . venv/bin/activate
-            tox
+            tox --skip-missing-interpreters
       - run: &codecov-template
           # Use the CLI of code coverage to upload the reports
           name: Upload coverage reports to CodeCov
