@@ -74,7 +74,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
 
     # Check the configurations of the solutions
     common_configurations = get_common_configurations(joint_traj)
-    print(f'Configurations in trajectory: {{conf for conf_list in common_configurations for conf in conf_list}}')
+    print(f'Configurations in trajectory: {set(conf for conf_list in common_configurations for conf in conf_list)}')
     print(f'Configurations common to all segments: {set.intersection(*map(set, common_configurations))}')
 
     # Create a unidirectional graph of the solutions. For each point a set of nodes is created according to viable robot

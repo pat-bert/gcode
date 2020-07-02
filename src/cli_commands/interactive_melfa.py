@@ -28,7 +28,7 @@ def interactive_melfa(ip: str, port: int, safe_return: Optional[bool] = False) -
             usr_msg = input("Melfa>")
             if usr_msg.lower() in ["quit"]:
                 raise KeyboardInterrupt
-            elif len(usr_msg) > 0:
+            if len(usr_msg) > 0:
                 robot.client.wait_send(usr_msg.upper())
                 try:
                     robot.client.receive()

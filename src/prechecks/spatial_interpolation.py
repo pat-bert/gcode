@@ -100,7 +100,7 @@ def circular_interpolation(start: ndarray, target: ndarray, center: List[float],
 
         # Initialize the matrix components
         init_tform = np.array(start)
-        xdir0, ydir0, zdir0, pos0 = init_tform[0:3, 0], init_tform[0:3, 1], init_tform[0:3, 2], init_tform[0:3, 3]
+        xdir0, ydir0, zdir0 = init_tform[0:3, 0], init_tform[0:3, 1], init_tform[0:3, 2]
 
         # Calculate intermediate points for circular interpolation (orientation maintained)
         i_total = floor(total_way_len / ds)
