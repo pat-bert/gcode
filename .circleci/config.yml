@@ -11,7 +11,7 @@ jobs:
       # Image containing all the required python versions, enables tox to do matrix testing
       - image: themattrix/tox
     environment:
-      LD_LIBRARY_PATH: /matlab_runtime/bin/glnxa64:/matlab_runtime/sys/os/glnxa64:/matlab_runtime/sys/opengl/lib/glnxa64
+      LD_LIBRARY_PATH: /matlab_runtime/v98/runtime/glnxa64:/matlab_runtime/v98/bin/glnxa64:/matlab_runtime/v98/sys/os/glnxa64:/matlab_runtime/v98/extern/bin/glnxa64
     steps:
       - checkout
       - restore_cache: &restore-cache-pip-template
