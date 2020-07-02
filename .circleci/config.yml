@@ -29,7 +29,7 @@ jobs:
           command: |
             DIR="mcr_extracted/"
             if [ ! -d "$DIR" ]; then
-              wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o./mcr_extracted\
+              wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o"$DIR"
             fi
       - save_cache: &save-cache-mcr-template
           key: mcr_2020a-{{ arch }}
@@ -48,6 +48,9 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
+            cd src_matlab/CollisionChecking/for_redistribution_files_only/
+            python4 setup.py install
+            cd ./../../../
       - save_cache: &save-cache-pip-template
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
           paths:
