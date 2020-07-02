@@ -159,9 +159,9 @@ workflows:
           # Run the tests as matrix for easier setup
           matrix:
             parameters:
-              python-version: ["3.6.4", "3.7.6"]
+              python-version: ["3.6.8", "3.7.6"]
       # Run the tests on linux
       - test-linux:
           matrix:
             parameters:
-              python-version: ["3.6.4", "3.7.6"]
+              python-version: ["3.6.8", "3.7.6"]
