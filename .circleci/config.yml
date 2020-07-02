@@ -11,13 +11,13 @@ jobs:
       # Image containing all the required python versions, enables tox to do matrix testing
       - image: themattrix/tox
     environment:
-      LD_LIBRARY_PATH: ./mcr_extracted\ /bin/glnxa64:./mcr_extracted\ /sys/os/glnxa64:./mcr_extracted\ /sys/opengl/lib/glnxa64
+      LD_LIBRARY_PATH: /matlab_runtime/bin/glnxa64:/matlab_runtime/sys/os/glnxa64:/matlab_runtime/sys/opengl/lib/glnxa64
     steps:
       - checkout
       - restore_cache: &restore-cache-pip-template
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
       - restore_cache: &restore-cache-mcr-template
-          key: mcr2020a-{{ arch }}
+          key: mcr_2020a-{{ arch }}
       - run:
           name: Install 7-Zip
           command: |
@@ -29,17 +29,17 @@ jobs:
           command: |
             DIR="mcr_extracted/"
             if [ ! -d "$DIR" ]; then
-              wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o./mcr_extracted\;
+              wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o./mcr_extracted\
             fi
       - save_cache: &save-cache-mcr-template
-          key: mcr2020a-{{ arch }}
+          key: mcr_2020a-{{ arch }}
           paths:
             - "mcr_extracted"
       - run:
           name: Install Matlab Runtime
           command: |
-            chmod -R 777 mcr_extracted\ / &&
-            ./mcr_extracted\ /install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/
+            chmod -R 777 mcr_extracted &&
+            mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder /matlab_runtime/
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
