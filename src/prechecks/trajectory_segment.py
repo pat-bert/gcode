@@ -65,7 +65,6 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
         :param boundaries: List of boundaries given as float values
         :return: Tuple of isValid flag and list of indices of violated boundaries
         """
-        pass
 
     @property
     def target(self):

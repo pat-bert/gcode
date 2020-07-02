@@ -10,6 +10,8 @@ jobs:
     docker:
       # Image containing all the required python versions, enables tox to do matrix testing
       - image: themattrix/tox
+    environment:
+      LD_LIBRARY_PATH: ./mcr_extracted\ /bin/glnxa64:./mcr_extracted\ /sys/os/glnxa64:./mcr_extracted\ /sys/opengl/lib/glnxa64
     steps:
       - checkout
       - restore_cache: &restore-cache-pip-template
@@ -33,10 +35,9 @@ jobs:
           paths:
             - "mcr_extracted"
       - run:
-          name: Install Matlab Runtime and set path
+          name: Install Matlab Runtime
           command: |
             ./mcr_extracted\ /install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/ &&
-            setenv LD_LIBRARY_PATH ./mcr_extracted\ /bin/glnxa64:./mcr_extracted\ /sys/os/glnxa64:./mcr_extracted\ /sys/opengl/lib/glnxa64
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
