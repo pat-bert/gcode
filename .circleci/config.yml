@@ -29,14 +29,14 @@ jobs:
             7z x ./mcr.zip -o./mcr_extracted\ &&
             chmod -R 777 mcr_extracted\ /
       - save_cache: &save-cache-mcr-template
+          key: mcr2020a-{{ arch }}
+          paths:
+            - "mcr_extracted"
       - run:
           name: Install Matlab Runtime and set path
           command: |
             ./mcr_extracted\ /install -mode silent -agreeToLicense yes -destinationFolder ./matlab_runtime/ &&
             setenv LD_LIBRARY_PATH ./mcr_extracted\ /bin/glnxa64:./mcr_extracted\ /sys/os/glnxa64:./mcr_extracted\ /sys/opengl/lib/glnxa64
-          key: mcr2020a-{{ arch }}
-          paths:
-            - "mcr_extracted"
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
@@ -96,7 +96,8 @@ jobs:
       - run:
           name: Install Matlab 2020a Runtime
           shell: cmd.exe
-          command: .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
+          command: |
+            .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
       - restore_cache: *restore-cache-pip-template
       - run:
           # Python needs to be installed
