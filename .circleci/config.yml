@@ -12,7 +12,7 @@ jobs:
         type: string
     docker:
       # Image containing all the required python versions, enables tox to do matrix testing
-      - image: circleci/python<< parameters.python-version >>
+      - image: circleci/python:<< parameters.python-version >>
     steps:
       - checkout
       - restore_cache: &restore-cache-pip-template
