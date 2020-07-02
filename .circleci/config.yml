@@ -22,8 +22,8 @@ jobs:
       - run:
           name: Install 7-Zip
           command: |
-            apt-get update
-            apt-get install p7zip-full
+            sudo apt-get update
+            sudo apt-get install p7zip-full
       - run:
           # Download the files from the official website and unzip them
           name: Download Matlab 2020a Runtime
@@ -39,7 +39,7 @@ jobs:
       - run:
           name: Install Matlab Runtime
           command: |
-            chmod -R 777 mcr_extracted &&
+            sudo chmod -R 777 mcr_extracted &&
             mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder /matlab_runtime/
       - run:
           # Create a new virtual environment and install the modules
