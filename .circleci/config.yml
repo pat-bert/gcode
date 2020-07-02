@@ -143,6 +143,8 @@ workflows:
   version: 2
   main:
     jobs:
+      # Install the Matlab Runtime
+      - mcr-win
       # Run the tests on windows (requires separate installation of python to be done)
       - test-win:
           # Run the tests as matrix for easier setup
