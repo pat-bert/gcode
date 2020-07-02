@@ -147,7 +147,6 @@ class TcpClientR3(IClient):
                     self.send_q.put(msg)
                 else:
                     raise ValueError("The message cannot be longer than 127 characters.")
-            # TODO Should an empty message be sent to be polite?
         else:
             raise TcpError('Client needs to be connected before sending since this could lead to unexpected behavior.')
 

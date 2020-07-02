@@ -171,15 +171,17 @@ class R3Positions(R3SubApi):
         self._protocol_send(f"{DIRECT_CMD}MVS{coord_str}")
         self.client.receive()
 
-    def joint_move(self, target: Coordinate) -> None:
+    def joint_move(self, values: List[float], identifiers: List[str]) -> None:
         """
         Move to a position using joint interpolation.
-        :param target: End position of the movement
+        :param values: List of joint values
+        :param identifiers: List of joint names, e.g. J1, J2, ..
         :return: None
         """
-        coord_str = self.from_coord_to_cmd(target)
-        self._protocol_send(f"{DIRECT_CMD}MOV{coord_str}")
-        self.client.receive()
+        raise NotImplementedError
+        # coord_str = ''.join(f"{identifier}{val}" for identifier, val in zip(identifiers, values))
+        # self._protocol_send(f"{DIRECT_CMD}MOV ({coord_str})")
+        # self.client.receive()
 
     def circular_move_centre(self, start: str, target: str, center: str) -> None:
         """
@@ -248,13 +250,14 @@ class R3Reader(R3SubApi):
         :return: Current tool number as integer
         """
         tool_no = self.read_variable(CURRENT_TOOL_NO)
-        # TODO Verify response with actual hardware
         return int(tool_no.split("=")[-1])
 
-    def get_current_tool_data(self) -> str:
-        # TODO Do conversion to Coordinate
-        tool_data = self.read_variable('P_TOOL')
-        return tool_data
+    def get_current_tool_data(self) -> List[float]:
+        # TODO Verify response with actual hardware
+        tool_response = self.read_variable('P_TOOL')
+        tool_data = tool_response.split("=")[-1]
+        tool_offsets = self.parse_comma_string(tool_data)
+        return [float(i) for i in tool_offsets]
 
     def get_override(self) -> float:
         """
@@ -411,7 +414,7 @@ class R3Setter(R3SubApi):
         :param tool_offset:
         :return: None
         """
-        # TODO Check conversion
+        # TODO Check conversion from coordinate to tool offset
         self._protocol_send(f"{DIRECT_CMD}{TOOL_OFFSET_CMD} {tool_offset}")
         self.client.receive()
 
@@ -421,7 +424,7 @@ class R3Setter(R3SubApi):
         :param offset:
         :return: None
         """
-        # TODO Check conversion
+        # TODO Check conversion from coordinate to offset
         self._protocol_send(f"{DIRECT_CMD}{BASE_COORDINATE_CMD} {offset}")
         self.client.receive()
 

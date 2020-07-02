@@ -7,22 +7,52 @@ orbs:
 jobs:
   # Linux job
   test-linux:
+    parameters:
+      python-version:
+        type: string
     docker:
       # Image containing all the required python versions, enables tox to do matrix testing
-      - image: themattrix/tox
+      - image: circleci/python:<< parameters.python-version >>
     steps:
       - checkout
-      - restore_cache: &restore-cache-template
+      - restore_cache: &restore-cache-pip-template
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
+      - restore_cache: &restore-cache-mcr-template
+          key: mcr-2020a-{{ arch }}
+      - run:
+          name: Install 7-Zip
+          command: |
+            sudo apt-get update
+            sudo apt-get install p7zip-full
+      - run:
+          # Download the files from the official website and unzip them
+          name: Download Matlab 2020a Runtime
+          command: |
+            DIR="mcr_extracted/"
+            if [ ! -d "$DIR" ]; then
+              wget -O ./mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2020a_Update_3_glnxa64.zip && 7z x ./mcr.zip -o"$DIR"
+            fi
+      - save_cache: &save-cache-mcr-template
+          key: mcr-2020a-{{ arch }}
+          paths:
+            - "mcr_extracted"
+      - run:
+          name: Install Matlab Runtime
+          command: |
+            sudo chmod -R 777 mcr_extracted &&
+            sudo mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder /matlab_runtime/
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
           command: |
-                     python3 --version
-                     python3 -m venv venv
-                     . venv/bin/activate
-                     pip install -r requirements.txt
-      - save_cache: &save-cache-template
+            python3 --version
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+            cd src_matlab/CollisionChecking/for_redistribution_files_only/
+            python3 setup.py install
+            cd ./../../../
+      - save_cache: &save-cache-pip-template
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ .Environment.CIRCLE_JOB }}
           paths:
             - "venv"
@@ -38,8 +68,9 @@ jobs:
           # Missing interpreters will be skipped
           name: Run tests with tox
           command: |
+            export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/matlab_runtime/v98/runtime/glnxa64:/matlab_runtime/v98/bin/glnxa64:/matlab_runtime/v98/sys/os/glnxa64:/matlab_runtime/v98/extern/bin/glnxa64
             . venv/bin/activate
-            tox
+            tox --skip-missing-interpreters
       - run: &codecov-template
           # Use the CLI of code coverage to upload the reports
           name: Upload coverage reports to CodeCov
@@ -62,21 +93,37 @@ jobs:
       name: win/default
     steps:
       - checkout
-      - restore_cache: *restore-cache-template
+      - restore_cache: *restore-cache-mcr-template
+      - run:
+          # This will skip the download if the directory is already restored from cache (TODO)
+          name: Download Matlab 2020a Runtime
+          shell: cmd.exe
+          command: |
+            IF NOT exist .\mcr_extracted\ (curl.exe -o .\mcr.zip https://ssd.mathworks.com/supportfiles/downloads/R2020a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2020a_Update_3_win64.zip && 7z x .\mcr.zip -o.\mcr_extracted\ -y)
+      - save_cache: *save-cache-mcr-template
+      - run:
+          name: Install Matlab 2020a Runtime
+          shell: cmd.exe
+          command: |
+            .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
+      - restore_cache: *restore-cache-pip-template
       - run:
           # Python needs to be installed
           # Install a virtual environment using the installed python interpreter
           # Activate it to install the requirements
           name: install python and create venv
           command: |
-                     nuget install python -Version << parameters.python-version >> -ExcludeVersion -OutputDirectory .
-                     .\python\tools\python.exe --version
-                     .\python\tools\python.exe -m pip install virtualenv
-                     .\python\tools\python.exe -m virtualenv venv
-                     venv\Scripts\activate.ps1
-                     python --version
-                     python -m pip install -r requirements.txt
-      - save_cache: *save-cache-template
+            nuget install python -Version << parameters.python-version >> -ExcludeVersion -OutputDirectory .
+            .\python\tools\python.exe --version
+            .\python\tools\python.exe -m pip install virtualenv
+            .\python\tools\python.exe -m virtualenv venv
+            venv\Scripts\activate.ps1
+            python --version
+            python -m pip install -r requirements.txt
+            cd ./src_matlab/CollisionChecking/for_redistribution_files_only/
+            python setup.py install
+            cd ./../../../
+      - save_cache: *save-cache-pip-template
       - run:
           # Verify that no cyclic or otherwise invalid dependencies are present
           # This is extraordinarily useful to verify automatic module update proposals
@@ -112,6 +159,9 @@ workflows:
           # Run the tests as matrix for easier setup
           matrix:
             parameters:
-              python-version: ["3.6.4", "3.7.6", "3.8.1"]
+              python-version: ["3.6.8", "3.7.6"]
       # Run the tests on linux
-      - test-linux
+      - test-linux:
+          matrix:
+            parameters:
+              python-version: ["3.6.8", "3.7.6"]

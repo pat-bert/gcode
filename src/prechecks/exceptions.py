@@ -33,6 +33,9 @@ class JointLimitViolation(TrajectoryError):
     """
 
 
+JOINT_SPEED_ALLOWABLE_RATIO = 0.8
+
+
 class JointVelocityViolation(TrajectoryError):
     """
     Will be raised if the the joint velocity would be exceeded.

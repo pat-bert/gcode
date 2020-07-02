@@ -63,6 +63,7 @@ class GCmd(BaseCmd):
         :param line_number: Optional number for resend identification
         """
         self.id = code_id
+        self.joints = []
         self.cartesian_abs: Coordinate = Coordinate(abs_cr, self.ABS_AXES, self.DIGITS)
         self.cartesian_rel: Coordinate = Coordinate(
             rel_cr, self.ABS_AXES, self.DIGITS, print_axes=self.REL_AXES
@@ -73,6 +74,7 @@ class GCmd(BaseCmd):
         self.machine_option = misc_cmd
         self.home_opt = home
         self.line_number = line_number
+        self.normal_vec = [0, 0, 1]
 
         if not self._is_valid():
             raise ValueError("Unsupported or unknown command passed: " + self.id)

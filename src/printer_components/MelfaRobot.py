@@ -1,6 +1,9 @@
 from math import pi
 from time import sleep
-from typing import AnyStr, Union, List
+from typing import AnyStr, Union, List, Optional
+
+import numpy as np
+from numpy import ndarray
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
@@ -137,142 +140,93 @@ class MelfaRobot(PrinterComponent):
 
         self.work_coordinate_active = active
 
-    def handle_gcode(
-            self,
-            gcode: GCmd,
-            interactive=True,
-            gcode_prev: Union[GCmd, None] = None,
-            *args,
-            **kwargs
-    ) -> Union[AnyStr, None]:
+    def handle_gcode(self, gcode: GCmd, gcode_prev: Union[GCmd, None] = None, *args, **kwargs) -> None:
         """
         Translates a G-Code to a Mitsubishi Melfa R3 command.
         :param gcode: G-Code object
-        :param interactive: Flag indicating whether the command should be executed or stored
         :param gcode_prev: Optional object for previous G-Code to be considered for speed setting
         :return:
         """
-        if interactive:
-            # G-Code is executed directly
-            current_pos = self.protocol.get_current_xyzabc()
-            current_pos = current_pos.reduce_to_axes("XYZ")
+        # G-Code is executed directly
+        current_pos = self.protocol.get_current_xyzabc()
+        current_pos = current_pos.reduce_to_axes("XYZ")
 
-            # Inch conversion
-            if self.inch_active:
-                self.adjust_units(gcode)
+        # Inch conversion
+        if self.inch_active:
+            self.adjust_units(gcode)
 
-            # Speed conversion mm/min to mm/s
-            if gcode.speed is not None:
-                gcode.speed /= 60
+        # Speed conversion mm/min to mm/s
+        if gcode.speed is not None:
+            gcode.speed /= 60
 
-            # Movement G-code
-            if gcode.id in ["G00", "G0", "G01", "G1"]:
-                if not self.absolute_coordinates:
-                    self.linear_move_poll(
-                        gcode.cartesian_abs + current_pos,
-                        gcode.speed,
-                        current_pos=current_pos,
-                    )
-                else:
-                    self.linear_move_poll(
-                        gcode.cartesian_abs, gcode.speed, current_pos=current_pos
-                    )
-            elif gcode.id in ["G02", "G2"]:
-                if not self.absolute_coordinates:
-                    self.circular_move_poll(
-                        gcode.cartesian_abs + current_pos,
-                        current_pos + gcode.cartesian_rel,
-                        True,
-                        gcode.speed,
-                        start_pos=current_pos,
-                    )
-                else:
-                    self.circular_move_poll(
-                        gcode.cartesian_abs,
-                        current_pos + gcode.cartesian_rel,
-                        True,
-                        gcode.speed,
-                        start_pos=current_pos,
-                    )
-            elif gcode.id in ["G03", "G3"]:
-                if not self.absolute_coordinates:
-                    self.circular_move_poll(
-                        gcode.cartesian_abs + current_pos,
-                        current_pos + gcode.cartesian_rel,
-                        False,
-                        gcode.speed,
-                    )
-                else:
-                    self.circular_move_poll(
-                        gcode.cartesian_abs,
-                        current_pos + gcode.cartesian_rel,
-                        False,
-                        gcode.speed,
-                    )
-            elif gcode.id in ["G04", "G4"]:
-                self.wait(gcode.time_ms)
-
-            elif gcode.id in ["G04", "G4"]:
-                # Adjust the offsets for the current tool
-                # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
-                pass
-
-            # Plane selection
-            elif gcode.id == "G17":
-                self.active_plane = Plane.XY
-            elif gcode.id == "G18":
-                self.active_plane = Plane.XZ
-            elif gcode.id == "G19":
-                self.active_plane = Plane.YZ
-
-            # Units
-            elif gcode.id == "G20":
-                self.inch_active = True
-            elif gcode.id == "G21":
-                self.inch_active = False
-
-            # Homing
-            elif gcode.id == "G28":
-                self.go_home(option=gcode.home_opt)
-
-            # Absolute/Relative mode
-            elif gcode.id == "G90":
-                self.absolute_coordinates = True
-            elif gcode.id == "G91":
-                self.absolute_coordinates = False
-
-            # Tools
-            elif gcode.id.startswith('T'):
-                # Tool commands start with T followed by the tool number.
-                # G-Code starts counting at zero, Mitsubishi starts at one
-                self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
-
-            # Unsupported G-code
+        # Movement G-code
+        if gcode.id in ["G00", "G0", "G01", "G1"]:
+            if not self.absolute_coordinates:
+                self.linear_move_poll(gcode.cartesian_abs + current_pos, gcode.speed, current_pos=current_pos)
             else:
-                raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
+                self.linear_move_poll(gcode.cartesian_abs, gcode.speed, current_pos=current_pos)
+        elif gcode.id in ["G02", "G2"]:
+            if not self.absolute_coordinates:
+                self.circular_move_poll(gcode.cartesian_abs + current_pos, current_pos + gcode.cartesian_rel, True,
+                                        gcode.speed, start_pos=current_pos)
+            else:
+                self.circular_move_poll(gcode.cartesian_abs, current_pos + gcode.cartesian_rel, True, gcode.speed,
+                                        start_pos=current_pos)
+        elif gcode.id in ["G03", "G3"]:
+            if not self.absolute_coordinates:
+                self.circular_move_poll(gcode.cartesian_abs + current_pos, current_pos + gcode.cartesian_rel, False,
+                                        gcode.speed)
+            else:
+                self.circular_move_poll(gcode.cartesian_abs, current_pos + gcode.cartesian_rel, False, gcode.speed)
+        elif gcode.id in ["G04", "G4"]:
+            self.wait(gcode.time_ms)
+
+        elif gcode.id in ["G04", "G4"]:
+            # Adjust the offsets for the current tool
+            # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
+            pass
+
+        # Plane selection
+        elif gcode.id == "G17":
+            self.active_plane = Plane.XY
+        elif gcode.id == "G18":
+            self.active_plane = Plane.XZ
+        elif gcode.id == "G19":
+            self.active_plane = Plane.YZ
+
+        # Units
+        elif gcode.id == "G20":
+            self.inch_active = True
+        elif gcode.id == "G21":
+            self.inch_active = False
+
+        # Homing
+        elif gcode.id == "G28":
+            self.go_home(option=gcode.home_opt)
+
+        # Absolute/Relative mode
+        elif gcode.id == "G90":
+            self.absolute_coordinates = True
+        elif gcode.id == "G91":
+            self.absolute_coordinates = False
+
+        # Tools
+        elif gcode.id.startswith('T'):
+            # Tool commands start with T followed by the tool number.
+            # G-Code starts counting at zero, Mitsubishi starts at one
+            self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
+
+        elif gcode.id == 'G200':
+            self.move_joint(gcode.joints)
+
+        # Unsupported G-code
         else:
-            # Melfa code is saved for later usage
-            if gcode.id in ["G00", "G0", "G01", "G1"]:
-                return (
-                        R3Protocol_Cmd.LINEAR_INTRP + gcode.cartesian_abs.to_melfa_point()
-                )
-            elif gcode.id in ["G02", "G2"]:
-                raise NotImplementedError
-            elif gcode.id in ["G03", "G3"]:
-                raise NotImplementedError
-            else:
-                raise NotImplementedError
+            raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
 
     def adjust_units(self, gcode: GCmd):
-        if (
-                gcode.cartesian_abs is not None
-                and len(gcode.cartesian_abs.coordinate) > 0
-        ):
+        if gcode.cartesian_abs is not None and len(gcode.cartesian_abs.coordinate) > 0:
             gcode.cartesian_abs *= self.INCH_IN_MM
-        if (
-                gcode.cartesian_rel is not None
-                and len(gcode.cartesian_rel.coordinate) > 0
-        ):
+        if gcode.cartesian_rel is not None and len(gcode.cartesian_rel.coordinate) > 0:
             gcode.cartesian_rel *= self.INCH_IN_MM
         if gcode.speed is not None:
             gcode.speed *= self.INCH_IN_MM
@@ -287,9 +241,7 @@ class MelfaRobot(PrinterComponent):
         try:
             self.protocol.define_variable(var_name, var_type="position")
         except ApplicationExceptions.MelfaBaseException as e:
-            if str(e.status).startswith(
-                    ApplicationExceptions.DuplicateVariableDeclaration
-            ):
+            if str(e.status).startswith(ApplicationExceptions.DuplicateVariableDeclaration):
                 self.protocol.reset_alarm()
             else:
                 raise
@@ -410,11 +362,7 @@ class MelfaRobot(PrinterComponent):
         self.protocol.go_safe_pos()
 
         # Wait until position is reached
-        cmp_response(
-            R3Protocol_Cmd.CURRENT_JOINT,
-            safe_pos.to_melfa_response(),
-            self.protocol.reader,
-        )
+        cmp_response(R3Protocol_Cmd.CURRENT_JOINT, safe_pos.to_melfa_response(), self.protocol.reader)
 
     def linear_move_poll(self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None):
         """
@@ -426,7 +374,6 @@ class MelfaRobot(PrinterComponent):
         :return:
         """
         if speed is not None:
-            # Set speed
             self.set_speed(speed, "linear")
 
         # Only send command if any coordinates are passed, otherwise just set the speed
@@ -441,23 +388,13 @@ class MelfaRobot(PrinterComponent):
             self.protocol.linear_move(target_pos)
 
             # Wait until position is reached
-            t, v = cmp_response(
-                R3Protocol_Cmd.CURRENT_XYZABC,
-                target_pos.to_melfa_response(),
-                self.protocol.reader,
-                track_speed=track_speed,
-            )
+            t, v = cmp_response(R3Protocol_Cmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.protocol.reader,
+                                track_speed=track_speed)
             return t, v
         return None, None
 
-    def circular_move_poll(
-            self,
-            target_pos: Coordinate,
-            center_pos: Coordinate,
-            is_clockwise: bool,
-            speed: float = None,
-            start_pos=None,
-    ) -> None:
+    def circular_move_poll(self, target_pos: Coordinate, center_pos: Coordinate, is_clockwise: bool,
+                           speed: Optional[float] = None, start_pos: Optional[Coordinate] = None) -> None:
         """
         Moves the robot on a (counter-)clockwise arc around a center position to a target position.
         :param start_pos: Coordinate for the start position, defaults to current position if None.
@@ -466,7 +403,6 @@ class MelfaRobot(PrinterComponent):
         :param center_pos: Coordinate for the center of the arc.
         :param is_clockwise: Flag to indicate clockwise|counter-clockwise direction.
         :param speed: Movement speed for tool.
-        :return:
         """
         # Determine start position
         if start_pos is None:
@@ -482,62 +418,54 @@ class MelfaRobot(PrinterComponent):
             target_pos.update_empty(start_pos)
             center_pos.update_empty(start_pos)
 
-            angle = self.get_directed_angle(
-                start_pos, target_pos, center_pos, is_clockwise
-            )
+            start_pos_np = np.array(start_pos.values)
+            target_pos_np = np.array(target_pos.values)
+            center_pos_np = np.array(center_pos.values)
+
+            angle = self.get_directed_angle(start_pos_np, target_pos_np, center_pos_np, is_clockwise)
 
             if abs(angle) >= pi:
                 # Intermediate points for angles >= 180°
-                im_pos = get_intermediate_point(
-                    angle, start_pos, target_pos, center_pos, self.active_plane
-                )
+                im_pos_np = get_intermediate_point(angle, start_pos_np, target_pos_np, center_pos_np, self.active_plane)
+
+                im_pos = Coordinate(list(im_pos_np), 'XYZ')
                 im_pos.update_empty(start_pos)
 
                 # Position assignments
                 if abs(angle) == 2 * pi:
                     # Calculate additional intermediate point
-                    angle = self.get_directed_angle(
-                        start_pos, im_pos, center_pos, is_clockwise
-                    )
-                    im_pos2 = get_intermediate_point(
-                        angle, start_pos, im_pos, center_pos, self.active_plane
-                    )
+                    angle = self.get_directed_angle(start_pos_np, im_pos_np, center_pos_np, is_clockwise)
+                    im_pos2_np = get_intermediate_point(angle, start_pos_np, im_pos_np, center_pos_np,
+                                                        self.active_plane)
+
+                    im_pos2 = Coordinate(list(im_pos2_np), 'XYZ')
                     im_pos2.update_empty(start_pos)
 
                     # Global variables
-                    self.set_global_positions(
-                        ["P1", "P2", "P3"], [start_pos, im_pos2, im_pos]
-                    )
+                    self.set_global_positions(["P1", "P2", "P3"], [start_pos, im_pos2, im_pos])
 
                     # Send move command
                     self.protocol.circular_move_full("P1", "P2", "P3")
                 else:
                     # Global variables
-                    self.set_global_positions(
-                        ["P1", "P2", "P3"], [start_pos, im_pos, target_pos]
-                    )
+                    self.set_global_positions(["P1", "P2", "P3"], [start_pos, im_pos, target_pos])
 
                     # Send move command
                     self.protocol.circular_move_intermediate("P1", "P2", "P3")
             else:
                 # Global variables
-                self.set_global_positions(
-                    ["P1", "P2", "P3"], [start_pos, target_pos, center_pos]
-                )
+                self.set_global_positions(["P1", "P2", "P3"], [start_pos, target_pos, center_pos])
 
                 # Send move command
                 self.protocol.circular_move_centre("P1", "P2", "P3")
 
             # Wait until position is reached
-            cmp_response(
-                R3Protocol_Cmd.CURRENT_XYZABC,
-                target_pos.to_melfa_response(),
-                self.protocol.reader,
-            )
+            cmp_response(R3Protocol_Cmd.CURRENT_XYZABC, target_pos.to_melfa_response(), self.protocol.reader)
 
-    def get_directed_angle(self, start_pos, target_pos, center_pos, is_clockwise):
+    def get_directed_angle(self, start_pos: ndarray, target_pos: ndarray, center_pos: ndarray, is_clockwise: bool):
         # Determine the angle
         angle = get_angle(start_pos, target_pos, center_pos, self.active_plane)
+
         # Adjust the angle according to the direction
         if not is_clockwise:
             # Angle needs to be positive
@@ -554,21 +482,17 @@ class MelfaRobot(PrinterComponent):
         Write coordinates to a global variable name in the robot memory.
         :param var_names: List of the variable names
         :param coordinates:
-        :return:
         """
         if len(var_names) == len(coordinates):
             for var_name, coordinate in zip(var_names, coordinates):
                 self.protocol.set_position(var_name, coordinate)
         else:
-            raise MelfaBaseException(
-                "Variable names and coordinates must be of same length."
-            )
+            raise MelfaBaseException("Variable names and coordinates must be of same length.")
 
-    def _check_speed_threshold(self, speed_threshold: float):
+    def _check_speed_threshold(self, speed_threshold: float) -> None:
         """
         Verify that the speed setting meets the current threshold
         :param speed_threshold:
-        :return:
         """
         # Reset all speed factors for clean initial state
         self.protocol.reset_all_speeds()
@@ -586,15 +510,22 @@ class MelfaRobot(PrinterComponent):
         else:
             print("Speed of {}%. Okay!".format(speed))
 
-    def wait(self, time_ms):
+    @staticmethod
+    def wait(time_ms) -> None:
         """
         Waits for a specified time.
-        :param time_ms:
-        :return:
+        :param time_ms: Time to wait in ms.
         """
-        # TODO Implement waiting (G04)
-        # self.client.wait_send('DLY')
-        raise NotImplementedError
+        sleep(1000 * time_ms)
 
-    def _zero(self):
+    def _zero(self) -> Coordinate:
         return Coordinate(self.zero.values, self.zero.axes)
+
+    def move_joint(self, joint_values: List[float]) -> None:
+        """
+        Move to a position in joint coordinates.
+        :param joint_values: Coordinate
+        """
+        if len(joint_values) != len(self.joints):
+            raise ValueError('Joint movements need to specify all axes.')
+        self.protocol.joint_move(joint_values, self.joints)
