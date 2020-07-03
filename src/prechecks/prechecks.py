@@ -1,24 +1,27 @@
-from collections import namedtuple
-from typing import List
+from typing import List, NamedTuple
 
 from dijkstar import find_path
 
-from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
-from src.prechecks.exceptions import CollisionViolation, ConfigurationChangesError
+from src.prechecks.exceptions import CollisionViolation, ConfigurationChangesError, JointVelocityViolation, \
+    JOINT_SPEED_ALLOWABLE_RATIO
 from src.prechecks.graph_search import create_graph, calc_conf_from_node
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
-from src.prechecks.trajectory_segment import check_cartesian_limits, filter_joint_limits
+from src.prechecks.trajectory_segment import check_cartesian_limits, filter_joint_limits, JointTrajSegment
 from src.prechecks.utils import print_progress, time_func_call
 
-Constraints = namedtuple('Constraints', 'pos_cartesian pos_joint vel_joint')
-"""
-:param pos_cartesian: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
-:param pos_joint: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
-:param vel_joint: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
-"""
+
+class Constraints(NamedTuple):
+    """
+    pos_cartesian: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
+    pos_joint: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
+    vel_joint: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
+    """
+    pos_cartesian: List[float]
+    pos_joint: List[float]
+    vel_joint: List[float]
 
 
 @time_func_call
@@ -95,25 +98,63 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     all_collision_scenes = [1] * len(joint_traj)
 
     # Init Matlab Runtime
-    collider = MatlabCollisionChecker()
-    collisions = collider.check_collisions(home, path=urdf)
-    if collisions[0]:
-        raise CollisionViolation('Home position is in collision.')
-    print('Home position is not in collision.')
+    # collider = MatlabCollisionChecker()
+    # collisions = collider.check_collisions(home, path=urdf)
+    # if collisions[0]:
+    #     raise CollisionViolation('Home position is in collision.')
+    # print('Home position is not in collision.')
 
     # Check paths sorted by minimum configuration change cost for collisions
+    collision_free_path = []
     for best_config_path in [robot_conf_per_point]:
         is_collision_free = []
         for seg, seg_conf, current_collision_scene in zip(joint_traj, best_config_path, all_collision_scenes):
-            free = is_segment_collision_free(collider, seg, seg_conf, current_collision_scene)
-            is_collision_free.append(free)
+            # free = is_segment_collision_free(collider, seg, seg_conf, current_collision_scene)
+            is_collision_free.append(True)
         if all(is_collision_free):
             # The configuration list is valid for all segments, no need to calculate the next best path
             print('All segments were collision-free with the current configuration path.')
+            collision_free_path = robot_conf_per_point
             break
         print('Some segments were in collision. Querying next-best configuration path.')
     else:
         raise CollisionViolation('No collision-free trajectory could be determined.')
+
+    # Finally, check the joint velocities
+    check_joint_velocities(joint_traj, collision_free_path, limits.vel_joint)
+
+
+def check_joint_velocities(joint_traj: List[JointTrajSegment], config_path: List[int], qdlim: List[float]):
+    """
+    Check the joint velocities along a trajectory for given robot configurations per segment.
+    :param joint_traj: Joint trajectory as list of coherent segments
+    :param config_path: List of robot configurations per point
+    :param qdlim:
+    :return:
+    """
+    if sum(len(seg.solutions) for seg in joint_traj) != len(config_path):
+        raise ValueError('Number of segments is unequal to number of configs.')
+
+    print('Checking joint velocities on selected path..')
+    start = 0
+    exceeding_indices = []
+
+    error_msg = f"Joint velocity ratio {100 * JOINT_SPEED_ALLOWABLE_RATIO :.2f}% exceeded " \
+                f"(max velocities by segment and joint):\n"
+    for seg_idx, seg in enumerate(joint_traj):
+        end = start + len(seg.solutions)
+        current_exceeding = seg.joints_exceeding_velocity_limits(config_path[start:end], qdlim)
+        exceeding_indices.append(current_exceeding)
+        start += len(seg.solutions)
+
+        if current_exceeding:
+            joint_vel_str = [f'J{j_idx}: {vmax :.3f} rad/s' for j_idx, vmax in current_exceeding.items()]
+            error_msg += f"Segment #{seg_idx}: {'; '.join(sorted(joint_vel_str))}\n"
+
+    # Check the violations
+    if any(exceeding_indices):
+        raise JointVelocityViolation(error_msg)
+    print('All movements are done within the defined percentage of maximum joint velocity.')
 
 
 def is_segment_collision_free(collider, seg, seg_conf, current_collision_scene) -> bool:
