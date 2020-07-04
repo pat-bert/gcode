@@ -102,7 +102,7 @@ def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[flo
         return 0
 
 
-def calculate_node_idx(point_idx, configuration) -> int:
+def calc_node_idx(point_idx, configuration) -> int:
     """
     Calculates a unique node index.
     :param point_idx: Index of the point that the node belongs to within the trajectory.
@@ -155,7 +155,7 @@ def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: L
         for ik_solutions_point, t_curr_point in zip(joint_segment.solutions, joint_segment.time_points):
             # Iterate over all nodes of the current point
             for curr_conf, curr_j in ik_solutions_point.items():
-                node_idx = calculate_node_idx(point_idx, curr_conf)
+                node_idx = calc_node_idx(point_idx, curr_conf)
                 if point_idx == 0:
                     # First point nodes are all connected to start node (zero cost) and do not have distinct parent
                     # nodes.
@@ -164,7 +164,7 @@ def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: L
                     # Following point nodes are connected to all nodes of the previous point
                     for prev_conf, prev_j in current_parents.items():
                         # Calculate the index of the previous node
-                        previous_node_idx = calculate_node_idx(point_idx - 1, prev_conf)
+                        previous_node_idx = calc_node_idx(point_idx - 1, prev_conf)
                         # Call a cost function to determine the transition cost between the nodes based on the robot
                         # configurations and the joint values.
                         curr_node_info = NodeInfo(conf=curr_conf, joints=curr_j, seg_idx=seg_idx, t=t_curr_point)
@@ -177,7 +177,7 @@ def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: L
             # simply as path from START_NODE to STOP_NODE. The nodes are connected with zero cost.
             if point_idx >= total_point_count - 1:
                 for curr_conf in ik_solutions_point.keys():
-                    node_idx = calculate_node_idx(point_idx, curr_conf)
+                    node_idx = calc_node_idx(point_idx, curr_conf)
                     joint_network.add_edge(node_idx, STOP_NODE, edge=0)
 
             # Move forward to the next point and save the nodes of the current point as parents for the next point

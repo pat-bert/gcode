@@ -1,15 +1,17 @@
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 
-from dijkstar import find_path
+import numpy as np
+from dijkstar import find_path, NoPathError
 
+from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
 from src.prechecks.exceptions import CollisionViolation, ConfigurationChangesError, JointVelocityViolation, \
-    JOINT_SPEED_ALLOWABLE_RATIO
-from src.prechecks.graph_search import create_graph, calc_conf_from_node
+    JOINT_SPEED_ALLOWABLE_RATIO, NoValidPathFound
+from src.prechecks.graph_search import create_graph, calc_conf_from_node, calc_node_idx
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
-from src.prechecks.trajectory_segment import check_cartesian_limits, filter_joint_limits, JointTrajSegment
+from src.prechecks.trajectory_segment import check_cartesian_limits, JointTrajSegment, filter_joint_limits
 from src.prechecks.utils import print_progress, time_func_call
 
 
@@ -41,8 +43,6 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     The following checks are done in order:
     1.  Check that all points are within the user-specified task space
         This involves processing commands that change the coordinate system.
-
-        A linear segment is within the cuboid if its start and end point are within.
 
     2.  Check that a valid joint configuration can be found for each point.
         Prerequisite: Fixed way interpolation (linear and circular)
@@ -86,42 +86,78 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     # coordinates and the robot configurations of the connected nodes.
     graph, start_node, stop_node = create_graph(joint_traj, limits.pos_joint, limits.vel_joint)
 
-    # Find the initially shortest path to be checked for collisions. Nodes in collision can be removed to query for the
-    # next best path.
-    path = find_path(graph, start_node, stop_node)
-    print(f'Total cost for the minimum cost path: {path.total_cost}')
-    robot_conf_per_point = [calc_conf_from_node(node_idx, pt_idx) for pt_idx, node_idx in enumerate(path.nodes[1:-1])]
-    print(f'Configurations in shortest path: {set(robot_conf_per_point)}')
-
     print('Creating collision scene...')
     # TODO Create collision scene from task trajectory segments
     all_collision_scenes = [1] * len(joint_traj)
 
     # Init Matlab Runtime
-    # collider = MatlabCollisionChecker()
-    # collisions = collider.check_collisions(home, path=urdf)
-    # if collisions[0]:
-    #     raise CollisionViolation('Home position is in collision.')
-    # print('Home position is not in collision.')
+    collider = MatlabCollisionChecker()
+    collisions = collider.check_collisions(home, path=urdf)
+    if collisions[0]:
+        raise CollisionViolation('Home position is in collision.')
+    print('Home position is not in collision.')
+
+    # Calculate the end index of each point
+    seg_pt_end = list(np.cumsum([len(seg.solutions) for seg in joint_traj]))
+    seg_pt_start = [0] + seg_pt_end[:-1]
 
     # Check paths sorted by minimum configuration change cost for collisions
-    collision_free_path = []
-    for best_config_path in [robot_conf_per_point]:
-        is_collision_free = []
-        for seg, seg_conf, current_collision_scene in zip(joint_traj, best_config_path, all_collision_scenes):
-            # free = is_segment_collision_free(collider, seg, seg_conf, current_collision_scene)
-            is_collision_free.append(True)
-        if all(is_collision_free):
+    max_iterations = 100
+    for _ in range(max_iterations):
+        # Find the initially shortest path to be checked for collisions.
+        try:
+            path = find_path(graph, start_node, stop_node)
+        except NoPathError as e:
+            raise NoValidPathFound from e
+
+        print(f'Total cost for the current minimum cost path: {path.total_cost}')
+
+        if path.total_cost == float('inf'):
+            raise NoValidPathFound('Path cost is infinite (invalid transitions).')
+
+        pt_configurations = [calc_conf_from_node(node_idx, pt_idx) for pt_idx, node_idx in enumerate(path.nodes[1:-1])]
+        print(f'Configurations in current shortest path: {set(pt_configurations)}')
+        colliding_points = []
+        seg_configs = []
+
+        # Iterate over the segments
+        for (i, seg), curr_coll_scene in zip(enumerate(joint_traj), all_collision_scenes):
+            # Check the current segment for collisions using the relevant slice of all point configurations
+            start, end = seg_pt_start[i], seg_pt_end[i]
+            curr_seg_conf = list(set(pt_configurations[start:end]))
+            if len(curr_seg_conf) > 1:
+                raise ValueError('Only common configurations are supported per segment')
+
+            # Calculate the collisions
+            colliding_point_idx = get_first_colliding_point(collider, seg, curr_seg_conf[0], curr_coll_scene)
+            if i > 0 and colliding_point_idx is not None:
+                # Point index is internal to segment and needs to be offset by the end of the previous segment
+                colliding_point_idx += seg_pt_end[i - 1]
+
+            # Update the collision array and the config array
+            colliding_points.append(colliding_point_idx)
+            seg_configs.append(curr_seg_conf[0])
+
+        if all(i is None for i in colliding_points):
             # The configuration list is valid for all segments, no need to calculate the next best path
             print('All segments were collision-free with the current configuration path.')
-            collision_free_path = robot_conf_per_point
             break
-        print('Some segments were in collision. Querying next-best configuration path.')
+
+        # Calculate indices of nodes to be removed
+        node_indices = [calc_node_idx(pt, conf) for conf, pt in zip(seg_configs, colliding_points) if pt is not None]
+
+        # Remove the nodes from the graph
+        print('Removing first colliding point of each segment in collision.')
+        for node in node_indices:
+            graph.remove_node(node)
+
+        # Nodes in collision can be removed to query for the next best path.
+        print('Querying next-best configuration path.')
     else:
         raise CollisionViolation('No collision-free trajectory could be determined.')
 
     # Finally, check the joint velocities
-    check_joint_velocities(joint_traj, collision_free_path, limits.vel_joint)
+    check_joint_velocities(joint_traj, pt_configurations, limits.vel_joint)
 
 
 def check_joint_velocities(joint_traj: List[JointTrajSegment], config_path: List[int], qdlim: List[float]):
@@ -157,19 +193,28 @@ def check_joint_velocities(joint_traj: List[JointTrajSegment], config_path: List
     print('All movements are done within the defined percentage of maximum joint velocity.')
 
 
-def is_segment_collision_free(collider, seg, seg_conf, current_collision_scene) -> bool:
+def get_first_colliding_point(collider, seg: JointTrajSegment, seg_conf: int, current_collision_scene) -> Optional[int]:
+    """
+    Check whether a segment has any collisions
+    :param collider:
+    :param seg: Segment of a joint trajectory
+    :param seg_conf: Configuration for the whole segment
+    :param current_collision_scene:
+    :return:
+    """
     # Get joint coordinates at each point for the determined arm onfiguration
     total_len = len(seg.solutions)
-    print_progress(0, total_len, prefix=f'Checking collisions for segment #{seg.idx}...')
+    prefix = f'Checking collisions for segment #{seg.idx} in robot config {seg_conf}...'
+    print_progress(0, total_len, prefix=prefix)
     for point_idx, point_solutions in enumerate(seg.solutions):
-        print_progress(point_idx + 1, total_len, prefix=f'Checking collisions for segment #{seg.idx}...')
+        print_progress(point_idx + 1, total_len, prefix=prefix)
         joint_values = point_solutions[seg_conf]
         collisions = collider.check_collisions(joint_values)
         if collisions[0]:
             # The current segment is not valid
             print(f'Found collisions for point #{point_idx} on segment #{seg.idx}.')
-            return False
-    return True
+            return point_idx
+    return None
 
 
 def get_common_configurations(joint_trajectory) -> List[List[int]]:

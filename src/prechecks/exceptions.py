@@ -51,3 +51,9 @@ class ConfigurationChangesError(TrajectoryError):
     In case of a configuration change a singularity needs to be crossed and a path with the least
     configuration changes might be found.
     """
+
+
+class NoValidPathFound(TrajectoryError):
+    """
+
+    """

@@ -6,7 +6,8 @@ from src.clients.TcpClientR3 import TcpClientR3
 from src.exit_codes import EXIT_INVALID_TRAJECTORY
 from src.gcode.GCmd import GCmd
 from src.prechecks.configs import melfa_rv_4a
-from src.prechecks.exceptions import CartesianLimitViolation, ConfigurationChangesError, JointVelocityViolation
+from src.prechecks.exceptions import CartesianLimitViolation, ConfigurationChangesError, JointVelocityViolation, \
+    NoValidPathFound
 from src.prechecks.prechecks import Constraints, check_traj
 from src.protocols.R3Protocol import R3Protocol
 
@@ -68,3 +69,5 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
         raise NotImplementedError('Robot configuration transitions are not supported within a coherent segment.') from e
     except JointVelocityViolation as e:
         raise NotImplementedError('Reducing the speed is not yet supported.') from e
+    except NoValidPathFound as e:
+        raise NotImplementedError('Recreating graph (partially) with different tool orientation is unsupported.') from e
