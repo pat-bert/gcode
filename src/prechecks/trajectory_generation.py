@@ -34,7 +34,7 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
             all_trajectory_pose_points.append(lin_segment)
             current_pos = lin_segment.target
             current_vel = command.speed or current_vel
-        elif command.id in ['G02', 'G2']:
+        elif command.id in ['G02', 'G2', 'G03', 'G3']:
             circ_segment = circular_segment_from_gcode(command, current_pos, ds, is_absolute, current_vel, current_acc)
             all_trajectory_pose_points.append(circ_segment)
             current_pos = circ_segment.target

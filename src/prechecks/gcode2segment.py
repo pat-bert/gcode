@@ -55,7 +55,7 @@ def circular_segment_from_gcode(command: GCmd, current_pose: np.ndarray, ds: flo
     x_angle, y_angle, z_angle = normal2euler()
     target_pose = pose2tform(target_position, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
 
-    is_clockwise = command.id == 'G02'
+    is_clockwise = command.id in ['G02', 'G2']
 
     centre_position = centre_pos.values
     traj_poses = circular_interpolation(current_pose, target_pose, centre_position, normal_vec, is_clockwise, ds=ds)
