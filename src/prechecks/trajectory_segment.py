@@ -236,7 +236,7 @@ def check_cartesian_limits(task_trajectory: List[CartesianTrajSegment], clim: Li
                     limit_id = 'XYZ'[idx // 2]
                     limits += f'{limit_id}{limit_type} '
                 error_msg += f'Segment #{segment_idx}: {limits}violated\n'
-        raise CartesianLimitViolation(f'Found segments violating the cartesian limits ({clim}).', error_msg)
+        raise CartesianLimitViolation(f'Found segments violating the cartesian limits ({clim}):\n{error_msg}')
     print('All segments are located within the cartesian limits.')
 
 
