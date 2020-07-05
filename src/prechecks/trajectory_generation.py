@@ -65,9 +65,9 @@ def generate_joint_trajectory(task_trajectory: List[CartesianTrajSegment], confi
     print('Generating joint trajectory...')
 
     joint_segments = []
-    for cartesian_segment in task_trajectory:
+    for seg_idx, cartesian_segment in enumerate(task_trajectory):
         current_segment_solutions = []
-        for pose in cartesian_segment.trajectory_points:
+        for pt_idx, pose in enumerate(cartesian_segment.trajectory_points):
             try:
                 # Calculate the inverse kinematics without specifying a specific pose flag
                 # Only if no solution at all can be found exceptions will propagate out
@@ -76,7 +76,12 @@ def generate_joint_trajectory(task_trajectory: List[CartesianTrajSegment], confi
                 current_segment_solutions.append(current_point_solutions)
             except OutOfReachError as e:
                 # Inverse kinematic cannot be solved for points outside the workspace
-                raise WorkspaceViolation('Cannot reach position.') from e
+                x_descr = 'XDir {}'.format(', '.join(f'{i:.2f}' for i in pose[0:3, 0]))
+                y_descr = 'YDir {}'.format(', '.join(f'{i:.2f}' for i in pose[0:3, 1]))
+                z_descr = 'ZDir {}'.format(', '.join(f'{i:.2f}' for i in pose[0:3, 2]))
+                pos_descr = 'Pos {}'.format(', '.join(f'{i:.2f}' for i in pose[0:3, 3]))
+                pose_descr = f'{x_descr}; {y_descr}; {z_descr}; {pos_descr}'
+                raise WorkspaceViolation(f'Cannot reach position #{pt_idx} in segment #{seg_idx}:\n{pose_descr}') from e
         # Append the solutions for the current segment
         joint_segments.append(JointTrajSegment(current_segment_solutions, cartesian_segment.time_points))
     return joint_segments
