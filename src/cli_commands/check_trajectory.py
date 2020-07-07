@@ -1,12 +1,12 @@
-import sys
+import logging
 from configparser import ConfigParser
 from typing import Optional
 
 from src.clients.TcpClientR3 import TcpClientR3
-from src.exit_codes import EXIT_INVALID_TRAJECTORY
 from src.gcode.GCmd import GCmd
 from src.prechecks.configs import melfa_rv_4a
-from src.prechecks.exceptions import CartesianLimitViolation, ConfigurationChangesError
+from src.prechecks.exceptions import CartesianLimitViolation, ConfigurationChangesError, JointVelocityViolation, \
+    NoValidPathFound, WorkspaceViolation
 from src.prechecks.prechecks import Constraints, check_traj
 from src.protocols.R3Protocol import R3Protocol
 
@@ -24,7 +24,7 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     with open(gcode_f, 'r') as f:
         cmd_raw = f.readlines()
 
-    commands = [GCmd.read_cmd_str(cmd_str.strip()) for cmd_str in cmd_raw]
+    commands = [GCmd.read_cmd_str(cmd_str.strip()) for cmd_str in cmd_raw if not cmd_str.startswith(GCmd.COMMENT)]
     robot_config = melfa_rv_4a()
 
     config_parser = ConfigParser()
@@ -60,9 +60,16 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     try:
         # Check the trajectory
         check_traj(commands, robot_config, traj_constraint, home_position, inc_distance_mm, default_acc, urdf_file_path)
-    except CartesianLimitViolation as e:
-        print('Fatal error occured: {}'.format("\n".join(e.args)))
-        print('Please verify that the limits are correct and check the positioning of the part.')
-        sys.exit(EXIT_INVALID_TRAJECTORY)
-    except ConfigurationChangesError as e:
-        raise NotImplementedError from e
+    except (CartesianLimitViolation, WorkspaceViolation) as e:
+        logging.exception('Fatal error occured: {}'.format("\n".join(e.args)))
+        logging.error('Please verify that the limits are correct and check the positioning of the part.')
+        raise
+    except ConfigurationChangesError:
+        logging.error('Robot configuration transitions are not supported within a coherent segment.')
+        raise
+    except JointVelocityViolation:
+        logging.error('Autoamtically reducing the speed is not yet supported.')
+        raise
+    except NoValidPathFound:
+        logging.error('Recreating graph (partially) with different tool orientation is unsupported.')
+        raise

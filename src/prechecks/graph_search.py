@@ -3,7 +3,6 @@ from typing import List, Tuple, Optional
 
 from dijkstar import Graph
 
-from src.prechecks.exceptions import JointVelocityViolation, JOINT_SPEED_ALLOWABLE_RATIO
 from src.prechecks.trajectory_segment import JointTrajSegment
 
 START_NODE = -1
@@ -59,9 +58,6 @@ def joint_velocity_cost(prev_j: List[float], curr_j: List[float], qdlim: List[fl
     val = 0
     for jprev, jcurr, j_vel_max, jw in zip(prev_j, curr_j, qdlim, w):
         velocity_ratio = (jcurr - jprev) / (dt * j_vel_max)
-        if velocity_ratio >= JOINT_SPEED_ALLOWABLE_RATIO:
-            # Notify calling function about invalid connection
-            raise JointVelocityViolation
         val += jw * velocity_ratio ** 2
 
     # Normalize with regard to number of joints
@@ -82,28 +78,31 @@ def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[flo
     :param qdlim: Maximum joint velocities in order
     :return: Non-negative cost value for the given joint coordinates. Best is zero.
     """
-    # Check whether the configuration changes
-    if curr.conf != prev.conf:
-        if curr.seg_idx == prev.seg_idx:
+    if curr.seg_idx == prev.seg_idx:
+        if curr.conf != prev.conf:
             # Currently, configuration changes within a segment are not allowed.
             return float('Inf')
 
-        # Currently, configuration changes between segments are not allowed either.
-        return float('Inf')
+        # Common configurations are fine
+        cost = joint_limit_cost(curr.joints, qlim)
 
-    # Common configurations are fine
-    cost = joint_limit_cost(curr.joints, qlim)
+        # Proportional to joint delta
+        cost += joint_velocity_cost(prev.joints, curr.joints, qdlim, dt=curr.t - prev.t)
 
-    # Proportional to joint delta
-    cost += joint_velocity_cost(prev.joints, curr.joints, qdlim, dt=curr.t - prev.t)
+        # Cost with regard to singularity proximity
+        cost += singularity_proximity(curr.joints)
 
-    # Cost with regard to singularity proximity
-    cost += singularity_proximity(curr.joints)
+        return cost
+    else:
+        if curr.conf != prev.conf:
+            # Currently, configuration changes between segments are not allowed either.
+            return float('Inf')
 
-    return cost
+        # Otherwise you can go as you like
+        return 0
 
 
-def calculate_node_idx(point_idx, configuration) -> int:
+def calc_node_idx(point_idx, configuration) -> int:
     """
     Calculates a unique node index.
     :param point_idx: Index of the point that the node belongs to within the trajectory.
@@ -145,17 +144,18 @@ def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: L
     joint_network = Graph()
     current_parents = {}
     prev_seg_idx = 0
-    t_prev_point = 0
     total_point_count = sum((len(segment.solutions) for segment in joint_traj))
 
     point_idx = 0
     # Iterate over all segments
     for seg_idx, joint_segment in enumerate(joint_traj):
+        # Reset the time
+        t_prev_point = 0
         # Iterate over points in task space and corresponding points in time per segment
         for ik_solutions_point, t_curr_point in zip(joint_segment.solutions, joint_segment.time_points):
             # Iterate over all nodes of the current point
             for curr_conf, curr_j in ik_solutions_point.items():
-                node_idx = calculate_node_idx(point_idx, curr_conf)
+                node_idx = calc_node_idx(point_idx, curr_conf)
                 if point_idx == 0:
                     # First point nodes are all connected to start node (zero cost) and do not have distinct parent
                     # nodes.
@@ -164,7 +164,7 @@ def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: L
                     # Following point nodes are connected to all nodes of the previous point
                     for prev_conf, prev_j in current_parents.items():
                         # Calculate the index of the previous node
-                        previous_node_idx = calculate_node_idx(point_idx - 1, prev_conf)
+                        previous_node_idx = calc_node_idx(point_idx - 1, prev_conf)
                         # Call a cost function to determine the transition cost between the nodes based on the robot
                         # configurations and the joint values.
                         curr_node_info = NodeInfo(conf=curr_conf, joints=curr_j, seg_idx=seg_idx, t=t_curr_point)
@@ -177,7 +177,7 @@ def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: L
             # simply as path from START_NODE to STOP_NODE. The nodes are connected with zero cost.
             if point_idx >= total_point_count - 1:
                 for curr_conf in ik_solutions_point.keys():
-                    node_idx = calculate_node_idx(point_idx, curr_conf)
+                    node_idx = calc_node_idx(point_idx, curr_conf)
                     joint_network.add_edge(node_idx, STOP_NODE, edge=0)
 
             # Move forward to the next point and save the nodes of the current point as parents for the next point

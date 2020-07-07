@@ -1,6 +1,6 @@
 import pytest
 
-from src.prechecks.graph_search import calculate_node_idx, joint_limit_cost
+from src.prechecks.graph_search import calc_node_idx, joint_limit_cost
 
 
 @pytest.mark.parametrize("pt_idx,conf,node_idx,exc",
@@ -16,11 +16,11 @@ from src.prechecks.graph_search import calculate_node_idx, joint_limit_cost
                          )
 def test_calculate_node_idx(pt_idx, conf, node_idx, exc):
     if exc is None:
-        act_node_idx = calculate_node_idx(pt_idx, conf)
+        act_node_idx = calc_node_idx(pt_idx, conf)
         assert act_node_idx == node_idx
     else:
         with pytest.raises(exc):
-            calculate_node_idx(pt_idx, conf)
+            calc_node_idx(pt_idx, conf)
 
 
 @pytest.mark.parametrize("joints,qlim,weights,cost,exc",

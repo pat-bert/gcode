@@ -1,10 +1,11 @@
 import abc
-from typing import List, Union, Iterator, Set
+from collections import defaultdict
+from typing import List, Union, Iterator, Set, Dict
 
 import numpy as np
 
 from src.kinematics.inverse_kinematics import JointSolution
-from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation
+from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation, JOINT_SPEED_ALLOWABLE_RATIO
 from src.prechecks.speed_profile import trapezoidal_speed_profile
 
 
@@ -158,6 +159,46 @@ class JointTrajSegment:
                 within = False
         return within
 
+    def joints_exceeding_velocity_limits(self, config_path: List[int], qdlim: List[float]) -> Dict[int, float]:
+        """
+        Check the joint velocities of the segment for given robot configurations using the internal joint solutions and
+        time points.
+        :param config_path: List of robot configurations, one for each point on the segment
+        :param qdlim: List of joint velocity limits
+        :return: Set of indices for the joints that exceed the threshold on this segment
+        :raises: TypeError if the time points are None
+        :raises: ValueError if the number of configurations is unequal the number of segment points
+        """
+        if self.time_points is None:
+            raise TypeError('Time points need to be specified.')
+
+        if len(config_path) != len(self.solutions):
+            raise ValueError('Number of configs must be equal to number of points on the segment.')
+
+        exceeding_joints = defaultdict(lambda: 0)
+
+        # Set the values for the first point
+        tprev = self.time_points[0]
+        prev_joint_values = self.solutions[0][config_path[0]]
+
+        # Iterate over the remaining points
+        for ik_solutions_point, tcurr, config in zip(self.solutions[1:], self.time_points[1:], config_path[1:]):
+            curr_joint_values = ik_solutions_point[config]
+            # Calculate the velocity ratio for each joint with regard to the previous joint position
+            for (joint_idx, jprev), jcurr, j_vel_max in zip(enumerate(prev_joint_values), curr_joint_values, qdlim):
+                joint_velocity = abs((jcurr - jprev) / (tcurr - tprev))
+                velocity_ratio = joint_velocity / j_vel_max
+                if velocity_ratio > JOINT_SPEED_ALLOWABLE_RATIO:
+                    # Update the maximum velocity of the joint
+                    # Joints are counted from 1
+                    exceeding_joints[joint_idx + 1] = max(joint_velocity, exceeding_joints[joint_idx + 1])
+
+            # Update the previous values
+            tprev = tcurr
+            prev_joint_values = curr_joint_values
+
+        return dict(exceeding_joints)
+
     def get_common_configurations(self) -> List[float]:
         """
         Check whether there is a common configuration for all points of that segment
@@ -195,7 +236,7 @@ def check_cartesian_limits(task_trajectory: List[CartesianTrajSegment], clim: Li
                     limit_id = 'XYZ'[idx // 2]
                     limits += f'{limit_id}{limit_type} '
                 error_msg += f'Segment #{segment_idx}: {limits}violated\n'
-        raise CartesianLimitViolation(f'Found segments violating the cartesian limits ({clim}).', error_msg)
+        raise CartesianLimitViolation(f'Found segments violating the cartesian limits ({clim}):\n{error_msg}')
     print('All segments are located within the cartesian limits.')
 
 
