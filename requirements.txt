@@ -40,7 +40,7 @@ scipy==1.5.0
 six==1.15.0
 toml==0.10.1
 tox==3.16.1
-virtualenv==20.0.25
+virtualenv==20.0.26
 wcwidth==0.2.5
 zipp==3.1.0
 Dijkstar==2.5.0
