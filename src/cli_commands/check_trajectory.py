@@ -64,9 +64,12 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
         logging.exception('Fatal error occured: {}'.format("\n".join(e.args)))
         logging.error('Please verify that the limits are correct and check the positioning of the part.')
         raise
-    except ConfigurationChangesError as e:
-        raise NotImplementedError('Robot configuration transitions are not supported within a coherent segment.') from e
-    except JointVelocityViolation as e:
-        raise NotImplementedError('Reducing the speed is not yet supported.') from e
-    except NoValidPathFound as e:
-        raise NotImplementedError('Recreating graph (partially) with different tool orientation is unsupported.') from e
+    except ConfigurationChangesError:
+        logging.error('Robot configuration transitions are not supported within a coherent segment.')
+        raise
+    except JointVelocityViolation:
+        logging.error('Autoamtically reducing the speed is not yet supported.')
+        raise
+    except NoValidPathFound:
+        logging.error('Recreating graph (partially) with different tool orientation is unsupported.')
+        raise
