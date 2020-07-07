@@ -25,7 +25,7 @@ def test_check_trajectory_cartesian_violation():
     with pytest.raises(CartesianLimitViolation) as e:
         check_trajectory(config_f='./test/config.ini', gcode_f='./test/cartesian_violation.gcode')
     assert 'segment #1' in str(e.value).lower()
-    assert 'ymax violated' in str(e.value).lower()
+    assert 'ymax zmin violated' in str(e.value).lower()
 
 
 def test_check_trajectory_cartesian_violation_circle():
