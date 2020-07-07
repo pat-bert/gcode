@@ -95,7 +95,7 @@ jobs:
       - checkout
       - restore_cache: *restore-cache-mcr-template
       - run:
-          # This will skip the download if the directory is already restored from cache (TODO)
+          # This will skip the download if the directory is already restored from cache
           name: Download Matlab 2020a Runtime
           shell: cmd.exe
           command: |

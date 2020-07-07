@@ -18,7 +18,7 @@ def trapezoidal_speed_profile(v_max: float, acc: float, s_total: float, ds: floa
     :return: List of time points given in seconds
     """
     if v_max > sqrt(s_total * acc):
-        raise ValueError('Cannot accelerate to speed within given distance.')
+        raise BadSpeedParameter('Cannot accelerate to speed within given distance.')
 
     # Times
     acc = abs(acc)

@@ -229,8 +229,11 @@ def get_common_configurations(joint_trajectory) -> List[List[int]]:
     common_configurations = [segment.get_common_configurations() for segment in joint_trajectory]
     if not all(common_configurations):
         violation_idx = [idx for idx, val in enumerate(common_configurations) if not val]
+        error_msg = ''
+        for idx in violation_idx:
+            configs = {i for point in joint_trajectory[idx].solutions for i in point.keys()}
+            error_msg += f'Segment #{idx}: Points accessible in configurations {configs}\n'
         # TODO Attempt different tool orientation
-        raise ConfigurationChangesError('Execution of segments without common configuration is not supported',
-                                        violation_idx)
+        raise ConfigurationChangesError(f'Found segments without common configurations:\n{error_msg}')
     print('Each segment can be executed without configuration change.')
     return common_configurations
