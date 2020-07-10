@@ -45,7 +45,7 @@ jobs:
           # Install socat to simulate serial ports
           name: Install socat to create virtual serial ports
           command: |
-            apt-get update && apt-get install socat -y
+            sudo apt-get install socat -y
             socat -V
             socat -d -d pty,raw,nonblock,echo=0,link=ttyV0 pty,raw,nonblock,echo=0,link=ttyV1 &
       - run:
