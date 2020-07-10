@@ -15,7 +15,7 @@
         </inertial>
         <visual name="BASE">
             <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_BASE.stl"/>
+                <mesh filename="collision/rv_4a_top_1_RV_4A_BASE.stl"/>
             </geometry>
             <origin xyz="0 0 0"/>
         </visual>
@@ -28,7 +28,7 @@
         </inertial>
         <visual name="SHOULDER">
             <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_SHOULDER.stl"/>
+                <mesh filename="collision/rv_4a_top_1_RV_4A_SHOULDER.stl"/>
             </geometry>
             <origin xyz="0 0 0"/>
             <material name="green"/>
@@ -42,7 +42,7 @@
         </inertial>
         <visual name="NO1ARM">
             <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_NO1ARM.stl"/>
+                <mesh filename="collision/rv_4a_top_1_RV_4A_NO1ARM.stl"/>
             </geometry>
             <origin xyz="-100 0 -350"/>
             <material name="red"/>
@@ -56,7 +56,7 @@
         </inertial>
         <visual name="ELBOW">
             <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_ELBOW.stl"/>
+                <mesh filename="collision/rv_4a_top_1_RV_4A_ELBOW.stl"/>
             </geometry>
             <origin xyz="-100 0 -600"/>
         </visual>
@@ -69,7 +69,7 @@
         </inertial>
         <visual name="NO2ARM">
             <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_NO2ARM.stl"/>
+                <mesh filename="collision/rv_4a_top_1_RV_4A_NO2ARM.stl"/>
             </geometry>
             <origin xyz="-100 0 -735"/>
             <material name="red"/>
@@ -83,7 +83,7 @@
         </inertial>
         <visual name="WRIST">
             <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST.stl"/>
+                <mesh filename="collision/rv_4a_top_1_RV_4A_WRIST.stl"/>
             </geometry>
             <origin xyz="-350 0 -735"/>
             <material name="green"/>
@@ -97,7 +97,7 @@
         </inertial>
         <visual name="WRIST FLANGE">
             <geometry>
-                <mesh filename="visual/rv_4a_top_1_RV_4A_WRIST_FLANGE.stl"/>
+                <mesh filename="collision/rv_4a_top_1_RV_4A_WRIST_FLANGE.stl"/>
             </geometry>
             <origin xyz="-440 0 -735" rpy="0 0 0"/>
         </visual>
@@ -110,7 +110,7 @@
         </inertial>
         <visual name="ADAPTER PLATE">
             <geometry>
-                <mesh filename="visual/adapter.stl"/>
+                <mesh filename="collision/adapter.stl"/>
             </geometry>
             <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
             <material name="red"/>

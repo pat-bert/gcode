@@ -1,6 +1,5 @@
 from time import sleep
-
-from typing import Tuple, Optional, Callable, List, AnyStr, Any
+from typing import Tuple, Optional, Callable, List, AnyStr
 
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService
@@ -39,18 +38,6 @@ TOOL_OFFSET_CMD = "TOOL"
 # Parameters for R3 protocol
 ROBOT_NO = 1
 PROGRAM_NO = 1
-
-
-class ReaderRegistry:
-    r = set()
-
-    @classmethod
-    def register(cls, func):
-        """
-        Creates a decorator that registers the function name and returns the function unchanged.
-        """
-        cls.r.add(func.__name__)
-        return func
 
 
 class R3SubApi:
@@ -182,15 +169,17 @@ class R3Positions(R3SubApi):
         self._protocol_send(f"{DIRECT_CMD}MVS{coord_str}")
         self.client.receive()
 
-    def joint_move(self, target: Coordinate) -> None:
+    def joint_move(self, values: List[float], identifiers: List[str]) -> None:
         """
         Move to a position using joint interpolation.
-        :param target: End position of the movement
+        :param values: List of joint values
+        :param identifiers: List of joint names, e.g. J1, J2, ..
         :return: None
         """
-        coord_str = self.from_coord_to_cmd(target)
-        self._protocol_send(f"{DIRECT_CMD}MOV{coord_str}")
-        self.client.receive()
+        raise NotImplementedError
+        # coord_str = ''.join(f"{identifier}{val}" for identifier, val in zip(identifiers, values))
+        # self._protocol_send(f"{DIRECT_CMD}MOV ({coord_str})")
+        # self.client.receive()
 
     def circular_move_centre(self, start: str, target: str, center: str) -> None:
         """
@@ -252,23 +241,21 @@ class R3Reader(R3SubApi):
         self.from_response_to_coordinate = r2c
         self.digits = digits
 
-    @ReaderRegistry.register
     def get_current_tool_number(self) -> int:
         """
         Get the current tool number
         :return: Current tool number as integer
         """
-        # TODO Check meaning
-        tool_no = self._read_variable(CURRENT_TOOL_NO)
+        tool_no = self.read_variable(CURRENT_TOOL_NO)
         return int(tool_no)
 
-    @ReaderRegistry.register
-    def get_current_tool_data(self) -> str:
-        # TODO Do conversion to Coordinate
-        tool_data = self._read_variable('P_TOOL')
-        return tool_data
+    def get_current_tool_data(self) -> List[float]:
+        # TODO Verify response with actual hardware
+        tool_response = self.read_variable('P_TOOL')
+        tool_data = tool_response
+        tool_offsets = self.parse_comma_string(tool_data)
+        return [float(i) for i in tool_offsets]
 
-    @ReaderRegistry.register
     def get_override(self) -> float:
         """
         Get the current override factor.
@@ -276,25 +263,22 @@ class R3Reader(R3SubApi):
         """
         return self._get_float_cmd(OVERRIDE_CMD, direct=False)
 
-    @ReaderRegistry.register
     def get_current_linear_speed(self) -> float:
         """
         Get the current linear speed in mm/s.
         :return: Current linear speed factor, float.
         """
-        val = self._read_variable("M_RSPD")
+        val = self.read_variable("M_RSPD")
         return float(val)
 
-    @ReaderRegistry.register
-    def get_current_joint_speed(self) -> float:
+    def get_joint_speed(self) -> float:
         """
         Get the current joint speed in percent.
         :return: Current joint override, float.
         """
-        val = self._read_variable("M_JOVRD")
+        val = self.read_variable("M_JOVRD")
         return float(val)
 
-    @ReaderRegistry.register
     def get_joint_borders(self) -> Tuple[float, ...]:
         """
         Get the limits for the joints in degrees.
@@ -304,7 +288,6 @@ class R3Reader(R3SubApi):
         coordinates = self.parse_comma_string(borders)
         return tuple(float(i) for i in coordinates[0:2 * len(self.joints)])
 
-    @ReaderRegistry.register
     def get_xyz_borders(self) -> Tuple[float, ...]:
         """
         Get the limits for XYZ in mm.
@@ -319,7 +302,6 @@ class R3Reader(R3SubApi):
         relevant_str = response.split(DELIMITER)[1]
         return relevant_str.split(", ")
 
-    @ReaderRegistry.register
     def get_current_xyzabc(self) -> Coordinate:
         """
         Get the current positions for XYZABC.
@@ -329,7 +311,6 @@ class R3Reader(R3SubApi):
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=6)
 
-    @ReaderRegistry.register
     def get_current_joint(self) -> Coordinate:
         """
         Get the current joint angles.
@@ -339,7 +320,6 @@ class R3Reader(R3SubApi):
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=len(self.joints))
 
-    @ReaderRegistry.register
     def get_safe_pos(self) -> Coordinate:
         """
         Get the current value of the safe position.
@@ -349,30 +329,29 @@ class R3Reader(R3SubApi):
         safe_pos_values = [float(i) for i in answer_str.split(DELIMITER)[1].split(", ")]
         return Coordinate(safe_pos_values, self.joints)
 
-    @ReaderRegistry.register
     def get_servo_state(self) -> int:
-        servo_state = self._read_variable(SRV_STATE_VAR)
+        servo_state = self.read_variable(SRV_STATE_VAR)
         return int(servo_state)
 
     @staticmethod
-    def poll(func: Callable, val: Any, poll_rate_ms: int = 5, timeout_s: int = 60, ):
+    def poll(func: Callable, val, poll_rate_ms: int = 5, timeout_ms: int = 60000):
         """
         Poll a reading method until a given value is received or a timeout occurs.
         :param func: Method of R3Reader to be called
         :param val:
         :param poll_rate_ms:
-        :param timeout_s:
+        :param timeout_ms:
         :return:
         :raises: ValueError, if the method is not listed in the pollable methods.
         """
-        if func.__name__ not in ReaderRegistry.r:
-            raise ValueError(f'Unpollable function supplied: {func}')
-
         # Iteratively call the method
-        while True:
+        total_time_waited = 0
+        while total_time_waited < timeout_ms:
             response = func()
             if response == val:
                 return
+            sleep(poll_rate_ms / 1000)
+            total_time_waited += poll_rate_ms
 
     def _read_parameter(self, parameter: str) -> str:
         """
@@ -383,7 +362,7 @@ class R3Reader(R3SubApi):
         self._protocol_send(f"PNR{parameter}")
         return self.client.receive()
 
-    def _read_variable(self, variable: str) -> str:
+    def read_variable(self, variable: str) -> str:
         """
         Auxilary function to read number variables.
         :param variable: String representation of the variable
@@ -452,7 +431,7 @@ class R3Setter(R3SubApi):
         :param tool_offset:
         :return: None
         """
-        # TODO Check conversion
+        # TODO Check conversion from coordinate to tool offset
         self._protocol_send(f"{DIRECT_CMD}{TOOL_OFFSET_CMD} {tool_offset}")
         self.client.receive()
 
@@ -462,7 +441,7 @@ class R3Setter(R3SubApi):
         :param offset:
         :return: None
         """
-        # TODO Check conversion
+        # TODO Check conversion from coordinate to offset
         self._protocol_send(f"{DIRECT_CMD}{BASE_COORDINATE_CMD} {offset}")
         self.client.receive()
 

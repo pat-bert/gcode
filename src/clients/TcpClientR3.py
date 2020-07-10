@@ -170,3 +170,10 @@ class TcpClientR3(ThreadedClient):
             # Send only the remaining data
             sent_bytes = self.s.send(msg_b[total_sent_bytes:])
             total_sent_bytes += sent_bytes
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

@@ -2,8 +2,8 @@ import time
 
 from src import ApplicationExceptions
 from src.Coordinate import Coordinate
-from src.gcode.GCmd import GCmd
 from src.clients.TcpClientR3 import TcpClientR3
+from src.gcode.GCmd import GCmd
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.speed_profile import draw_speed
 
@@ -120,6 +120,13 @@ G1 X0 Y0"""
 
 
 def demo_mode(ip=None, port=None, safe_return=False) -> None:
+    """
+
+    :param ip:
+    :param port:
+    :param safe_return:
+    :return:
+    """
     # Create TCP client
     if ip is not None and port is not None:
         tcp_client = TcpClientR3(host=ip, port=port)
@@ -128,16 +135,12 @@ def demo_mode(ip=None, port=None, safe_return=False) -> None:
     tcp_client.connect()
 
     # Executing communication
-    robot = MelfaRobot(
-        tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return
-    )
+    robot = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return)
     robot.boot()
 
     try:
         while True:
-            selection = input(
-                "Please choose a mode (1=cube, 2=cylinder, 3=speed test, 4=G-Code Santa): "
-            )
+            selection = input("Please choose a mode (1=cube, 2=cylinder, 3=speed test, 4=G-Code Santa): ")
             try:
                 if selection in ["1", "2", "3"]:
                     speed = float(input("Please enter the speed (linear: mm/s): "))

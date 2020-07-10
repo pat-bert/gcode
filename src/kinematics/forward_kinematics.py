@@ -49,7 +49,10 @@ def geometric_jacobian(config: List[BaseJoint], joint_coordinates: List[float]) 
 
 def right_generalized_inverse_jacobian(jacobian: ndarray) -> ndarray:
     jacobian_t = jacobian.transpose()
-    return jacobian_t @ inv(jacobian @ jacobian_t)
+    try:
+        return jacobian_t @ inv(jacobian @ jacobian_t)
+    except TypeError:
+        raise ValueError(jacobian @ jacobian_t)
 
 
 def forward_kinematics(config: List[BaseJoint], joint_coordinates: List[float], subtract_offset=False) -> ndarray:

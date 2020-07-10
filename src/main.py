@@ -5,11 +5,10 @@ Control your robot remotely using the Mitsubishi R3 protocol.
 Translate G-Code to Mitsubishi commands.
 
 Usage:
-    main.py (-I | --interpret) IN_FILE [-o OUTPUT_FILE] [-l LOG_FILE] [--quiet | --verbose]
-    main.py (-E | --execute) IN_FILE [-l LOG_FILE] [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
-    main.py --gi [--ip=<ip>] [--port=<port>]  [-l LOG_FILE]  [--quiet | --verbose] [--safe]
-    main.py --mi [--ip=<ip>] [--port=<port>]  [-l LOG_FILE]  [--quiet | --verbose] [--safe]
-    main.py --demo [--ip=<ip>] [--port=<port>] [-l LOG_FILE] [--safe]
+    main.py (-V | --validate) IN_FILE CONFIG_FILE [-o OUTPUT_FILE] [--quiet | --verbose]
+    main.py --gi [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
+    main.py --mi [--ip=<ip>] [--port=<port>] [--quiet | --verbose] [--safe]
+    main.py --demo [--ip=<ip>] [--port=<port>] [--safe]
     main.py --ghelp
     main.py (-h | --help)
     main.py --version
@@ -17,10 +16,8 @@ Usage:
 Options:
     -h --help       Show this screen.
     --version       Show version.
-    -I --interpret  Interpret a G-code file and create an R3-protocol (Mitsubishi robots) file.
-    -E --execute    Execute a file containing R3-compatible (Mitsubishi robots) commands.
+    -V --validate   Validate a G-code file and create an extended G-code file on success.
     -o OUTPUT_FILE  Specify output file [default: ./r3_cmd.txt].
-    -l LOG_FILE     Specify log file.
     --gi            Launch interactive G-code shell.
     --mi            Launch interactive R3 shell (Mitsubishi robots).
     --demo          Launch shell with demonstration examples.
@@ -42,25 +39,18 @@ import sys
 # Own libraries
 from src.ApplicationExceptions import ApiException
 from src.GRedirect import GRedirect
+from src.cli_commands.check_trajectory import check_trajectory
 from src.cli_commands.demo import demo_mode
-from src.cli_commands.execute_r3 import execute_r3
 from src.cli_commands.interactive_gcode import interactive_gcode
 from src.cli_commands.interactive_melfa import interactive_melfa
-from src.cli_commands.interpret_gcode import interpret_gcode
 from src.clients.TcpClientR3 import validate_ip, validate_port
-from src.exit_codes import (
-    EXIT_SUCCESS,
-    EXIT_BAD_INPUT,
-    EXIT_INTERNAL_ERROR,
-    EXIT_PACKAGE_ERROR,
-    EXIT_UNEXPECTED_ERROR,
-)
+from src.exit_codes import (EXIT_SUCCESS, EXIT_BAD_INPUT, EXIT_INTERNAL_ERROR, EXIT_PACKAGE_ERROR,
+                            EXIT_UNEXPECTED_ERROR)
 
 # Third-party libraries
 try:
     from docopt import docopt
-    from schema import Schema, And, Or, Use, SchemaError
-    from schema import Optional as Opt
+    from schema import Schema, And, Use, SchemaError
 except ImportError:
     print(
         "This application requires some modules that you can install using the requirements.txt file."
@@ -78,16 +68,12 @@ def main(*argv):
     """
     Create input schemata - Options accepting user input as value are checked for plausibility
     """
-    log_schema = Schema(
-        {Opt("-l"): Or(str, None, error="Log file should be possible to open")},
-        ignore_extra_keys=True,
-    )
     input_schema = Schema(
         {"IN_FILE": And(os.path.exists, error="IN_FILE should exist")},
         ignore_extra_keys=True,
     )
-    output_schema = Schema(
-        {"-o": And(os.path.exists, error="Output file should exist")},
+    config_schema = Schema(
+        {"CONFIG_FILE": And(os.path.exists, error="CONFIG_FILE should exist")},
         ignore_extra_keys=True,
     )
     connection_schema = Schema(
@@ -114,36 +100,22 @@ def main(*argv):
             print("Supported G-Codes:")
             print(GRedirect.supported_gcodes())
         else:
-            # Options usable in all commands
-            log_schema.validate(args)
-            if args["--interpret"]:
-                # Functions without TCP/IP-connection
-                input_schema.validate(args)
-                output_schema.validate(args)
-                interpret_gcode(args["IN_FILE"], args["-o"])
-            else:
-                # Functions using TCP/IP-connection
-                args.update(connection_schema.validate(args))
-                ip, port, log, safe = (
-                    args["--ip"],
-                    args["--port"],
-                    args["-l"],
-                    args["--safe"],
-                )
+            # Functions using TCP/IP-connection
+            args.update(connection_schema.validate(args))
+            ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
 
-                if args["--execute"]:
-                    input_schema.validate(args)
-                    execute_r3(args["IN_FILE"], ip, port, f_log=log)
-                elif args["--gi"]:
-                    interactive_gcode(ip, port, log_file=log, safe_return=safe)
-                elif args["--mi"]:
-                    interactive_melfa(ip, port, log_file=log, safe_return=safe)
-                elif args["--demo"]:
-                    demo_mode(ip, port, safe_return=safe)
-                else:
-                    raise ApiException(
-                        "Unknown option passed. Type --help for more info."
-                    )
+            if args["--validate"]:
+                input_schema.validate(args)
+                config_schema.validate(args)
+                check_trajectory(config_f=args["CONFIG_FILE"], gcode_f=args["IN_FILE"])
+            elif args["--gi"]:
+                interactive_gcode(ip, port, safe_return=safe)
+            elif args["--mi"]:
+                interactive_melfa(ip, port, safe_return=safe)
+            elif args["--demo"]:
+                demo_mode(ip, port, safe_return=safe)
+            else:
+                raise ApiException("Unknown option passed. Type --help for more info.")
     except SchemaError:
         # Input validation error
         logging.exception("Input data invalid.")
@@ -154,9 +126,7 @@ def main(*argv):
         sys.exit(EXIT_INTERNAL_ERROR)
     except KeyError:
         # Accessing the arg dictionary with different keys as specified in docstring
-        logging.exception(
-            "This might have happened due to different versions of CLI documentation and parsing."
-        )
+        logging.exception("This might have happened due to different versions of CLI documentation and parsing.")
         sys.exit(EXIT_UNEXPECTED_ERROR)
     except NotImplementedError:
         # This might be used in some functions

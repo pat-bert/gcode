@@ -32,9 +32,9 @@ class TestMain:
         assert mock_func.called
         assert cm.value.code == EXIT_SUCCESS
 
-    @pytest.mark.parametrize("cmd", ["-I", "--interpret"])
-    @mock.patch("src.main.interpret_gcode")
-    def test_interpret_gcode(self, mock_func, cmd, tmpdir):
+    @pytest.mark.parametrize("cmd", ["-V", "--validate"])
+    @mock.patch("src.main.check_trajectory")
+    def test_validate_gcode(self, mock_func, cmd, tmpdir):
         """
         Test that the flags call the function with the right arguments
         :param mock_func:

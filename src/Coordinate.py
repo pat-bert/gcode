@@ -55,6 +55,11 @@ class Coordinate:
                 except KeyError:
                     raise TypeError("Incompatible axis.")
 
+    def add_axis(self, other: "Coordinate"):
+        for axis in other.axes:
+            if axis not in self.coordinate.keys():
+                self.coordinate[axis] = None
+
     def reduce_to_axes(self, axes_to_keep, make_none=False) -> "Coordinate":
         if make_none:
             coordinate = {

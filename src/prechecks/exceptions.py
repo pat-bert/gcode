@@ -33,6 +33,9 @@ class JointLimitViolation(TrajectoryError):
     """
 
 
+JOINT_SPEED_ALLOWABLE_RATIO = 0.8
+
+
 class JointVelocityViolation(TrajectoryError):
     """
     Will be raised if the the joint velocity would be exceeded.
@@ -47,4 +50,10 @@ class ConfigurationChangesError(TrajectoryError):
     is tested.
     In case of a configuration change a singularity needs to be crossed and a path with the least
     configuration changes might be found.
+    """
+
+
+class NoValidPathFound(TrajectoryError):
+    """
+
     """

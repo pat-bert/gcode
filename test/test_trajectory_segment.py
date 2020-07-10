@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
 
-from src.prechecks.trajectory_segment import is_point_within_boundaries, LinearSegment, CircularSegment, \
-    JointTrajectorySegment
+from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation
+from src.prechecks.trajectory_segment import get_violated_boundaries, LinearSegment, CircularSegment, \
+    JointTrajSegment, check_cartesian_limits, filter_joint_limits
 
 
 @pytest.mark.parametrize("point,boundaries,within,exc",
@@ -53,11 +54,11 @@ from src.prechecks.trajectory_segment import is_point_within_boundaries, LinearS
                          )
 def test_is_point_within_boundaries(point, boundaries, within, exc):
     if exc is None:
-        actual_within = is_point_within_boundaries(point, boundaries)
-        assert actual_within == within
+        actual_within = get_violated_boundaries(point, boundaries)
+        assert (len(actual_within) == 0) == within
     else:
         with pytest.raises(exc):
-            is_point_within_boundaries(point, boundaries)
+            get_violated_boundaries(point, boundaries)
 
 
 class TestLinearSegment:
@@ -102,8 +103,8 @@ class TestLinearSegment:
         traj = [np.array(point) for point in traj]
         if exc is None:
             linear_segment = LinearSegment(traj)
-            actual_within = linear_segment.is_within_cartesian_boundaries(boundaries)
-            assert actual_within == within
+            actual_within = linear_segment.get_violated_boundaries(boundaries)
+            assert (len(actual_within) == 0) == within
         else:
             with pytest.raises(exc):
                 LinearSegment(traj)
@@ -149,8 +150,8 @@ class TestCircularSegment:
         traj = [np.array(point) for point in traj]
         if exc is None:
             circular_segment = CircularSegment(traj)
-            actual_within = circular_segment.is_within_cartesian_boundaries(boundaries)
-            assert actual_within == within
+            actual_within = circular_segment.get_violated_boundaries(boundaries)
+            assert (len(actual_within) == 0) == within
         else:
             with pytest.raises(exc):
                 CircularSegment(traj)
@@ -182,7 +183,7 @@ class TestJointSegment:
                              ]
                              )
     def test_is_within_joint_limits(self, solutions, exp_within):
-        jseg = JointTrajectorySegment(solutions)
+        jseg = JointTrajSegment(solutions)
         assert jseg.solutions == solutions
 
         act_within = jseg.is_within_joint_limits(jlimits)
@@ -203,10 +204,54 @@ class TestJointSegment:
                                  (
                                          [{0: invalid_solution, 1: valid_solution},
                                           {2: invalid_solution, 3: invalid_solution}],
-                                         [])
+                                         []
+                                 ),
+                                 # Empty from the start
+                                 (
+                                         [{}], []
+                                 )
                              ]
                              )
     def test_get_common_configurations(self, solutions, commons):
-        jseg = JointTrajectorySegment(solutions)
+        jseg = JointTrajSegment(solutions)
         act_common = jseg.get_common_configurations()
         assert act_common == commons
+
+
+@pytest.mark.parametrize("points,clim,exc",
+                         [
+                             (
+                                     [-3, 4, 6], [-10, 10], None
+                             ),
+                             (
+                                     [5, 6, 11, 4], [-10, 10], CartesianLimitViolation
+                             )
+                         ]
+                         )
+def test_check_cartesian_limits(points, clim, exc):
+    points = [np.array([point]) for point in points]
+    traj = [LinearSegment(points), CircularSegment(points)]
+    if exc is None:
+        check_cartesian_limits(traj, clim)
+    else:
+        with pytest.raises(exc):
+            check_cartesian_limits(traj, clim)
+
+
+@pytest.mark.parametrize("points,qlim,exc",
+                         [
+                             (
+                                     [{1: [0]}, {2: [10], 3: [4]}], [-1, 5], None
+                             ),
+                             (
+                                     [{1: [0]}, {2: [10], 3: [4]}], [-1, 3], JointLimitViolation
+                             )
+                         ]
+                         )
+def test_filter_joint_limits(points, qlim, exc):
+    traj = [JointTrajSegment(points), JointTrajSegment(points)]
+    if exc is None:
+        filter_joint_limits(traj, qlim)
+    else:
+        with pytest.raises(exc):
+            filter_joint_limits(traj, qlim)
