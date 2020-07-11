@@ -113,20 +113,20 @@ class ThreadedClient(IClient):
                     msg, silent_send, silent_recv = msg.unpack()
 
                     if not silent_send:
-                        print(f'>>: {msg.strip()}')
+                        print(f'>>: {str(msg).strip()}')
 
                     # Client-specific message handling
                     response = self.hook_handle_msg(msg)
 
                     if not silent_recv:
-                        print(f'<<: {response.strip()}')
+                        print(f'<<: {str(response).strip()}')
 
                     # Put the response and indicate that the task is done
                     self.recv_q.put(response)
                     self.send_q.task_done()
 
                     # Server closed down connection
-                    if len(response) == 0:
+                    if response is not None and len(response) == 0:
                         self.alive.clear()
                         return
 
@@ -164,7 +164,7 @@ class ThreadedClient(IClient):
             self.hook_close()
             print('Closed communication.')
         else:
-            print('Communication was never open.')
+            print('Communication already closed.')
 
     def send(self, msg: Optional[str], silent_send: bool = False, silent_recv: bool = False) -> None:
         """

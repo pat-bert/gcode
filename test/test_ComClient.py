@@ -41,7 +41,7 @@ def valid_com_client(request):
         if com.is_available():
             yield com
         else:
-            pytest.skip('Physical device is not connected.')
+            pytest.skip('Physical device is not available.')
     elif request.param[0] == 'port':
         # Validate ports first
         if sys.platform == 'win32':
@@ -53,7 +53,8 @@ def valid_com_client(request):
                 pytest.skip('Configured ports for windows where either not present or not virtual.')
 
         # Client is identified by port name (virtual ports)
-        with ConfigurableEcho(port=request.param[1]):
+        with ConfigurableEcho(port=request.param[1]) as echo:
+            echo.reconfigure(post='ok\n')
             yield ComClient(port=request.param[2])
 
 
@@ -149,7 +150,6 @@ class TestComClient:
         non_existing_com_client.close()
 
     @pytest.mark.timeout(20)
-    @pytest.mark.skip
     def test_receive(self, valid_com_client):
         # Responses can be received
         with valid_com_client:
@@ -161,8 +161,7 @@ class TestComClient:
         with pytest.raises(IClient.ClientError):
             valid_com_client.receive()
 
-    # @pytest.mark.timeout(20)
-    @pytest.mark.skip
+    @pytest.mark.timeout(15)
     def test_send(self, valid_com_client, capsys):
         msg = 'M114'
         # Mock out this annoying wait for startup message
@@ -172,6 +171,7 @@ class TestComClient:
             # This time it should not be logged
             valid_com_client.send(msg, silent_send=True)
             sleep(1)
+
             captured = capsys.readouterr()
             assert msg not in captured.out and msg not in captured.err
 

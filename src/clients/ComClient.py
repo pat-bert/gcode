@@ -1,11 +1,12 @@
-from time import sleep, time
+from time import sleep
 from typing import Tuple, Optional
 
 import serial
 import serial.tools.list_ports
+from serial import SerialException
 
 from clients.ThreadedClient import ThreadedClient
-from src.clients.IClient import ClientNotAvailableError, ClientOpenError, ClientError, AmbiguousHardwareError
+from src.clients.IClient import ClientNotAvailableError, ClientOpenError, AmbiguousHardwareError
 
 
 def validate_id(id_number: int) -> bool:
@@ -53,6 +54,7 @@ class ComClient(ThreadedClient):
         self.port = port
         self.send_encoding, self.read_encoding = encodings or (self.DEFAULT_WRITE_ENCODING, self.DEFAULT_READ_ENCODING)
         self.terminator = '\n'
+        self.buffer = bytes()
 
         # Unpack and transform IDs (port has precedence)
         if self.port is None:
@@ -165,41 +167,22 @@ class ComClient(ThreadedClient):
         :return: Message string
         :raises:
         """
-        prev_count, curr_count = 0, 0  # Keep track of the number of bytes waiting in ingoing buffer for each poll
-        response_buffer = []  # Collect the decoded responses
-        changing = False  # Flag to indicate whether there was a change between two poll cycles
-        initial = True  # Flag to indicate that there were never more than zero bytes available
+        received_terminator = False
+        response = ''
 
-        i = 0
-        # Loop until any bytes were received and the number of waiting byte stays constant
-        while 'ok' not in response_buffer and (initial or changing):
-            # Update counters and flags
+        terminators = [b'ok\n', b'//action:disconnect\n', b'action:disconnect\n']
+
+        while not received_terminator:
             try:
-                curr_count = self._ser.in_waiting
-            except serial.SerialException as e:
-                raise ClientError from e
-
-            changing = prev_count != curr_count
-            prev_count = curr_count
-            if curr_count > 0:
-                initial = False
-
-            # Attempt to read the current byte buffer
-            try:
-                raw_response = self._ser.read_all()
-            except serial.SerialException as e:
-                raise ClientError from e
-
-            # Decode the current content and append it to the string buffer (including newline characters)
-            response = raw_response.decode(encoding=self.read_encoding)
-            response_buffer.append(response)
-
-            # Wait for 100x the time for one character to arrive
-            sleep(200 / self._ser.baudrate)
-            i += 1
-
-        # Combine the response buffer and show each line on stdout
-        response = ''.join(response_buffer)
+                self.buffer += self._ser.read_all()
+            except SerialException as e:
+                print(e)
+            for term in terminators:
+                idx = self.buffer.find(term)
+                if idx > -1:
+                    received_terminator = True
+                    response = self.buffer[:idx + 1 + len(term)].decode(encoding=self.read_encoding)
+                    self.buffer = self.buffer[idx + 2:]
 
         return response
 
@@ -228,20 +211,3 @@ class ComClient(ThreadedClient):
         :return: Processed response string
         """
         return msg if msg.endswith(self.terminator) else (msg + self.terminator)
-
-
-if __name__ == '__main__':
-    elapsed_times = []
-    start = time()
-    with ComClient((0x0403, 0x6001)) as client:
-        elapsed_times.append(time() - start)
-        print(f'Finished after {elapsed_times[-1]} seconds.')
-
-        while True:
-            cmd = input('Command: ')
-
-            if cmd == 'quit':
-                break
-
-            client.send(cmd)
-            client.receive()

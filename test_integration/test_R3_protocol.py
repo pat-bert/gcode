@@ -84,7 +84,7 @@ class TestR3ProtocolPositions:
         protocol.linear_move(t)
 
     @pytest.mark.parametrize("t", [])
-    def test_joint_move(self, protocol, t: Coordinate):
+    def test_joint_move(self, protocol, t):
         protocol.joint_move(t)
 
     @pytest.mark.parametrize("s,t,c", [])

@@ -169,11 +169,10 @@ class R3Positions(R3SubApi):
         self._protocol_send(f"{DIRECT_CMD}MVS{coord_str}")
         self.client.receive()
 
-    def joint_move(self, values: List[float], identifiers: List[str]) -> None:
+    def joint_move(self, values: List[float]) -> None:
         """
         Move to a position using joint interpolation.
         :param values: List of joint values
-        :param identifiers: List of joint names, e.g. J1, J2, ..
         :return: None
         """
         raise NotImplementedError
@@ -271,7 +270,7 @@ class R3Reader(R3SubApi):
         val = self.read_variable("M_RSPD")
         return float(val)
 
-    def get_joint_speed(self) -> float:
+    def get_current_joint_speed(self) -> float:
         """
         Get the current joint speed in percent.
         :return: Current joint override, float.
