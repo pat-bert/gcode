@@ -1,14 +1,13 @@
-import threading
-from queue import Empty
 from threading import RLock
 from time import sleep
 from typing import Optional
-from unittest.mock import Mock
+
+from serial import SerialException
 
 from src.clients.ComClient import ComClient
 
 
-class SerialEcho:
+class SerialEcho(ComClient):
     """
     Test class to fake responses from a serial device
     """
@@ -18,31 +17,55 @@ class SerialEcho:
         Create an echoing COM-client.
         :param port: String of the port name to connect to
         """
-        self.client = ComClient(port=port)
-        self.client.hook_post_successful_connect = Mock()
-        self.t: Optional[threading.Thread] = None
-        self._is_running = threading.Event()
-        self.client_opened = threading.Event()
+        super().__init__(port=port)
+
+    def hook_handle_msg(self, msg: str) -> str:
+        pass
+
+    def hook_post_successful_connect(self) -> None:
+        """
+        Override this method to be blank.
+        :return:
+        """
+        return
+
+    def hook_pre_send(self, msg: str) -> str:
+        """
+        Override this method to be blank.
+        :param msg:
+        :return:
+        """
+        return msg
+
+    def hook_thread_name(self) -> Optional[str]:
+        return f'Serial Echo ({self._ser.port})'
 
     def mainloop(self) -> None:
         """
         Run the echo client.
         :return: None
         """
-        # Connect to the client
-        with self.client:
-            self.client_opened.set()
-            while self._is_running.isSet():
+        buffer = bytes()
+        term = b'\n'
+
+        while self.alive.isSet():
+            if self._ser.in_waiting:
                 try:
-                    incoming_msg = self.client.recv_q.get(timeout=0.1)
-                    self.client.recv_q.task_done()
-                except Empty:
-                    continue
+                    # Attempt to read new bits
+                    buffer += self._ser.read_all()
+                except SerialException as e:
+                    print(e)
                 else:
-                    outgoing_msg = self.resolve_msg(incoming_msg)
-                    self.client.send(outgoing_msg)
-        self.client_opened.set()
-        self.client_opened.clear()
+                    # Search for newline terminator
+                    idx = buffer.find(term)
+                    if idx > -1:
+                        incoming_msg = buffer[:idx + 1 + len(term)].decode(encoding=self.read_encoding)
+                        buffer = buffer[idx + 2:]
+                        outgoing_msg = self.resolve_msg(incoming_msg)
+                        self.serial_send(outgoing_msg)
+
+            while self.send_q.unfinished_tasks > 0:
+                self.send_q.task_done()
 
     @staticmethod
     def resolve_msg(msg: str) -> str:
@@ -52,29 +75,6 @@ class SerialEcho:
         :return: Outgoing message string (identical)
         """
         return msg
-
-    def start(self):
-        print(f'Starting server on {self.client.port}...')
-        self._is_running.set()
-        self.t = threading.Thread(target=self.mainloop, name=f'Serial Echo ({self.client.port})')
-        self.t.start()
-
-        # Block until client connection attempt is done
-        while not self.client_opened.isSet():
-            pass
-
-    def shutdown(self):
-        if self._is_running.isSet():
-            self._is_running.clear()
-            self.t.join()
-            print('Server is shutdown.')
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.shutdown()
 
 
 class ConfigurableEcho(SerialEcho):
@@ -95,7 +95,7 @@ class ConfigurableEcho(SerialEcho):
         self.lock = RLock()
 
     def reconfigure(self, pre: Optional[str] = None, post: Optional[str] = None, msg: Optional[str] = None,
-                    dly: Optional[float] = None) -> None:
+                    dly: float = 0) -> None:
         """
         Adjust the calculation of the server response.
         :param pre: String to be inserted before each actual message
@@ -107,10 +107,10 @@ class ConfigurableEcho(SerialEcho):
         # Ensure that the parameters are not read while setting new values
         with self.lock:
             # Set the new parameters
-            self._prefix = pre or None
-            self._postfix = post or None
-            self._replace_msg = msg or None
-            self._delay = dly or 0
+            self._prefix = pre
+            self._postfix = post
+            self._replace_msg = msg
+            self._delay = dly
 
     def resolve_msg(self, msg: str) -> str:
         """

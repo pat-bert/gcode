@@ -54,7 +54,7 @@ def valid_com_client(request):
 
         # Client is identified by port name (virtual ports)
         with ConfigurableEcho(port=request.param[1]) as echo:
-            echo.reconfigure(post='ok\n')
+            echo.reconfigure(post='ok\n', msg='')
             yield ComClient(port=request.param[2])
 
 
@@ -155,31 +155,35 @@ class TestComClient:
         with valid_com_client:
             valid_com_client.send('M114')
             response = valid_com_client.receive()
+            print(f'Response: {response}')
             assert 'ok' in response
 
         # Receiving is not possible afterwards
         with pytest.raises(IClient.ClientError):
             valid_com_client.receive()
 
-    @pytest.mark.timeout(15)
+    # @pytest.mark.timeout(20)
     def test_send(self, valid_com_client, capsys):
-        msg = 'M114'
         # Mock out this annoying wait for startup message
         valid_com_client.hook_post_successful_connect = mock.Mock()
+        msg = 'M114'
 
-        with valid_com_client:
-            # This time it should not be logged
-            valid_com_client.send(msg, silent_send=True)
-            sleep(1)
+        valid_com_client.connect()
 
-            captured = capsys.readouterr()
-            assert msg not in captured.out and msg not in captured.err
+        # This time it should not be logged
+        valid_com_client.send(msg, silent_send=True)
+        sleep(1)
 
-            # This time it should be logged somehow
-            valid_com_client.send(msg, silent_send=False)
-            sleep(1)
-            captured = capsys.readouterr()
-            assert msg in captured.out or msg in captured.err
+        captured = capsys.readouterr()
+        assert msg not in captured.out and msg not in captured.err
+
+        # This time it should be logged somehow
+        valid_com_client.send(msg, silent_send=False)
+        sleep(1)
+        captured = capsys.readouterr()
+        assert msg in captured.out or msg in captured.err
+
+        valid_com_client.close()
 
     def test_is_available_not(self, non_existing_com_client):
         """

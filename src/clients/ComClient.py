@@ -1,11 +1,11 @@
-from time import sleep
+from time import sleep, time
 from typing import Tuple, Optional
 
 import serial
 import serial.tools.list_ports
 from serial import SerialException
 
-from clients.ThreadedClient import ThreadedClient
+from src.clients.ThreadedClient import ThreadedClient
 from src.clients.IClient import ClientNotAvailableError, ClientOpenError, AmbiguousHardwareError
 
 
@@ -25,6 +25,7 @@ class ComClient(ThreadedClient):
 
     BAUD_RATE = 115200
     BOOT_TIME_SECONDS = 8.0
+    MAX_TIME_WITHOUT_NEW_BIT = 5.0
     PARITY = serial.PARITY_NONE
     STOP_BIT = serial.STOPBITS_ONE
     BYTE_SIZE = serial.EIGHTBITS
@@ -158,7 +159,7 @@ class ComClient(ThreadedClient):
         :param msg: Message string to be sent
         :return: Response string
         """
-        self._send(msg)
+        self.serial_send(msg)
         return self._receive()
 
     def _receive(self) -> str:
@@ -167,26 +168,46 @@ class ComClient(ThreadedClient):
         :return: Message string
         :raises:
         """
-        received_terminator = False
         response = ''
 
+        got_terminator = False
         terminators = [b'ok\n', b'//action:disconnect\n', b'action:disconnect\n']
 
-        while not received_terminator:
+        t0 = time()
+        initial_bits = len(self.buffer)
+
+        # Wait for timeout or terminator
+        while not got_terminator:
+            # Update bit count
+            if len(self.buffer) != initial_bits:
+                initial_bits = len(self.buffer)
+                t0 = time()
+
             try:
+                # Attempt to read new bits
                 self.buffer += self._ser.read_all()
+                # print(self.buffer)
             except SerialException as e:
                 print(e)
+
+            # Check terminators
             for term in terminators:
                 idx = self.buffer.find(term)
                 if idx > -1:
-                    received_terminator = True
                     response = self.buffer[:idx + 1 + len(term)].decode(encoding=self.read_encoding)
                     self.buffer = self.buffer[idx + 2:]
+                    got_terminator = True
+
+            # Check timeout
+            if time() - t0 > self.MAX_TIME_WITHOUT_NEW_BIT:
+                # Timeout occured
+                response = self.buffer.decode(encoding=self.read_encoding)
+                self.buffer = bytes()
+                break
 
         return response
 
-    def _send(self, msg: str):
+    def serial_send(self, msg: str):
         """
         Sends data on the serial port.
         :param msg: Message to be sent, will be terminated by newline character if not present.

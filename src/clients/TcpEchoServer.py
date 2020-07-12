@@ -213,7 +213,7 @@ class ConfigurableEchoServer(TcpEchoServer):
         with self.lock:
             # Set the _prefix as bytes
             if pre is not None:
-                self.prefix = bytes(pre, encoding=self.encoding) or None
+                self.prefix = bytes(pre, encoding=self.encoding)
             else:
                 self.prefix = pre
 

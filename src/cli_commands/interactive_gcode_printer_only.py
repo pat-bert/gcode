@@ -1,7 +1,6 @@
 from typing import Optional, Tuple
 
 from ApplicationExceptions import MelfaBaseException
-from gcode.GCmd import GCmd
 from src.clients.ComClient import ComClient
 
 
@@ -27,3 +26,8 @@ def interactive_gcode_printer_only(usb_ids: Optional[Tuple[int, int]]) -> None:
             print('Program terminated by user.')
         except MelfaBaseException as e:
             print(str(e))
+
+# Commands to filter:
+# G28 (endstops do not report anything)
+
+# Deactivate software endstops: M211 S0 ?
