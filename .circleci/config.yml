@@ -42,6 +42,12 @@ jobs:
             sudo chmod -R 777 mcr_extracted &&
             sudo mcr_extracted/install -mode silent -agreeToLicense yes -destinationFolder /matlab_runtime/
       - run:
+          # Install socat to simulate serial ports
+          name: Install socat to create virtual serial ports
+          command: |
+            sudo apt-get install socat -y
+            socat -V
+      - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
           command: |
@@ -68,6 +74,7 @@ jobs:
           # Missing interpreters will be skipped
           name: Run tests with tox
           command: |
+            socat -d -d pty,raw,nonblock,echo=0,link=ttyV0 pty,raw,nonblock,echo=0,link=ttyV1 &
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/matlab_runtime/v98/runtime/glnxa64:/matlab_runtime/v98/bin/glnxa64:/matlab_runtime/v98/sys/os/glnxa64:/matlab_runtime/v98/extern/bin/glnxa64
             . venv/bin/activate
             tox --skip-missing-interpreters
@@ -107,6 +114,29 @@ jobs:
           command: |
             .\mcr_extracted\setup.exe -mode silent -agreeToLicense yes
       - restore_cache: *restore-cache-pip-template
+      - run:
+          # Com0Com can be used to install virtual serial ports
+          # An auxiliary repo is used to save the installation files and the certificate
+          # The certificate needs to be registered
+          # Before the installation an environmental variable is set to enable COM#-style serial ports
+          # After the install command the script waits for a minute
+          name: Install virtual serial ports
+          command: |
+            $certificate_url = "https://github.com/pat-bert/SupportingFiles/raw/master/appveyor/serial/com0com.cer"
+            $setup_url = "https://github.com/pat-bert/SupportingFiles/raw/master/appveyor/serial/setup_com0com_W7_x64_signed.exe"
+
+            $wc = New-Object System.Net.WebClient
+            $wc.DownloadFile($certificate_url, "com0com.cer")
+            echo "Downloaded com0com certificate."
+            C:\"Program Files (x86)"\"Windows Kits"\10\bin\10.0.16299.0\x86\certmgr.exe /?
+            C:\"Program Files (x86)"\"Windows Kits"\10\bin\10.0.16299.0\x86\certmgr.exe /add com0com.cer /s /r localMachine root
+            C:\"Program Files (x86)"\"Windows Kits"\10\bin\10.0.16299.0\x86\certmgr.exe /add com0com.cer /s /r localMachine trustedpublisher
+            $wc.DownloadFile($setup_url, "setup_com0com_W7_x64_signed.exe")
+            echo "Downloaded com0com installation file."
+            $env:CNC_INSTALL_COMX_COMX_PORTS='YES'
+            .\setup_com0com_W7_x64_signed.exe /S
+            echo "Done setting up com0com with COM#-ports."
+            sleep 60
       - run:
           # Python needs to be installed
           # Install a virtual environment using the installed python interpreter

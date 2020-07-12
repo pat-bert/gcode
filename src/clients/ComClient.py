@@ -1,13 +1,12 @@
-import threading
-from queue import Queue
-from time import sleep
-from typing import Tuple, Union
+from time import sleep, time
+from typing import Tuple, Optional
 
 import serial
 import serial.tools.list_ports
+from serial import SerialException
 
-from src.clients.IClient import IClient, ClientNotAvailableError, ClientOpenError, ClientError, AmbiguousHardwareError, \
-    ClientCloseError
+from src.clients.ThreadedClient import ThreadedClient
+from src.clients.IClient import ClientNotAvailableError, ClientOpenError, AmbiguousHardwareError
 
 
 def validate_id(id_number: int) -> bool:
@@ -19,19 +18,22 @@ def validate_id(id_number: int) -> bool:
     return 0 <= id_number < 65536
 
 
-class ComClient(IClient):
+class ComClient(ThreadedClient):
     """
-    Implements the client side of the serial communication.
+    Implements a reusable client side for serial communication.
     """
+
     BAUD_RATE = 115200
+    BOOT_TIME_SECONDS = 8.0
+    MAX_TIME_WITHOUT_NEW_BIT = 5.0
     PARITY = serial.PARITY_NONE
     STOP_BIT = serial.STOPBITS_ONE
     BYTE_SIZE = serial.EIGHTBITS
     DEFAULT_WRITE_ENCODING = 'ascii'
     DEFAULT_READ_ENCODING = 'utf-8'
 
-    def __init__(self, ids: Tuple[int, int], encodings: Tuple[str, str] = None, baud=BAUD_RATE, parity=PARITY,
-                 stopbits=STOP_BIT, byte=BYTE_SIZE):
+    def __init__(self, ids: Optional[Tuple[int, int]] = None, encodings: Tuple[str, str] = None, baud=BAUD_RATE,
+                 parity=PARITY, stopbits=STOP_BIT, byte=BYTE_SIZE, port: str = None):
         """
         Create a client for the serial communication.
 
@@ -42,32 +44,95 @@ class ComClient(IClient):
         :param parity: Paritiy bit, defaults to none.
         :param stopbits: Number of stop bits, defaults to one.
         :param byte: Byte size, defaults to eight bits.
+        :param port: Pass the actual port if it is known and static.
         :raises: ValueError if the IDs cannot be converted to int.
         """
+        # Get features of threaded client
+        super().__init__()
 
-        # Create port object but do not connect
-        # TODO Check timeout setting, for sockets blocking is used when it is accessed in a separate thread
-        self._ser = serial.Serial(baudrate=baud, parity=parity, stopbits=stopbits, bytesize=byte, timeout=1)
-
-        # Unpack and transform IDs
-        self.vid, self.pid = map(int, ids)
+        # Serial port parameters (blocking)
+        self._ser = serial.Serial(baudrate=baud, parity=parity, stopbits=stopbits, bytesize=byte, dsrdtr=None)
+        self.port = port
         self.send_encoding, self.read_encoding = encodings or (self.DEFAULT_WRITE_ENCODING, self.DEFAULT_READ_ENCODING)
+        self.terminator = '\n'
+        self.buffer = bytes()
 
-        # Queues and thread for communication from and to worker tread
-        self.t: Union[threading.Thread, None] = None
-        self.send_q = Queue()
-        self.recv_q = Queue()
+        # Unpack and transform IDs (port has precedence)
+        if self.port is None:
+            self.vid, self.pid = map(int, ids)
+        else:
+            if ids is None:
+                self.vid, self.pid = None, None
+            else:
+                self.vid, self.pid = ids
 
-    def connect(self) -> None:
+    def hook_thread_name(self) -> Optional[str]:
         """
-        Attempt to open the serial port connected to the device with the specified IDs.
+        Client-specific thread-naming. Can be overriden. Defaults to standard thread naming.
+        :return: Thread name mentioning the port and the client type
+        """
+        return f'Serial Client ({self._ser.port})'
+
+    def hook_pre_connect(self) -> None:
+        """
+        Identify the port to be used.
+        :return: None
+        """
+        # Choose manner of port identification
+        if self.port is not None:
+            self._ser.setPort(self.port)
+            print(f'Attempting connection to port {self.port}...')
+        else:
+            self._resolve_ids()
+
+    def hook_connect(self) -> Optional[str]:
+        """
+        Attempt to open the serial port connected to the device.
+        :return: None
+        :raises: ClientOpenError if there was any error while opening the port, e.g. port already open
+        """
+        # Attempt to open the port
+        try:
+            self._ser.open()
+            return self._ser.port
+        except serial.SerialException as e:
+            print(e)
+            raise ClientOpenError(e) from e
+
+    def hook_post_successful_connect(self) -> None:
+        """
+        Ensure that the hardware is setup right after connection was established.
+        :return: None
+        :raises: ClientOpenError if an error occurred or the startup message is not as expected.
+        """
+        # Wait for device to start up (measured was ~5.5 seconds)
+        sleep(self.BOOT_TIME_SECONDS)
+
+        if self._ser.in_waiting > 0:
+            # Attempt to read the current byte buffer
+            try:
+                startup_message = self._ser.read_all()
+                startup_message = startup_message.decode(encoding=self.read_encoding)
+            except serial.SerialException as e:
+                raise ClientOpenError from e
+
+            # Verify message
+            if startup_message.endswith(self.terminator):
+                print('Startup message:')
+                for line in startup_message.split(self.terminator):
+                    print(line)
+            else:
+                raise ClientOpenError('Message was not terminated correctly.')
+
+    def _resolve_ids(self) -> None:
+        """
+        Attempts to find the correct device by given PID and VID. On success the serial port is configured accordingly.
         :return: None
         :raises: AmbiguousHardwareError if multiple devices have the same VID:PID.
-        :raises: ClientOpenError if there was any error while opening the port, e.g. port already open
+        :raises ClientNotAvailableError if the specified VID:PID was not found.
         """
         # Search for ports matching the desired IDs
         matches = [usb for usb in serial.tools.list_ports.comports() if usb.vid == self.vid and usb.pid == self.pid]
-
         # Cases ordered by estimated occurence
         if len(matches) == 0:
             # Could not find desired client
@@ -75,102 +140,83 @@ class ComClient(IClient):
         if len(matches) == 1:
             # Configure the serial port accordingly
             self._ser.port = matches[0].device
-
-            # Attempt to open the port
-            try:
-                self._ser.open()
-            except serial.SerialException as e:
-                raise ClientOpenError(e) from e
-            else:
-                # Successful attempt, worker thread can now be started and the search for the port is done
-                print('Connected to {} - {}.'.format(matches[0].description, matches[0].hwid))
-                self.t = threading.Thread(target=self.mainloop)
+            print(f'Attempting connection to {matches[0].description} - {matches[0].hwid}...')
         else:
             # Found multiple clients
             raise AmbiguousHardwareError
 
-    def close(self) -> None:
+    def hook_close(self) -> None:
         """
-        Attempt to close the serial port.
+        Close the serial port.
         :return: None
-        :raises: ClientCloseError if port could not be closed.
         """
-
-        # self.t.join()
-        # Just call it. This should not raise an exception.
+        # Client specific closing
         self._ser.close()
 
-        # Ensure that the port is closed
-        if self._ser.is_open:
-            raise ClientCloseError('Could not close serial port {}.'.format(self._ser.port))
+    def hook_handle_msg(self, msg: str) -> str:
+        """
+        Hook for execution in the worker thread for each message queued.
+        :param msg: Message string to be sent
+        :return: Response string
+        """
+        self.serial_send(msg)
+        return self._receive()
 
-    def receive(self, silence_errors=False) -> str:
+    def _receive(self) -> str:
         """
         Receive data sent on the serial port.
-        :param silence_errors:
         :return: Message string
         :raises:
         """
-        prev_count, curr_count = 0, 0  # Keep track of the number of bytes waiting in ingoing buffer for each poll
-        response_buffer = []  # Collect the decoded responses
-        changing = False  # Flag to indicate whether there was a change between two poll cycles
-        initial = True  # Flag to indicate that there were never more than zero bytes available
+        response = ''
 
-        i = 0
-        # Loop until any bytes were received and the number of waiting byte stays constant
-        while 'ok' not in response_buffer and (initial or changing):
-            # Update counters and flags
+        got_terminator = False
+        terminators = [b'ok\n', b'//action:disconnect\n', b'action:disconnect\n']
+
+        t0 = time()
+        initial_bits = len(self.buffer)
+
+        # Wait for timeout or terminator
+        while not got_terminator:
+            # Update bit count
+            if len(self.buffer) != initial_bits:
+                initial_bits = len(self.buffer)
+                t0 = time()
+
             try:
-                curr_count = self._ser.in_waiting
-            except serial.SerialException as e:
-                raise ClientError from e
+                # Attempt to read new bits
+                self.buffer += self._ser.read_all()
+                # print(self.buffer)
+            except SerialException as e:
+                print(e)
 
-            changing = prev_count != curr_count
-            prev_count = curr_count
-            if curr_count > 0:
-                initial = False
+            # Check terminators
+            for term in terminators:
+                idx = self.buffer.find(term)
+                if idx > -1:
+                    response = self.buffer[:idx + 1 + len(term)].decode(encoding=self.read_encoding)
+                    self.buffer = self.buffer[idx + 2:]
+                    got_terminator = True
 
-            # Attempt to read the current byte buffer
-            try:
-                raw_response = self._ser.read_all()
-            except serial.SerialException as e:
-                raise ClientError from e
-
-            # Decode the current content and append it to the string buffer (including newline characters)
-            response = raw_response.decode(encoding=self.read_encoding)
-            response_buffer.append(response)
-
-            # Wait for 100x the time for one character to arrive
-            sleep(200 / self._ser.baudrate)
-            i += 1
-
-        # Combine the response buffer and show each line on stdout
-        response = ''.join(response_buffer)
-        response_lines = ['<<: {}'.format(i) for i in response.splitlines()]
-        print('\n'.join(response_lines))
+            # Check timeout
+            if time() - t0 > self.MAX_TIME_WITHOUT_NEW_BIT:
+                # Timeout occured
+                response = self.buffer.decode(encoding=self.read_encoding)
+                self.buffer = bytes()
+                break
 
         return response
 
-    def send(self, msg: str, silent_send: bool = False, silent_recv: bool = False):
+    def serial_send(self, msg: str):
         """
         Sends data on the serial port.
         :param msg: Message to be sent, will be terminated by newline character if not present.
-        :param silent_recv:
-        :param silent_send:
         :return: Number of bytes written
         :raises: IOError when a specified timeout occurs
         :raises: UnicodeError if the message cannot be encoded in the specified encoding
         """
-        # Display the message to the user
-        if not silent_send:
-            print('>>: {}'.format(msg.strip()))
-
-        # Ensure that the message is terminated properly
-        if not msg.endswith('\n'):
-            msg += '\n'
-        data = msg.encode(encoding=self.send_encoding)
-
         # Send the message
+        data = msg.encode(encoding=self.send_encoding)
         total_sent_bytes = 0
         total_bytes = len(data)
 
@@ -180,42 +226,9 @@ class ComClient(IClient):
             sent_bytes = self._ser.write(data[total_sent_bytes:])
             total_sent_bytes += sent_bytes
 
-    def mainloop(self):
-        pass
-
-    def is_available(self) -> bool:
+    def hook_pre_send(self, msg: str) -> str:
         """
-        Check whether a serial port can currently be opened.
-        :return: Boolean to indicate whether it can be opened.
+        Ensure that the message is terminated properly
+        :return: Processed response string
         """
-        # Check whether it is open currently
-        if self._ser.isOpen():
-            return True
-        # Otherwise check whether it can be opened
-        try:
-            self.connect()
-        except ClientError:
-            return False
-        else:
-            return True
-        finally:
-            # Closing should always be done
-            self.close()
-
-
-if __name__ == '__main__':
-    client = ComClient((0x0403, 0x6001))
-    client.connect()
-    sleep(10)
-    client.receive()
-
-    while True:
-        cmd = input('Command: ')
-
-        if cmd == 'quit':
-            break
-
-        client.send(cmd)
-        client.receive()
-
-    client.close()
+        return msg if msg.endswith(self.terminator) else (msg + self.terminator)

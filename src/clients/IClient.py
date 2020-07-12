@@ -68,7 +68,16 @@ class ClientNotAvailableError(ClientOpenError):
 
 class IClient(metaclass=abc.ABCMeta):
     """
-    Interface to the communication client layer of the application.
+    Abstract base class to the communication client layer of the application.
+
+    Inheriting classes need to implement:
+    - connecting and closing
+    - sending and receiving
+    - connected status
+
+    These features are provided if all methods are implemented:
+    - Usage as context manager via connect and close
+    - Availability check
     """
 
     @abc.abstractmethod
@@ -97,3 +106,34 @@ class IClient(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def receive(self, silence_errors=False):
         pass
+
+    @property
+    @abc.abstractmethod
+    def is_connected(self) -> bool:
+        pass
+
+    def is_available(self) -> bool:
+        """
+        Check whether the client can currently be opened.
+        :return: Boolean to indicate whether it can be opened.
+        """
+        # Check whether it is open currently
+        if self.is_connected:
+            return True
+        # Otherwise check whether it can be opened
+        try:
+            self.connect()
+        except ClientError:
+            return False
+        else:
+            return True
+        finally:
+            # Closing should always be done
+            self.close()
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

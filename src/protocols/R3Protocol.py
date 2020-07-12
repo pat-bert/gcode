@@ -62,7 +62,6 @@ class R3Utility(R3SubApi):
 
     def __init__(self, client: IClient, **kwargs):
         super().__init__(client=client, **kwargs)
-        print('Setting up Utility-API.')
 
     def reset_alarm(self) -> None:
         """
@@ -128,7 +127,6 @@ class R3Positions(R3SubApi):
 
     def __init__(self, client: IClient, *, coordinate2cmd: Callable, digits: int, **kwargs):
         super().__init__(client=client, digits=digits, **kwargs)
-        print('Setting up Position-API.')
         self.from_coord_to_cmd = coordinate2cmd
         self.digits = digits
 
@@ -171,11 +169,10 @@ class R3Positions(R3SubApi):
         self._protocol_send(f"{DIRECT_CMD}MVS{coord_str}")
         self.client.receive()
 
-    def joint_move(self, values: List[float], identifiers: List[str]) -> None:
+    def joint_move(self, values: List[float]) -> None:
         """
         Move to a position using joint interpolation.
         :param values: List of joint values
-        :param identifiers: List of joint names, e.g. J1, J2, ..
         :return: None
         """
         raise NotImplementedError
@@ -186,9 +183,9 @@ class R3Positions(R3SubApi):
     def circular_move_centre(self, start: str, target: str, center: str) -> None:
         """
         Move to a position using circular interpolation.
-        :param start: Start position of the arc
-        :param target: End position of the arc
-        :param center: Center position of the arc
+        :param start: Start position of the arc (variable name)
+        :param target: End position of the arc (variable name)
+        :param center: Center position of the arc (variable name)
         :return: None
         """
         self._protocol_send(f"{DIRECT_CMD}MVR3 {start},{target},{center}")
@@ -197,9 +194,9 @@ class R3Positions(R3SubApi):
     def circular_move_intermediate(self, start: str, intermediate: str, target: str) -> None:
         """
         Move to a position using circular interpolation.
-        :param start: Start position of the arc
-        :param intermediate: Intermediate position of the arc
-        :param target: End position of the arc
+        :param start: Start position of the arc (variable name)
+        :param intermediate: Intermediate position of the arc (variable name)
+        :param target: End position of the arc (variable name)
         :return: None
         """
         self._protocol_send(f"{DIRECT_CMD}MVR {start},{intermediate},{target}")
@@ -208,9 +205,9 @@ class R3Positions(R3SubApi):
     def circular_move_full(self, start: str, intermediate1: str, intermediate2: str) -> None:
         """
         Move to a position using circular interpolation.
-        :param start: Start position of the arc
-        :param intermediate1: First intermediate position of the arc
-        :param intermediate2: Second intermediate position of the arc
+        :param start: Start position of the arc (variable name)
+        :param intermediate1: First intermediate position of the arc (variable name)
+        :param intermediate2: Second intermediate position of the arc (variable name)
         :return: None
         """
         self._protocol_send(f"{DIRECT_CMD}MVC {start},{intermediate1},{intermediate2}")
@@ -230,7 +227,7 @@ class R3Reader(R3SubApi):
     API functions related to reading values, parameters, ...
     """
 
-    def __init__(self, client: IClient, joints, *, r2c: Callable, digits: int, **kwargs):
+    def __init__(self, client: IClient, joints: List[str], *, r2c: Callable, digits: int, **kwargs):
         """
         Create an interface object for reading functions.
         :param client: Communication client
@@ -239,7 +236,6 @@ class R3Reader(R3SubApi):
         :param digits: Number of digits to be used for float to string conversions.
         """
         super().__init__(client=client, digits=digits, **kwargs)
-        print('Setting up Reader-API.')
         self.joints = joints
         self.from_response_to_coordinate = r2c
         self.digits = digits
@@ -250,12 +246,12 @@ class R3Reader(R3SubApi):
         :return: Current tool number as integer
         """
         tool_no = self.read_variable(CURRENT_TOOL_NO)
-        return int(tool_no.split("=")[-1])
+        return int(tool_no)
 
     def get_current_tool_data(self) -> List[float]:
         # TODO Verify response with actual hardware
         tool_response = self.read_variable('P_TOOL')
-        tool_data = tool_response.split("=")[-1]
+        tool_data = tool_response
         tool_offsets = self.parse_comma_string(tool_data)
         return [float(i) for i in tool_offsets]
 
@@ -272,15 +268,15 @@ class R3Reader(R3SubApi):
         :return: Current linear speed factor, float.
         """
         val = self.read_variable("M_RSPD")
-        return float(val.split("=")[-1])
+        return float(val)
 
-    def get_joint_speed(self) -> float:
+    def get_current_joint_speed(self) -> float:
         """
         Get the current joint speed in percent.
         :return: Current joint override, float.
         """
         val = self.read_variable("M_JOVRD")
-        return float(val.split("=")[-1])
+        return float(val)
 
     def get_joint_borders(self) -> Tuple[float, ...]:
         """
@@ -289,7 +285,7 @@ class R3Reader(R3SubApi):
         """
         borders = self._read_parameter("MEJAR")
         coordinates = self.parse_comma_string(borders)
-        return tuple(float(i) for i in coordinates)
+        return tuple(float(i) for i in coordinates[0:2 * len(self.joints)])
 
     def get_xyz_borders(self) -> Tuple[float, ...]:
         """
@@ -298,7 +294,7 @@ class R3Reader(R3SubApi):
         """
         borders = self._read_parameter("MEPAR")
         coordinates = self.parse_comma_string(borders)
-        return tuple(float(i) for i in coordinates)
+        return tuple(float(i) for i in coordinates[0: 2 * 3])
 
     @staticmethod
     def parse_comma_string(response: str) -> List[str]:
@@ -332,9 +328,29 @@ class R3Reader(R3SubApi):
         safe_pos_values = [float(i) for i in answer_str.split(DELIMITER)[1].split(", ")]
         return Coordinate(safe_pos_values, self.joints)
 
-    def get_servo_state(self):
-        # TODO Implement command and parsing
-        pass
+    def get_servo_state(self) -> int:
+        servo_state = self.read_variable(SRV_STATE_VAR)
+        return int(servo_state)
+
+    @staticmethod
+    def poll(func: Callable, val, poll_rate_ms: int = 5, timeout_ms: int = 60000):
+        """
+        Poll a reading method until a given value is received or a timeout occurs.
+        :param func: Method of R3Reader to be called
+        :param val:
+        :param poll_rate_ms:
+        :param timeout_ms:
+        :return:
+        :raises: ValueError, if the method is not listed in the pollable methods.
+        """
+        # Iteratively call the method
+        total_time_waited = 0
+        while total_time_waited < timeout_ms:
+            response = func()
+            if response == val:
+                return
+            sleep(poll_rate_ms / 1000)
+            total_time_waited += poll_rate_ms
 
     def _read_parameter(self, parameter: str) -> str:
         """
@@ -352,7 +368,8 @@ class R3Reader(R3SubApi):
         :return: Client response excluding status
         """
         self._protocol_send(f"VAL{variable}")
-        return self.client.receive()
+        response = self.client.receive()
+        return response.split(f"{variable}=")[-1]
 
     def _get_float_cmd(self, cmd: str, direct=True) -> float:
         """
@@ -393,7 +410,6 @@ class R3Setter(R3SubApi):
         :param digits: Number of digits to be used for float to string conversions.
         """
         super().__init__(client=client, digits=digits, **kwargs)
-        print('Setting up Setter-API.')
         self.digits = digits
 
     def set_current_tool(self, tool_number: int) -> None:
@@ -510,7 +526,6 @@ class R3Resetter(R3SubApi):
 
     def __init__(self, client: IClient, **kwargs):
         super().__init__(client=client, **kwargs)
-        print('Setting up Resetter-API.')
 
     def reset_base_coordinate_system(self) -> None:
         """
