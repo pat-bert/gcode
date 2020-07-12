@@ -162,11 +162,11 @@ class TestComClient:
         with pytest.raises(IClient.ClientError):
             valid_com_client.receive()
 
-    # @pytest.mark.timeout(20)
+    @pytest.mark.timeout(30)
     def test_send(self, valid_com_client, capsys):
         # Mock out this annoying wait for startup message
         valid_com_client.hook_post_successful_connect = mock.Mock()
-        msg = 'M114'
+        msg = 'M105'
 
         valid_com_client.connect()
 
@@ -179,7 +179,7 @@ class TestComClient:
 
         # This time it should be logged somehow
         valid_com_client.send(msg, silent_send=False)
-        sleep(1)
+        sleep(10)
         captured = capsys.readouterr()
         assert msg in captured.out or msg in captured.err
 

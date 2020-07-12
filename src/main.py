@@ -41,8 +41,8 @@ import os
 import sys
 
 # Own libraries
-from cli_commands.interactive_gcode_printer_only import interactive_gcode_printer_only
-from clients.ComClient import validate_id
+from src.cli_commands.interactive_gcode_printer_only import interactive_gcode_printer_only
+from src.clients.ComClient import validate_id
 from src.ApplicationExceptions import ApiException
 from src.GRedirect import GRedirect
 from src.cli_commands.check_trajectory import check_trajectory
@@ -142,15 +142,15 @@ def main(*argv):
                 else:
                     # None present
                     raise ValueError
+            elif args["--validate"]:
+                input_schema.validate(args)
+                config_schema.validate(args)
+                check_trajectory(config_f=args["CONFIG_FILE"], gcode_f=args["IN_FILE"])
             else:
                 args.update(connection_schema.validate(args))
                 ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
 
-                if args["--validate"]:
-                    input_schema.validate(args)
-                    config_schema.validate(args)
-                    check_trajectory(config_f=args["CONFIG_FILE"], gcode_f=args["IN_FILE"])
-                elif args["--mi"]:
+                if args["--mi"]:
                     interactive_melfa(ip, port, safe_return=safe)
                 elif args["--demo"]:
                     demo_mode(ip, port, safe_return=safe)
