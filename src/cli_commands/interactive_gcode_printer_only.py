@@ -19,7 +19,7 @@ def interactive_gcode_printer_only(usb_ids: Optional[Tuple[int, int]]) -> None:
                 usr_msg = input("G-Code>")
                 if usr_msg.lower() in ["quit"]:
                     raise KeyboardInterrupt
-                elif len(usr_msg) > 0:
+                if len(usr_msg) > 0:
                     client.send(usr_msg)
                     client.receive()
         except KeyboardInterrupt:

@@ -23,7 +23,7 @@ def interactive_gcode(ip: str, port: int, safe_return: Optional[bool] = False) -
             usr_msg = input("G-Code>")
             if usr_msg.lower() in ["quit"]:
                 raise KeyboardInterrupt
-            elif len(usr_msg) > 0:
+            if len(usr_msg) > 0:
                 # Parse G-code
                 gcode = GCmd.read_cmd_str(usr_msg)
                 print(str(gcode))

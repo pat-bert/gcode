@@ -47,7 +47,6 @@ jobs:
           command: |
             sudo apt-get install socat -y
             socat -V
-            socat -d -d pty,raw,nonblock,echo=0,link=ttyV0 pty,raw,nonblock,echo=0,link=ttyV1 &
       - run:
           # Create a new virtual environment and install the modules
           name: Install Python deps in a venv
@@ -75,6 +74,7 @@ jobs:
           # Missing interpreters will be skipped
           name: Run tests with tox
           command: |
+            socat -d -d pty,raw,nonblock,echo=0,link=ttyV0 pty,raw,nonblock,echo=0,link=ttyV1 &
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/matlab_runtime/v98/runtime/glnxa64:/matlab_runtime/v98/bin/glnxa64:/matlab_runtime/v98/sys/os/glnxa64:/matlab_runtime/v98/extern/bin/glnxa64
             . venv/bin/activate
             tox --skip-missing-interpreters
