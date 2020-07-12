@@ -41,7 +41,7 @@ class TestMain:
         """
         with mock.patch('src.main.check_trajectory') as mock_func:
             with pytest.raises(SystemExit) as cm:
-                main([cmd, 'cartesian_violation.gcode', 'config.ini'])
+                main([cmd, 'test.gcode', 'config.ini'])
             print(cm)
             assert cm.value.code != EXIT_BAD_INPUT
             assert cm.value.code == EXIT_SUCCESS
