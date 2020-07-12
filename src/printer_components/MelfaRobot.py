@@ -522,4 +522,4 @@ class MelfaRobot(PrinterComponent):
         """
         if len(joint_values) != len(self.joints):
             raise ValueError('Joint movements need to specify all axes.')
-        self.protocol.joint_move(joint_values, self.joints)
+        self.protocol.joint_move(joint_values)

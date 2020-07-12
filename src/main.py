@@ -44,7 +44,7 @@ import sys
 from src.cli_commands.interactive_gcode_printer_only import interactive_gcode_printer_only
 from src.clients.ComClient import validate_id
 from src.ApplicationExceptions import ApiException
-from src.GRedirect import GRedirect
+from src.printer_components.GRedirect import GRedirect
 from src.cli_commands.check_trajectory import check_trajectory
 from src.cli_commands.demo import demo_mode
 from src.cli_commands.interactive_gcode_robot_only import interactive_gcode
