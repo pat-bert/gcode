@@ -1,4 +1,4 @@
-import subprocess
+import os
 import sys
 import unittest.mock as mock
 from time import sleep
@@ -24,7 +24,7 @@ from src.clients.SerialEcho import ConfigurableEcho
         ),
         pytest.param(
             ('port', 'ttyV0', 'ttyV1'),
-            marks=pytest.mark.skipif(subprocess.call('socat -h', shell=False) != 0, reason='socat required')
+            marks=pytest.mark.skipif(os.system('socat -h') != 0, reason='socat required')
         )
     ],
     ids=[
