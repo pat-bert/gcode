@@ -14,7 +14,7 @@ def fake_tcp():
     return a
 
 
-whole_api = R3Protocol(MagicMock(), MagicMock(), ['J1'], digits=2)
+whole_api = R3Protocol(MagicMock(), MagicMock(), 1, digits=2)
 reset_api, partial_reset_api = R3Resetter(MagicMock()), whole_api.resetter
 set_api, partial_set_api = R3Setter(MagicMock(), digits=2), whole_api.setter
 partial_reader_api = whole_api.reader

@@ -6,7 +6,7 @@ import pytest
 from src.Coordinate import Coordinate
 from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
-from src.printer_components.MelfaRobot import MelfaRobot, IllegalAxesCount
+from src.printer_components.MelfaRobot import MelfaRobot
 
 
 @pytest.fixture
@@ -43,14 +43,11 @@ class TestMelfaRobot:
         :param tcp:
         :return:
         """
-        with pytest.raises(IllegalAxesCount):
+        with pytest.raises(ValueError):
             MelfaRobot(tcp, number_axes=0)
 
         a = MelfaRobot(tcp, number_axes=1)
-        assert a.joints == ["J1"]
-
-        b = MelfaRobot(tcp, number_axes=2)
-        assert b.joints == ["J1", "J2"]
+        assert a.joints == 1
 
     def test_boot_no_safe(self, no_safe_robot):
         """

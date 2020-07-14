@@ -7,7 +7,7 @@ from numpy import ndarray
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
-from src.ApplicationExceptions import MelfaBaseException, ApiException
+from src.ApplicationExceptions import MelfaBaseException
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
@@ -19,10 +19,6 @@ from src.protocols.R3Protocol import R3Protocol
 from src.refactor import cmp_response
 
 
-class SpeedBelowMinimum(ApiException):
-    pass
-
-
 class MelfaRobot(PrinterComponent):
     """
     Class representing the physical robots with its unique routines, properties and actions.
@@ -32,9 +28,7 @@ class MelfaRobot(PrinterComponent):
     AXES = "XYZABC"
     INCH_IN_MM = 25.4
 
-    def __init__(
-            self, io_client: IClient, speed_threshold=10, number_axes: int = 6, safe_return=False
-    ):
+    def __init__(self, io_client: IClient, speed_threshold=10, number_axes: int = 6, safe_return=False):
         """
         Initialises the robot.
         :param io_client: Communication object
@@ -45,7 +39,7 @@ class MelfaRobot(PrinterComponent):
             raise ValueError('Number of axes needs to be larger than zero.')
 
         self.work_coordinate_offset = "(-500,0,-250,0,0,0)"
-        self.joints = ["J{}".format(i) for i in range(1, number_axes + 1)]
+        self.joints = number_axes
         self.speed_threshold = speed_threshold
 
         # Wrap the client in the specific protocol
@@ -147,7 +141,7 @@ class MelfaRobot(PrinterComponent):
 
         # Inch conversion
         if self.inch_active:
-            self.adjust_units(gcode)
+            gcode = self.adjust_units(gcode)
 
         # Speed conversion mm/min to mm/s
         if gcode.speed is not None:
@@ -217,7 +211,12 @@ class MelfaRobot(PrinterComponent):
         else:
             raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
 
-    def adjust_units(self, gcode: GCmd):
+    def adjust_units(self, gcode: GCmd) -> GCmd:
+        """
+        Converts units from inch to mm
+        :param gcode:
+        :return:
+        """
         if gcode.cartesian_abs is not None and len(gcode.cartesian_abs.coordinate) > 0:
             gcode.cartesian_abs *= self.INCH_IN_MM
         if gcode.cartesian_rel is not None and len(gcode.cartesian_rel.coordinate) > 0:
@@ -226,6 +225,7 @@ class MelfaRobot(PrinterComponent):
             gcode.speed *= self.INCH_IN_MM
         if gcode.extrude_len is not None:
             gcode.extrude_len *= self.INCH_IN_MM
+        return gcode
 
     def _prepare_circle(self) -> None:
         for i in range(1, 4):
@@ -520,6 +520,6 @@ class MelfaRobot(PrinterComponent):
         Move to a position in joint coordinates.
         :param joint_values: Coordinate
         """
-        if len(joint_values) != len(self.joints):
+        if len(joint_values) != self.joints:
             raise ValueError('Joint movements need to specify all axes.')
         self.protocol.joint_move(joint_values)

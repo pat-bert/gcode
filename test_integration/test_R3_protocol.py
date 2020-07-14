@@ -28,7 +28,7 @@ def valid_client():
 
 @pytest.fixture
 def protocol(valid_client):
-    return R3Protocol(valid_client, MelfaCoordinateService(), joints=JOINTS, digits=2)
+    return R3Protocol(valid_client, MelfaCoordinateService(), joints=6, digits=2)
 
 
 @pytest.mark.parametrize("prefix,exc", [(p, e) for p, e in ErrorDispatch.items()])

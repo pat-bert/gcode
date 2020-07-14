@@ -5,11 +5,9 @@ from src.gcode.GCmd import GCmd
 
 @unique
 class RedirectionTargets(Enum):
-    BROADCAST = 1
-    MOVER = 2
-    EXTRUDER = 3
-    HEATERS = 4
-    UX = 5
+    BROADCAST = 0
+    MOVER = 1
+    EXTRUDER = 2
 
 
 class GRedirect:
@@ -29,10 +27,6 @@ class GRedirect:
         "M112",  # Emergency stop
         "M114",  # Get current position
     ]
-    ux = [
-        "M117",  # Display message
-        "M300",  # Play beep
-    ]
     mover = [
         "G17",  # Set plane to XY
         "G18",  # Set plane to XZ
@@ -47,8 +41,6 @@ class GRedirect:
         "M105",  # Get extruder temperature
         "M109",  # Set extruder temperature and wait
         "M221",  # Set extruder speed factor override percentage
-    ]
-    heaters = [
         "M106",  # Fan on (individual component?)
         "M107",  # Fan off
         "M140",  # Set Bed Temperature fast
@@ -65,10 +57,6 @@ class GRedirect:
             return RedirectionTargets.MOVER
         elif g_id in cls.extruder:
             return RedirectionTargets.EXTRUDER
-        elif g_id in cls.heaters:
-            return RedirectionTargets.HEATERS
-        elif g_id in cls.ux:
-            return RedirectionTargets.UX
         else:
             raise ValueError("Unregistered G-code: {}".format(g_id))
 
@@ -77,10 +65,7 @@ class GRedirect:
         """
         Summarizes all G-codes that are supported by any component defined in the redirection
         """
-        return sorted(
-            cls.broadcast + cls.extruder + cls.mover + cls.heaters + cls.ux,
-            key=lambda x: (x[0], int(x[1:])),
-        )
+        return sorted(cls.broadcast + cls.extruder + cls.mover, key=lambda x: (x[0], int(x[1:])))
 
 
 if __name__ == "__main__":

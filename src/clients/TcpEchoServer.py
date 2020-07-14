@@ -1,6 +1,7 @@
 import socket
 import threading
-from typing import Union, Optional
+from collections import defaultdict
+from typing import Union, Optional, Dict
 
 
 class TcpEchoServer:
@@ -187,7 +188,7 @@ class ConfigurableEchoServer(TcpEchoServer):
     Extends the functionality to include response manipulation.
     """
 
-    def __init__(self, host, port, encoding: str):
+    def __init__(self, host: str, port: int, encoding: str):
         """
         Initialize the TCP Server
         :param host: Hostname as IPv4-adress
@@ -250,3 +251,29 @@ class ConfigurableEchoServer(TcpEchoServer):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         super().__exit__(exc_type, exc_val, exc_tb)
+
+
+class DummyRobotController(ConfigurableEchoServer):
+    def __init__(self, host: str, port: int, encoding: str):
+        super().__init__(host, port, encoding)
+        self.response_lookup: Dict[bytes, Optional[bytes]] = defaultdict(lambda: b'')
+
+    def determine_response(self, msg: bytes) -> bytes:
+        """
+        Apply the modifications to the message.
+        :param msg: Message received by the server in bytes
+        :return: Message to be responded by the server in bytes
+        """
+        # Ensure that the parameters are not accessed
+        with self.lock:
+            # Attempt to look up response
+            response = self.response_lookup[msg]
+            if response is not None:
+                msg = response
+            elif self.replace_msg is not None:
+                msg = self.replace_msg
+            if self.prefix is not None:
+                msg = self.prefix + msg
+            if self.postfix is not None:
+                msg = msg + self.postfix
+        return msg

@@ -5,14 +5,8 @@ from src.ApplicationExceptions import TcpError
 from src.protocols.R3Protocol import R3Reader
 
 
-def cmp_response(
-        poll_cmd: str,
-        response_t: str,
-        protocol: R3Reader,
-        poll_rate_ms: int = 5,
-        timeout_s: int = 60,
-        track_speed=False,
-):
+def cmp_response(poll_cmd: str, response_t: str, protocol: R3Reader, poll_rate_ms: int = 5, timeout_s: int = 60,
+                 track_speed=False, ):
     """
     Uses a given cmd to poll for a given response.
     :param poll_cmd: Command used to execute the poll
@@ -51,7 +45,7 @@ def cmp_response(
             time_samples.append(float(current_time - start_time))
             speed_samples.append(float(speed))
 
-        protocol.client.send(poll_cmd, silent_send=True, silent_recv=True)
+        protocol._protocol_send(poll_cmd, silent_send=True, silent_recv=True)
         response_act = protocol.client.receive()
 
         # Check response
@@ -62,11 +56,7 @@ def cmp_response(
         sleep(poll_rate_ms / 1000)
         t += poll_rate_ms
     else:
-        raise TcpError(
-            "Timeout after {} seconds. Expected: '{}' but got '{}'".format(
-                timeout_s, response_t, response_act
-            )
-        )
+        raise TcpError(f"Timeout after {timeout_s} seconds. Expected: '{response_t}' but got '{response_act}'")
 
     if track_speed:
         return time_samples, speed_samples

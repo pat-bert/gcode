@@ -9,6 +9,9 @@ import serial.tools.list_ports
 import src.clients.IClient as IClient
 from src.clients.ComClient import ComClient, validate_id
 from src.clients.SerialEcho import ConfigurableEcho
+from src.clients.TcpEchoServer import DummyRobotController
+from src.gcode.GCmd import GCmd
+from src.printer_components.GPrinter import GPrinter
 
 
 @pytest.fixture(
@@ -205,3 +208,46 @@ class TestComClient:
 @pytest.mark.parametrize("value,valid", [(0, True), (-1, False), (2 ** 16 - 1, True), (2 ** 16, False)])
 def test_validate_id(value, valid):
     assert validate_id(value) == valid
+
+
+ROBOT_IP, ROBOT_PORT = 'localhost', 10010
+
+
+@pytest.fixture
+def virtual_environ(dummy_robot_controller, valid_com_client):
+    # Starting up server as dummy for printer
+    with dummy_robot_controller:
+        serial_ids = (valid_com_client.vid, valid_com_client.pid,)
+        serial_port = valid_com_client.port
+        printer = GPrinter.default_init(ROBOT_IP, ROBOT_PORT, serial_ids=serial_ids, serial_port=serial_port)
+        dummy_robot_controller.response_lookup[b'1;1;VALM_SVO'] = b'M_SVO=+0'
+        yield printer, dummy_robot_controller
+        printer.shutdown()
+
+
+@pytest.fixture
+def dummy_robot_controller():
+    dummy = DummyRobotController(ROBOT_IP, ROBOT_PORT, 'utf-8')
+    dummy.response_lookup[b'1;1;OVRD'] = b'10'
+    dummy.response_lookup[b'1;1;VALM_SVO'] = b'M_SVO=+1'
+    dummy.reconfigure(pre='QoK')
+    return dummy
+
+
+class TestGPrinter:
+    @pytest.mark.parametrize('cmd_str', ['G91', 'G20'])
+    def test_execute(self, virtual_environ, cmd_str):
+        """
+        Test that commands are sent to all corresponding components
+        :return:
+        """
+        printer, dummy_robot_ctrl = virtual_environ
+        cmd = GCmd.read_cmd_str(cmd_str)
+        printer.execute(cmd)
+
+    def test_shutdown(self, virtual_environ):
+        """
+        Test that all components are shutdown properly
+        :return:
+        """
+        pass
