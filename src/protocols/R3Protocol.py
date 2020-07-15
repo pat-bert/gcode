@@ -3,7 +3,7 @@ from typing import Tuple, Optional, Callable, List
 
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService
-from src.clients.IClient import IClient
+from src.clients.IClient import IClient, ClientError
 
 # General commands
 DELIMITER = ";"
@@ -349,12 +349,14 @@ class R3Reader(R3SubApi):
         """
         # Iteratively call the method
         total_time_waited = 0
+        response = ''
         while total_time_waited < timeout_ms:
             response = func()
             if response == val:
                 return
             sleep(poll_rate_ms / 1000)
             total_time_waited += poll_rate_ms
+        raise ClientError(f"Timeout after {timeout_ms} ms. Expected: '{val}' but got '{response}'")
 
     def _read_parameter(self, parameter: str) -> str:
         """

@@ -1,3 +1,4 @@
+import time
 from math import pi
 from time import sleep
 from typing import AnyStr, Union, List, Optional
@@ -7,7 +8,7 @@ from numpy import ndarray
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
-from src.ApplicationExceptions import MelfaBaseException
+from src.ApplicationExceptions import MelfaBaseException, TcpError
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
@@ -16,7 +17,7 @@ from src.gcode.GCmd import GCmd
 from src.printer_components.GRedirect import RedirectionTargets
 from src.printer_components.PrinterComponent import PrinterComponent
 from src.protocols.R3Protocol import R3Protocol
-from src.refactor import cmp_response
+from src.protocols.R3Protocol import R3Reader
 
 
 class MelfaRobot(PrinterComponent):
@@ -271,25 +272,11 @@ class MelfaRobot(PrinterComponent):
         """
         if activate:
             self.protocol.activate_servo()
-
-            # Poll for active state
-            cmp_response(
-                R3Protocol_Cmd.VAR_READ + R3Protocol_Cmd.SRV_STATE_VAR,
-                R3Protocol_Cmd.SRV_STATE_VAR + "=+1",
-                self.protocol.reader,
-                timeout_s=R3Protocol_Cmd.SERVO_INIT_SEC,
-            )
+            self.protocol.poll(self.protocol.get_servo_state, 1, timeout_ms=5000)
             sleep(1)
         else:
             self.protocol.deactivate_servo()
-
-            # Poll for inactive state
-            cmp_response(
-                R3Protocol_Cmd.VAR_READ + R3Protocol_Cmd.SRV_STATE_VAR,
-                R3Protocol_Cmd.SRV_STATE_VAR + "=+0",
-                self.protocol.reader,
-                timeout_s=R3Protocol_Cmd.SERVO_INIT_SEC,
-            )
+            self.protocol.poll(self.protocol.get_servo_state, 0, timeout_ms=5000)
 
         self.servo = activate
 
@@ -356,6 +343,7 @@ class MelfaRobot(PrinterComponent):
         self.protocol.go_safe_pos()
 
         # Wait until position is reached
+        # self.protocol.poll(self.protocol.get_current_joint, safe_pos)
         cmp_response(R3Protocol_Cmd.CURRENT_JOINT, safe_pos.to_melfa_response(), self.protocol.reader)
 
     def linear_move_poll(self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None):
@@ -523,3 +511,62 @@ class MelfaRobot(PrinterComponent):
         if len(joint_values) != self.joints:
             raise ValueError('Joint movements need to specify all axes.')
         self.protocol.joint_move(joint_values)
+
+
+def cmp_response(poll_cmd: str, response_t: str, protocol: R3Reader, poll_rate_ms: int = 5, timeout_s: int = 60,
+                 track_speed=False, ):
+    """
+    Uses a given cmd to poll for a given response.
+    :param poll_cmd: Command used to execute the poll
+    :param response_t: Target response string
+    :param protocol:
+    :param poll_rate_ms: Poll rate in milliseconds
+    :param timeout_s: Time until timeout in seconds
+    :param track_speed:
+    :return:
+    """
+    t = 0
+    timeout_ms = timeout_s * 1000
+    response_act = ""
+
+    response_t = response_t.split(";A")[0]
+
+    time_samples = []
+    speed_samples = []
+    start_time = None
+
+    # Iterate until timeout occurs or expected response is received
+    while t < timeout_ms:
+        # Handle communication
+
+        if track_speed:
+            current_time = time.clock()
+
+            try:
+                speed = protocol.get_current_linear_speed()
+            except ValueError:
+                speed = 0
+
+            if start_time is None:
+                start_time = current_time
+
+            time_samples.append(float(current_time - start_time))
+            speed_samples.append(float(speed))
+
+        protocol._protocol_send(poll_cmd, silent_send=True, silent_recv=True)
+        response_act = protocol.client.receive()
+
+        # Check response
+        if response_act.startswith(response_t):
+            break
+
+        # Delay
+        sleep(poll_rate_ms / 1000)
+        t += poll_rate_ms
+    else:
+        raise TcpError(f"Timeout after {timeout_s} seconds. Expected: '{response_t}' but got '{response_act}'")
+
+    if track_speed:
+        return time_samples, speed_samples
+    else:
+        return None, None
