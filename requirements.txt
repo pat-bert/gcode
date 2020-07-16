@@ -16,7 +16,7 @@ importlib-metadata==1.7.0
 importlib-resources==3.0.0
 junit-xml==1.8
 kiwisolver==1.2.0
-matplotlib==3.2.2
+matplotlib==3.3.0
 more-itertools==8.4.0
 mutmut==2.0.0
 numpy==1.19.0
