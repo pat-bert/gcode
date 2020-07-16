@@ -44,13 +44,13 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
         :param acceleration: Acceleration in mm/s^2
         :param ds: Way delta for discretizing the segment in mm
         """
-        self.trajectory_points = list(trajectory_points)
+        self.trajectory_points = {0: list(trajectory_points)}
 
-        if len(self.trajectory_points) == 0:
+        if len(self.trajectory_points[0]) == 0:
             raise ValueError('Trajectory may not be empty.')
 
         if ds is not None:
-            self.s_total = ds * (len(self.trajectory_points) - 1)
+            self.s_total = ds * (len(self.trajectory_points[0]) - 1)
         else:
             self.s_total = None
         self.ds = ds
@@ -69,7 +69,11 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
 
     @property
     def target(self):
-        return self.trajectory_points[-1]
+        return self.trajectory_points[0][-1]
+
+    @property
+    def unmodified_points(self):
+        return self.trajectory_points[0]
 
 
 class LinearSegment(CartesianTrajSegment):
@@ -84,19 +88,19 @@ class LinearSegment(CartesianTrajSegment):
         :return: Boolean to indicate whether the point is within
         """
         # Distinguish element types
-        if self.trajectory_points[0].shape == (4, 4,):
+        if self.unmodified_points[0].shape == (4, 4,):
             # Homogeneous transformation matrix
-            start = self.trajectory_points[0][0:3, 3]
-            end = self.trajectory_points[-1][0:3, 3]
+            start = self.unmodified_points[0][0:3, 3]
+            end = self.unmodified_points[-1][0:3, 3]
         else:
             # Assume single element
-            start = self.trajectory_points[0]
-            end = self.trajectory_points[-1]
+            start = self.unmodified_points[0]
+            end = self.unmodified_points[-1]
 
         start_violations = get_violated_boundaries(start, boundaries)
         end_violations = get_violated_boundaries(end, boundaries)
 
-        if len(self.trajectory_points) > 1:
+        if len(self.unmodified_points) > 1:
             return start_violations | end_violations
         return start_violations
 
@@ -112,10 +116,10 @@ class CircularSegment(CartesianTrajSegment):
         :param boundaries: List of boundaries with twice the length of the coordinates
         :return: Boolean to indicate whether the point is within
         """
-        if self.trajectory_points[0].shape == (4, 4,):
-            all_violations = [get_violated_boundaries(point[0:3, 3], boundaries) for point in self.trajectory_points]
+        if self.unmodified_points[0].shape == (4, 4,):
+            all_violations = [get_violated_boundaries(point[0:3, 3], boundaries) for point in self.unmodified_points]
         else:
-            all_violations = [get_violated_boundaries(point, boundaries) for point in self.trajectory_points]
+            all_violations = [get_violated_boundaries(point, boundaries) for point in self.unmodified_points]
         return {element for idx_list in all_violations for element in idx_list}
 
 

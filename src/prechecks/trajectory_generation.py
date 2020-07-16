@@ -54,20 +54,19 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
     return all_trajectory_pose_points
 
 
-def generate_joint_trajectory(task_trajectory: List[CartesianTrajSegment], config: List[BaseJoint]) \
-        -> List[JointTrajSegment]:
+def generate_joint_trajectory(task_traj: List[CartesianTrajSegment], config: List[BaseJoint]) -> List[JointTrajSegment]:
     """
     Generates the trajectory in joint space
-    :param task_trajectory: Trajectory in task space (cartesian), given as list of CartesianTrajectorySegments
+    :param task_traj: Trajectory in task space (cartesian), given as list of CartesianTrajectorySegments
     :param config: List of joints implementing the BaseJoint interface
     :return: Joint trajectory given as list of JointTrajectorySegments
     """
     print('Generating joint trajectory...')
 
     joint_segments = []
-    for seg_idx, cartesian_segment in enumerate(task_trajectory):
+    for seg_idx, cartesian_segment in enumerate(task_traj):
         current_segment_solutions = []
-        for pt_idx, pose in enumerate(cartesian_segment.trajectory_points):
+        for pt_idx, pose in enumerate(cartesian_segment.unmodified_points):
             try:
                 # Calculate the inverse kinematics without specifying a specific pose flag
                 # Only if no solution at all can be found exceptions will propagate out

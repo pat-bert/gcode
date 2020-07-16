@@ -1,4 +1,5 @@
-from typing import List, NamedTuple, Optional
+from math import ceil, pi
+from typing import List, Optional
 
 import numpy as np
 from dijkstar import find_path, NoPathError
@@ -7,27 +8,57 @@ from src.collisions.collision_checking import MatlabCollisionChecker
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
+from src.prechecks.dataclasses import Constraints, Increments
 from src.prechecks.exceptions import CollisionViolation, ConfigurationChangesError, JointVelocityViolation, \
     JOINT_SPEED_ALLOWABLE_RATIO, NoValidPathFound
 from src.prechecks.graph_search import create_graph, calc_conf_from_node, calc_node_idx
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
-from src.prechecks.trajectory_segment import check_cartesian_limits, JointTrajSegment, filter_joint_limits
+from src.prechecks.trajectory_segment import check_cartesian_limits, JointTrajSegment, filter_joint_limits, \
+    CartesianTrajSegment
 from src.prechecks.utils import print_progress, time_func_call
 
 
-class Constraints(NamedTuple):
+def axang2tform(nvec, angle: float):
+    # TODO Rodrigues equation
+    return np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ]
+    )
+
+
+def expand_task_trajectory(task_trajectory: List[CartesianTrajSegment], dphi: float) -> List[CartesianTrajSegment]:
     """
-    pos_cartesian: List of user-defined cartesian workspace limitations [-x, +x, -y, +y, -z, +z]
-    pos_joint: List of joint position limitations [min J1, max J1, .., min Jn, max Jn]
-    vel_joint: List of joint velocity limitations [max v_J1, max v_J2, .., max v_Jn]
+    Expand the task trajectory by adding equivalent points obtained by applying constant per segment rotation around
+    the tool axis.
+    :param task_trajectory:
+    :param dphi:
+    :return:
     """
-    pos_cartesian: List[float]
-    pos_joint: List[float]
-    vel_joint: List[float]
+    # Create the angles around the tool axis that need to be sampled
+    samples = ceil(pi / dphi)
+    # Start is included but stop is not included
+    angles = [(i, dphi * i,) for i in range(-samples + 1, samples) if i != 0]
+
+    # Iterate over all segments
+    for segment in task_trajectory:
+        # Get the z-axis of the current segment (constant orientation)
+        nvec = segment.unmodified_points[0][0:3, 2]
+        orig_points = tuple(segment.unmodified_points)
+
+        for angle_idx, angle in angles:
+            # Calculate the transformation matrix around the tool axis
+            modified_tform = axang2tform(nvec, angle)
+            segment.trajectory_points[angle_idx] = [np.dot(tform, modified_tform) for tform in orig_points]
+
+    return task_trajectory
 
 
 @time_func_call
-def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, home: List[float], ds: float,
+def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, home: List[float], incs: Increments,
                default_acc: float, urdf: str):
     """
     Validate a trajectory defined by a list of G-code commands.
@@ -35,7 +66,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     :param config: List of joints containing coordinate transformations.
     :param limits: Namedtuple containing all relevant trajectory constraints
     :param home: Home position given as list of joint values
-    :param ds: Float value for distance between pose points in mm
+    :param incs: Float value for distance between pose points in mm
     :param default_acc: Float value for the default robot acceleration in mm/s^2
     :param urdf:
     :return: None
@@ -68,8 +99,11 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
 
     # Generate cartesian waypoints from command list and validate limits
     print('Generating task trajectory...')
-    task_trajectory = generate_task_trajectory(cmds, start_position, ds, default_acc)
+    task_trajectory = generate_task_trajectory(cmds, start_position, incs.ds, default_acc)
     check_cartesian_limits(task_trajectory, limits.pos_cartesian)
+
+    # Expand task trajectory by additional degree of freedom
+    task_trajectory = expand_task_trajectory(task_trajectory, incs.dphi)
 
     # Convert to joint space and filter out solutions exceeding the limits
     joint_traj = generate_joint_trajectory(task_trajectory, config)

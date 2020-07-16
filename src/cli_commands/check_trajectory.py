@@ -1,5 +1,6 @@
 import logging
 from configparser import ConfigParser
+from math import pi
 from typing import Optional
 
 from src.clients.TcpClientR3 import TcpClientR3
@@ -7,7 +8,8 @@ from src.gcode.GCmd import GCmd
 from src.prechecks.configs import melfa_rv_4a
 from src.prechecks.exceptions import CartesianLimitViolation, ConfigurationChangesError, JointVelocityViolation, \
     NoValidPathFound, WorkspaceViolation
-from src.prechecks.prechecks import Constraints, check_traj
+from src.prechecks.prechecks import check_traj
+from src.prechecks.dataclasses import Constraints, Increments
 from src.protocols.R3Protocol import R3Protocol
 
 
@@ -51,15 +53,19 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     max_jnt_speed = config_parser.get('prechecks', 'max_joint_speed')
     joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
     inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
+    inc_angle_tool_deg = float(config_parser.get('prechecks', 'dphi_deg'))
     urdf_file_path = config_parser.get('prechecks', 'urdf_path')
     default_acc = float(config_parser.get('prechecks', 'default_acc'))
 
     # Create the constraints
     traj_constraint = Constraints(cartesian_limits, joint_limits, joint_velocity_limits)
 
+    # Create the increments
+    incs = Increments(inc_distance_mm, inc_angle_tool_deg / 180 * pi)
+
     try:
         # Check the trajectory
-        check_traj(commands, robot_config, traj_constraint, home_position, inc_distance_mm, default_acc, urdf_file_path)
+        check_traj(commands, robot_config, traj_constraint, home_position, incs, default_acc, urdf_file_path)
     except (CartesianLimitViolation, WorkspaceViolation) as e:
         logging.exception('Fatal error occured: {}'.format("\n".join(e.args)))
         logging.error('Please verify that the limits are correct and check the positioning of the part.')
