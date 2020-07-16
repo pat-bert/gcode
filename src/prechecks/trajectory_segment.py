@@ -4,6 +4,7 @@ from typing import List, Union, Iterator, Set, Dict
 
 import numpy as np
 
+from prechecks.exceptions import ConfigurationChangesError, JOINT_SPEED_ALLOWABLE_RATIO, JointVelocityViolation
 from src.kinematics.inverse_kinematics import JointSolution
 from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation, JOINT_SPEED_ALLOWABLE_RATIO
 from src.prechecks.speed_profile import trapezoidal_speed_profile
@@ -244,7 +245,7 @@ def check_cartesian_limits(task_trajectory: List[CartesianTrajSegment], clim: Li
     print('All segments are located within the cartesian limits.')
 
 
-def filter_joint_limits(joint_trajectory: List[JointTrajSegment], qlim: List[float]):
+def filter_joint_limits(joint_trajectory: List[JointTrajSegment], qlim: List[float]) -> None:
     """
     Eliminates solutions in joint space that violate the joint limits.
     :param joint_trajectory:
@@ -257,3 +258,56 @@ def filter_joint_limits(joint_trajectory: List[JointTrajSegment], qlim: List[flo
         violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
         raise JointLimitViolation('Found segments violating the joint limits.', violation_idx)
     print('All segments have joint solutions within the limits.')
+
+
+def check_common_configurations(joint_trajectory: List[JointTrajSegment]) -> None:
+    """
+    Search for common configurations for each segment of the trajectory.
+    :param joint_trajectory:
+    :raises: ConfigurationChangesError if any segment is found that does not have solutions with a common configuration.
+    """
+    print('Checking common configurations...')
+    common_configurations = [segment.get_common_configurations() for segment in joint_trajectory]
+    if not all(common_configurations):
+        violation_idx = [idx for idx, val in enumerate(common_configurations) if not val]
+        error_msg = ''
+        for idx in violation_idx:
+            configs = {i for point in joint_trajectory[idx].solutions for i in point.keys()}
+            error_msg += f'Segment #{idx}: Points accessible in configurations {configs}\n'
+        raise ConfigurationChangesError(f'Found segments without common configurations:\n{error_msg}')
+    print('Each segment can be executed without configuration change.')
+    print(f'Configurations in trajectory: {set(conf for conf_list in common_configurations for conf in conf_list)}')
+    print(f'Configurations common to all segments: {set.intersection(*map(set, common_configurations))}')
+
+
+def check_joint_velocities(joint_traj: List[JointTrajSegment], config_path: List[int], qdlim: List[float]):
+    """
+    Check the joint velocities along a trajectory for given robot configurations per segment.
+    :param joint_traj: Joint trajectory as list of coherent segments
+    :param config_path: List of robot configurations per point
+    :param qdlim:
+    :return:
+    """
+    if sum(len(seg.solutions) for seg in joint_traj) != len(config_path):
+        raise ValueError('Number of segments is unequal to number of configs.')
+
+    print('Checking joint velocities on selected path..')
+    start = 0
+    exceeding_indices = []
+
+    error_msg = f"Joint velocity ratio {100 * JOINT_SPEED_ALLOWABLE_RATIO :.2f}% exceeded " \
+                f"(max velocities by segment and joint):\n"
+    for seg_idx, seg in enumerate(joint_traj):
+        end = start + len(seg.solutions)
+        current_exceeding = seg.joints_exceeding_velocity_limits(config_path[start:end], qdlim)
+        exceeding_indices.append(current_exceeding)
+        start += len(seg.solutions)
+
+        if current_exceeding:
+            joint_vel_str = [f'J{j_idx}: {vmax :.3f} rad/s' for j_idx, vmax in current_exceeding.items()]
+            error_msg += f"Segment #{seg_idx}: {'; '.join(sorted(joint_vel_str))}\n"
+
+    # Check the violations
+    if any(exceeding_indices):
+        raise JointVelocityViolation(error_msg)
+    print('All movements are done within the defined percentage of maximum joint velocity.')

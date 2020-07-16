@@ -234,3 +234,15 @@ def calculate_pose_flags(config, joint_values) -> float:
     non_flip = 1 if joint_values_dh[4] > 0 else 0
 
     return non_flip + above * 2 + right * 4
+
+
+def axang2tform(nvec, angle: float):
+    # TODO Rodrigues equation
+    return np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ]
+    )

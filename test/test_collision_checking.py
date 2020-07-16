@@ -2,7 +2,7 @@ from math import pi
 
 import pytest
 
-from src.collisions.collision_checking import MatlabCollisionChecker
+from src.prechecks.collision_checking import MatlabCollisionChecker
 
 
 def test_check_collisions():
