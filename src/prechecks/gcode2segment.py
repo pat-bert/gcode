@@ -59,7 +59,8 @@ def circular_segment_from_gcode(command: GCmd, current_pose: np.ndarray, ds: flo
 
     centre_position = centre_pos.values
     traj_poses = circular_interpolation(current_pose, target_pose, centre_position, normal_vec, is_clockwise, ds=ds)
-    circ_segment = CircularSegment(traj_poses, curr_vel, curr_acc, ds)
+    has_extr = command.extrude_len is not None
+    circ_segment = CircularSegment(traj_poses, extrusion=has_extr, vel=curr_vel, acc=curr_acc, ds=ds)
     return circ_segment
 
 
@@ -98,7 +99,9 @@ def linear_segment_from_gcode(command: GCmd, current_pose: np.ndarray, ds: float
     # Get end point (TODO Ensure order)
     target_pose = pose2tform(target_position.values, x_angle=x_angle, y_angle=y_angle, z_angle=z_angle)
 
+    has_extr = command.extrude_len is not None
+
     # Linear interpolation (constant way-interval)
     trajectory_pose_points = linear_interpolation(current_pose, target_pose, ds=ds)
-    lin_segment = LinearSegment(trajectory_pose_points, curr_vel, curr_acc, ds)
+    lin_segment = LinearSegment(trajectory_pose_points, extrusion=has_extr, vel=curr_vel, acc=curr_acc, ds=ds)
     return lin_segment

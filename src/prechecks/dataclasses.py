@@ -15,3 +15,8 @@ class Constraints(NamedTuple):
 class Increments(NamedTuple):
     ds: float
     dphi: float
+
+
+class Extrusion(NamedTuple):
+    height: float
+    width: float

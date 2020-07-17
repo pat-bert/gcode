@@ -1,10 +1,10 @@
 import abc
 from collections import defaultdict
-from typing import List, Union, Iterator, Set, Dict
+from typing import List, Union, Iterator, Set, Dict, Optional
 
 import numpy as np
 
-from prechecks.exceptions import ConfigurationChangesError, JOINT_SPEED_ALLOWABLE_RATIO, JointVelocityViolation
+from prechecks.exceptions import ConfigurationChangesError, JointVelocityViolation
 from src.kinematics.inverse_kinematics import JointSolution
 from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation, JOINT_SPEED_ALLOWABLE_RATIO
 from src.prechecks.speed_profile import trapezoidal_speed_profile
@@ -37,15 +37,17 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
     Base class for parts of a trajectory within the cartesian task space
     """
 
-    def __init__(self, trajectory_points: Iterator[np.ndarray], velocity=None, acceleration=None, ds=None):
+    def __init__(self, trajectory_points: Iterator[np.ndarray], extrusion: Optional[bool] = False,
+                 vel: Optional[float] = None, acc: Optional[float] = None, ds: Optional[float] = None):
         """
         Create a cartesian trajectory segment. Time points are calculated according to a trapezoidal speed profile.
         :param trajectory_points:
-        :param velocity: Velocity in mm/min
-        :param acceleration: Acceleration in mm/s^2
+        :param vel: Velocity in mm/min
+        :param acc: Acceleration in mm/s^2
         :param ds: Way delta for discretizing the segment in mm
         """
         self.trajectory_points = {0: list(trajectory_points)}
+        self.has_extrusion = extrusion
 
         if len(self.trajectory_points[0]) == 0:
             raise ValueError('Trajectory may not be empty.')
@@ -55,8 +57,8 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
         else:
             self.s_total = None
         self.ds = ds
-        if velocity is not None and acceleration is not None and ds is not None and self.s_total > 0.0:
-            self.time_points = trapezoidal_speed_profile(velocity / 60, acceleration, self.s_total, self.ds)
+        if vel is not None and acc is not None and ds is not None and self.s_total > 0.0:
+            self.time_points = trapezoidal_speed_profile(vel / 60, acc, self.s_total, self.ds)
         else:
             self.time_points = None
 
