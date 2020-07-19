@@ -50,8 +50,11 @@ function [isInCollision, selfCollisionPairIdx, worldCollisionPairIdx] = checkCol
         % Since collisionPairIdx order doesn't matter, only check every
         % pair of bodies once
         for k = j:numel(robotBodies)
-            % Don't check collision with self or neighbors
-            if j ~= k && j ~= k+1 && j ~= k-1 && ~(j == 5 && k == 7)% not checking with self and neighbors, plus 5&&7 is false positive
+            % Don't check collision with self or children or parents
+            if j ~= k && ... 
+               ~any(strcmp(cellfun(@(x) (x.Name),robotBodies{j}.Children,'UniformOutput',false), robotBodies{k}.Name)) && ...
+               (j~= 1 && ~strcmp(robotBodies{j}.Parent.Name, robotBodies{k}.Name)) && ...
+               ~(strcmp(robotBodies{j}.Name,'link4') && strcmp(robotBodies{k}.Name, 'link6'))
                 % Ensure that both bodies have associated collision objects
                 if ~isempty(bodyCollisionArray{j,1}) && ~isempty(bodyCollisionArray{k,1})
 

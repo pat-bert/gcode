@@ -60,7 +60,8 @@ def circular_segment_from_gcode(command: GCmd, current_pose: np.ndarray, ds: flo
     centre_position = centre_pos.values
     traj_poses = circular_interpolation(current_pose, target_pose, centre_position, normal_vec, is_clockwise, ds=ds)
     has_extr = command.extrude_len is not None
-    circ_segment = CircularSegment(traj_poses, extrusion=has_extr, vel=curr_vel, acc=curr_acc, ds=ds)
+    centre_position = np.array(centre_position)
+    circ_segment = CircularSegment(traj_poses, centre_position, extrusion=has_extr, vel=curr_vel, acc=curr_acc, ds=ds)
     return circ_segment
 
 

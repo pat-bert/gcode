@@ -2,6 +2,7 @@ from typing import List
 
 import numpy as np
 
+from src.prechecks.utils import print_progress
 from src.gcode.GCmd import GCmd
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
@@ -27,7 +28,13 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
     current_vel = 0
     current_acc = acc
 
+    print('Generating task trajectory...')
+    total_len = len(cmds)
+
     for line_number, command in enumerate(cmds):
+        prefix = f'Creating task trajectory for command line #{line_number} ...'
+        print_progress(line_number + 1, total_len, prefix=prefix)
+
         # Movement commands
         if command.id in ['G01', 'G1']:
             lin_segment = linear_segment_from_gcode(command, current_pos, ds, is_absolute, current_vel, current_acc)
@@ -46,10 +53,11 @@ def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: floa
             is_absolute = False
         elif command.id == 'G92':
             # Consider coordinate origin shifting
-            raise NotImplementedError('Origin shifting is not supported.')
-        elif command.id[0] == 'T' and command.id[1:] != 0:
+            if command.cartesian_abs.values:
+                raise NotImplementedError(f'Origin shifting of XYZ is not supported: #{line_number} {command}')
+        elif command.id[0] == 'T' and command.id[1:] != '0':
             # Consider tool changes
-            raise NotImplementedError('Tool changes are not supported.')
+            raise NotImplementedError(f'Tool changes are not supported: #{line_number} {command}')
 
     return all_trajectory_pose_points
 
@@ -64,8 +72,15 @@ def generate_joint_trajectory(task_traj: List[CartesianTrajSegment], config: Lis
     print('Generating joint trajectory...')
 
     joint_segments = []
+
+    total_len = len(task_traj)
+
     for seg_idx, cartesian_segment in enumerate(task_traj):
         current_segment_solutions = []
+
+        prefix = f'Calculating joint solutions for segment #{seg_idx} ...'
+        print_progress(seg_idx + 1, total_len, prefix=prefix)
+
         for pt_idx, pose in enumerate(cartesian_segment.unmodified_points):
             try:
                 # Calculate the inverse kinematics without specifying a specific pose flag

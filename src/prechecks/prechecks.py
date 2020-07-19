@@ -89,12 +89,11 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     start_position = forward_kinematics(config, home)
 
     # Generate cartesian waypoints from command list and validate limits
-    print('Generating task trajectory...')
     task_trajectory = generate_task_trajectory(cmds, start_position, incs.ds, default_acc)
     check_cartesian_limits(task_trajectory, limits.pos_cartesian)
 
     # Expand task trajectory by additional degree of freedom
-    task_trajectory = expand_task_trajectory(task_trajectory, incs.dphi)
+    # task_trajectory = expand_task_trajectory(task_trajectory, incs.dphi)
 
     # Convert to joint space and filter out solutions exceeding the limits
     joint_traj = generate_joint_trajectory(task_trajectory, config)
@@ -109,26 +108,8 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     # coordinates and the robot configurations of the connected nodes.
     graph, start_node, stop_node = create_graph(joint_traj, limits.pos_joint, limits.vel_joint)
 
-    print('Creating collision scene...')
-    # TODO Create collision scene from task trajectory segments
-    all_collision_scenes = [1] * len(joint_traj)
-
-    # Create collision objects
-    collision_vertices_list = []
-    for seg in task_trajectory:
-        if seg.has_extrusion:
-            nvec = np.array([0, 0, 1])
-            if isinstance(seg, LinearSegment):
-                cuboid = create_cuboid_from_path(seg, nvec, extr.width, extr.height)
-                collision_vertices_list.append(cuboid)
-            elif isinstance(seg, CircularSegment):
-                vertices = create_vertices_from_arc(seg, nvec, extr.width, extr.height)
-                collision_vertices_list.append(vertices)
-            else:
-                raise ValueError('Unsupported segment for creation of collision object.')
-        else:
-            cuboid = None
-            collision_vertices_list.append(cuboid)
+    # Create collision objects for all segments with extrusion
+    all_collision_scenes = create_collision_scenes(task_trajectory, extr)
 
     # Init Matlab Runtime
     collider = MatlabCollisionChecker()
@@ -142,3 +123,30 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
 
     # Finally, check the joint velocities
     check_joint_velocities(joint_traj, pt_configurations, limits.vel_joint)
+
+
+def create_collision_scenes(task_trajectory: List[CartesianTrajSegment], extr: Extrusion) -> List[np.ndarray]:
+    print('Creating collision scene...')
+
+    # Create individual collision objects
+    collision_vertices_list = []
+    for seg in task_trajectory:
+        if seg.has_extrusion:
+            # TODO Get correct normal vector for collision objects
+            nvec = np.array([0, 0, 1])
+            if isinstance(seg, LinearSegment):
+                cuboid = create_cuboid_from_path(seg, nvec, extr)
+                collision_vertices_list.append(cuboid)
+            elif isinstance(seg, CircularSegment):
+                vertices = create_vertices_from_arc(seg, nvec, extr)
+                collision_vertices_list.append(vertices)
+            else:
+                raise ValueError('Unsupported segment for creation of collision object.')
+        else:
+            cuboid = None
+            collision_vertices_list.append(cuboid)
+
+    # TODO Accumulate objects to create collision scenes for each step
+    all_collision_scenes = [np.array([1])] * len(task_trajectory)
+
+    return all_collision_scenes

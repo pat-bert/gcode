@@ -1,15 +1,15 @@
 import numpy as np
 
+from src.prechecks.dataclasses import Extrusion
 from src.prechecks.trajectory_segment import LinearSegment, CircularSegment
 
 
-def create_cuboid_from_path(line: LinearSegment, nvec: np.ndarray, extr_width: float, extr_height: float) -> np.ndarray:
+def create_cuboid_from_path(line: LinearSegment, nvec: np.ndarray, extr: Extrusion) -> np.ndarray:
     """
     Create vertices of a cuboid for a linear segment.
     :param line: Linear segment
     :param nvec: Normal vector for build direction
-    :param extr_width: Width of the extruded filament
-    :param extr_height: Height of the extruded filament
+    :param extr: Extrusion parameters
     :return: (8x3) array
     """
     upper_mid_start = line.unmodified_points[0][0:3, 3]
@@ -18,12 +18,12 @@ def create_cuboid_from_path(line: LinearSegment, nvec: np.ndarray, extr_width: f
     # Get the lateral direction
     lateral_vec = np.cross(nvec, upper_mid_end - upper_mid_start)
     try:
-        ydir = extr_width * lateral_vec / np.linalg.norm(lateral_vec)
+        ydir = extr.width * lateral_vec / np.linalg.norm(lateral_vec)
     except ZeroDivisionError:
         raise ValueError('Invalid normal vector. Cross product had zero length.')
 
     # Get the height vector
-    zdir = extr_height * nvec
+    zdir = extr.height * nvec
 
     cuboid = np.array(
         [
@@ -48,30 +48,26 @@ def create_cuboid_from_path(line: LinearSegment, nvec: np.ndarray, extr_width: f
     return cuboid
 
 
-def create_vertices_from_arc(arc: CircularSegment, nvec: np.ndarray, extr_width: float,
-                             extr_height: float) -> np.ndarray:
+def create_vertices_from_arc(arc: CircularSegment, nvec: np.ndarray, extr: Extrusion) -> np.ndarray:
     """
     Create vertices of a circular cuboid.
     :param arc: Circular segment
     :param nvec: Normal vector for build direction
-    :param extr_width: Width of the extruded filament
-    :param extr_height: Height of the extruded filament
+    :param extr: Extrusion parameters
     :return: (nx3) array with n = 4k
     """
     # Get the height vector
-    zdir = extr_height * nvec
+    zdir = extr.height * nvec
 
     vertices = []
 
     # Iterate over all points in the arc
     for pose in arc.unmodified_points:
-        # TODO Get the correct centre point
         upper_mid = pose[0:3, 3]
-        centre: np.ndarray = np.array([1, 2, 3])
-        lateral_vec = centre - upper_mid
+        lateral_vec = arc.centre - upper_mid
 
         try:
-            ydir = extr_width * lateral_vec / np.linalg.norm(lateral_vec)
+            ydir = extr.width * lateral_vec / np.linalg.norm(lateral_vec)
         except ZeroDivisionError:
             raise ValueError('Arc with zero radius detected.')
 

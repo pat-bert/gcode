@@ -113,6 +113,11 @@ class CircularSegment(CartesianTrajSegment):
     Represents a circular sector within the task space
     """
 
+    def __init__(self, trajectory_points: Iterator[np.ndarray], centre: np.ndarray, extrusion: Optional[bool] = False,
+                 vel: Optional[float] = None, acc: Optional[float] = None, ds: Optional[float] = None):
+        super().__init__(trajectory_points, extrusion, vel, acc, ds)
+        self.centre = centre
+
     def get_violated_boundaries(self, boundaries: List[float]) -> Set[int]:
         """
         A circular segment/sector is within a rectangular cuboid if all points are within.
