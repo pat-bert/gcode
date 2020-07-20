@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 
+from src.kinematics.forward_kinematics import vec3_cross
 from src import ApplicationExceptions
 from src.ApplicationExceptions import UnknownPlaneError, IllegalAngleError
 from src.MelfaCoordinateService import Plane
@@ -48,7 +49,7 @@ def get_circle_cs(veca: np.ndarray, vecb: np.ndarray, plane: Plane, normal_vec: 
     x_axis = np.divide(x_axis, np.linalg.norm(x_axis))
 
     # Get corresponding y-axis for right-hand system
-    y_axis = np.cross(z_axis, x_axis)
+    y_axis = vec3_cross(z_axis, x_axis)
     y_axis = np.divide(y_axis, np.linalg.norm(y_axis))
 
     return x_axis, y_axis, z_axis
@@ -119,7 +120,7 @@ def get_intermediate_point(angle: float, start_pos: np.ndarray, target_pos: np.n
             raise ApplicationExceptions.MelfaBaseException("Unknown plane supplied.")
 
         # Calculate and resize radial normal vector
-        normal_r = np.cross(target_pos - center_pos, normal_vec)
+        normal_r = vec3_cross(target_pos - center_pos, normal_vec)
         normal_r = np.divide(normal_r, np.linalg.norm(normal_r))
 
         # Orientation

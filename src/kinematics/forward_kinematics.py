@@ -47,6 +47,16 @@ def geometric_jacobian(config: List[BaseJoint], joint_coordinates: List[float]) 
     return jacobian
 
 
+def vec3_cross(a: ndarray, b: ndarray) -> ndarray:
+    return np.array(
+        [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0]
+        ]
+    )
+
+
 def right_generalized_inverse_jacobian(jacobian: ndarray) -> ndarray:
     jacobian_t = jacobian.transpose()
     try:
