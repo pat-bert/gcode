@@ -1,5 +1,8 @@
+from typing import List
+
 import numpy as np
 
+from src.prechecks.trajectory_segment import CartesianTrajSegment
 from src.prechecks.dataclasses import Extrusion
 from src.prechecks.trajectory_segment import LinearSegment, CircularSegment
 
@@ -78,3 +81,30 @@ def create_vertices_from_arc(arc: CircularSegment, nvec: np.ndarray, extr: Extru
         vertices.append(upper_mid + 0.5 * ydir)
 
     return np.array(vertices)
+
+
+def create_collision_scenes(task_trajectory: List[CartesianTrajSegment], extr: Extrusion) -> List[np.ndarray]:
+    print('Creating collision scene...')
+
+    # Create individual collision objects
+    collision_vertices_list = []
+    for seg in task_trajectory:
+        if seg.has_extrusion:
+            # Get normal vector from first point (orientation is constant)
+            nvec = seg.unmodified_points[0][0:3, 2]
+            if isinstance(seg, LinearSegment):
+                cuboid = create_cuboid_from_path(seg, nvec, extr)
+                collision_vertices_list.append(cuboid)
+            elif isinstance(seg, CircularSegment):
+                vertices = create_vertices_from_arc(seg, nvec, extr)
+                collision_vertices_list.append(vertices)
+            else:
+                raise ValueError('Unsupported segment for creation of collision object.')
+        else:
+            cuboid = None
+            collision_vertices_list.append(cuboid)
+
+    # TODO Accumulate objects to create collision scenes for each step
+    all_collision_scenes = [np.array([1])] * len(task_trajectory)
+
+    return all_collision_scenes

@@ -137,16 +137,16 @@ class GCmd(BaseCmd):
         :param command_str: Input string
         :return:
         """
-        # Split off comment in same line
-        command_str = command_str.split(cls.COMMENT)[0]
-
-        # Split space-separated parts of the command
-        segments = command_str.split(" ")
-
         if command_str.startswith(cls.COMMENT):
             # Passed string is a comment so you cannot return a command/maybe an empty one in the future
             return None
         else:
+            # Split off comment in same line
+            command_str = command_str.split(cls.COMMENT)[0]
+
+            # Split space-separated parts of the command
+            segments = command_str.split(" ")
+
             # Command identifier is required first
             if cls.CMD_REMOVE_LEAD_ZERO:
                 try:

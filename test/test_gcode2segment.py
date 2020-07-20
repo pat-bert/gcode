@@ -43,9 +43,9 @@ def test_linear_segment_from_gcode(cmd, ds, is_absolute, curr_vel, curr_acc, ex_
 
 def common_properties(curr_acc, curr_vel, ds, ex_points, segment, target):
     assert segment.ds == ds
-    assert len(segment.trajectory_points) == ex_points
+    assert len(segment.unmodified_points) == ex_points
     if curr_vel is not None and curr_acc is not None:
-        assert len(segment.time_points) == len(segment.trajectory_points)
+        assert len(segment.time_points) == len(segment.unmodified_points)
         # Time must be monotonically increasing
         assert all(segment.time_points[i] - segment.time_points[i - 1] > 0 for i in
                    range(1, len(segment.time_points)))

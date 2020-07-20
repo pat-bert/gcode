@@ -1,12 +1,14 @@
 # Functional Redundancy Resolution
-from math import pi
+from math import pi, ceil
 from typing import List
 
 import numpy as np
 
+from src.kinematics.forward_kinematics import axang2tform
 from src.kinematics.forward_kinematics import geometric_jacobian, right_generalized_inverse_jacobian, forward_kinematics
 from src.kinematics.joints import BaseJoint
 from src.prechecks.configs import melfa_rv_4a
+from src.prechecks.trajectory_segment import CartesianTrajSegment
 
 
 def frr(config: List[BaseJoint], initial_joints: List[float], weights=None, stop_threshold: float = 1e-5) \
@@ -93,3 +95,31 @@ if __name__ == '__main__':
     print(f'TCP Pos Deviation:\t{[f"{i:+.3f}" for i in tcp_pos_dev[0:3, 3]]}')
     print(f'TCP ZDIR Deviation:\t{[f"{i:+.3f}" for i in tcp_pos_dev[0:3, 2]]}')
     print(f'Weights:\t\t\t{tuning}')
+
+
+def expand_task_trajectory(task_trajectory: List[CartesianTrajSegment], dphi: float) -> List[CartesianTrajSegment]:
+    """
+    Expand the task trajectory by adding equivalent points obtained by applying constant per segment rotation around
+    the tool axis.
+    :param task_trajectory:
+    :param dphi:
+    :return:
+    """
+    # Create the angles around the tool axis that need to be sampled
+    samples = ceil(pi / dphi)
+    # Start is included but stop is not included
+    angles = [(i, dphi * i,) for i in range(-samples + 1, samples) if i != 0]
+
+    # Iterate over all segments
+    for segment in task_trajectory:
+        # Get the z-axis of the current segment (constant orientation)
+        nvec = segment.unmodified_points[0][0:3, 2]
+        orig_points = tuple(segment.unmodified_points)
+
+        for angle_idx, angle in angles:
+            # Calculate the transformation matrix around the tool axis
+            modified_tform = axang2tform(nvec, angle)
+            # TODO Check calculation of modified points
+            segment.trajectory_points[angle_idx] = [np.dot(tform, modified_tform) for tform in orig_points]
+
+    return task_trajectory
