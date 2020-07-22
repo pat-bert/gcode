@@ -1,4 +1,32 @@
-function [isColl, selfCollPairIdx, worldCollPairIdx] = validate_config(current_config, interactive, urdf_path)
+function [isColl, selfCollPairIdx, worldCollPairIdx, extrusionPairIdx] = validate_config(config, interactive, urdf, extr_vertices, scene_idx)
+%VALIDATE_CONFIG Check whether a robot configuration is collision free.
+%   isColl = validate_config(config, interactive, urdf)
+%   Check a robot model for collisions with itself, its cell and extruded
+%   filament. 
+%   config      - Configuration given as column vector of joint coordinates
+%   interactive - Flag to specify whether a plot should be created
+%   urdf        - String to specifiy the file path for the URDF file
+%                 containing the model of the robot and its cell
+%   extr_vertices - Cell array of nx3 matrices representing the vertices of
+%                   extruded objects
+%   scene_idx     - An index to specify up to which extrusion object
+%                   collision checking will be done.
+%
+%   The filepath for the URDF can be omitted on repeated calls. The robot
+%   model and all collision meshes will be used from the previous call. The
+%   robot configuration and the scene index can be changed to check a
+%   different configuration in a different state of the robot environment.
+%
+%   [isColl, selfCollPairIdx, worldCollPairIdx, extrusionPairIdx] 
+%   = validate_config(config, interactive, urdf, extr_vertices, scene_idx)
+%
+%   Additional information is returned:
+%   selfCollPairIdx     - Index pairs of the arm elements that are in
+%                         collision
+%   worldCollPairIdx    - Index pairs of the arm element and the part of
+%                         the robot cell that are in collision
+%   extrusionPairIdx    - First index pair of the arm element and the 
+%                         extrusion object that are in collision
 
 %% Declare static variables
 % Robot Tree
@@ -10,28 +38,28 @@ persistent robot_arm_objects
 % Collision objects for robot cell elements
 persistent robot_cell_objects
 % Collision objects for extruded filament
-extrusion_objects = {};
-scene_idx = 1;
-
+persistent extrusion_objects
 persistent arm_element_names
 
 %% Initialize outputs
 isColl = false;
 selfCollPairIdx = [];
 worldCollPairIdx = [];
-    
+extrusionPairIdx = [];
+
 %% Calculate persistent variables
-if isempty(robot) || nargin == 3
+if isempty(robot) || nargin >= 3
     if nargin < 3
-       isColl = -1;
-       selfCollPairIdx = -1;
-       worldCollPairIdx = -1;
-       return;
+        % Invalid because URDF was never given
+        isColl = -1;
+        selfCollPairIdx = -1;
+        worldCollPairIdx = -1;
+        return;
     end
     %% Create robot tree structure from URDF
     % 'D:\Nutzer\Documents\PycharmProjects\gcode\ressource\robot.urdf'
-    robot = importrobot(urdf_path);
-      
+    robot = importrobot(urdf);
+    
     %% Figure out base
     base = [];
     if strcmp(robot.Base.Name, 'base')
@@ -39,19 +67,19 @@ if isempty(robot) || nargin == 3
     else
         % Search for base
         for i=1:numel(robot.Bodies)
-           if strcmp(robot.Bodies{i}.Name, 'base')
-               base = robot.Bodies{i};
-           end
+            if strcmp(robot.Bodies{i}.Name, 'base')
+                base = robot.Bodies{i};
+            end
         end
     end
     
     % Check whether base was found
     if isempty(base)
-       disp('Base was not found!')
-       isColl = -1;
-       selfCollPairIdx = -1;
-       worldCollPairIdx = -1;
-       return;
+        disp('Base was not found!')
+        isColl = -1;
+        selfCollPairIdx = -1;
+        worldCollPairIdx = -1;
+        return;
     end
     
     % Keep track of bodies already used
@@ -94,15 +122,32 @@ if isempty(robot) || nargin == 3
     
     % Add arm elements that were not used before
     for i=1:numel(robot.Bodies)
-       if ~any(strcmp(robot.Bodies{i}.Name, identified_body_names))
-          cell_bodies(idx, :) = helperClassManipCollisionsFromVisuals.createCollisionObj(robot.Bodies{i});
-          idx = idx + 1;
-       end
-    end 
+        if ~any(strcmp(robot.Bodies{i}.Name, identified_body_names))
+            cell_bodies(idx, :) = helperClassManipCollisionsFromVisuals.createCollisionObj(robot.Bodies{i});
+            idx = idx + 1;
+        end
+    end
     
     % Assign robot cell collision objects to static variable
     robot_cell_objects = cell_bodies;
     arm_element_names = identified_body_names;
+end
+
+%% Create filament collision meshes
+if nargin >= 4
+    % Allocate cell array
+    extrusion_obj = cell(length(extr_vertices),1);
+    for i=1:length(extr_vertices)
+        if ~isempty(extr_vertices)
+            extrusion_obj{i} = collisionMesh(extr_vertices{i});
+        else
+            % Set empty object to be skipped later on
+            % This allows common handling of paths with and without
+            % extrusion
+            extrusion_obj{i} = [];
+        end
+    end
+    extrusion_objects = extrusion_obj;
 end
 
 %% Update transforms
@@ -113,12 +158,12 @@ transformTree = cell(length(robot_arm_objects) + 1,1);
 
 % Initialize key parameters
 robot.DataFormat = 'column';
-    
+
 % For the base, this is the identity
 transformTree{1} = eye(4);
 % Remaining arm elements
 for i = 2:numel(arm_element_names)
-    transformTree{i} = getTransform(robot, current_config, arm_element_names{i});
+    transformTree{i} = getTransform(robot, config, arm_element_names{i});
 end
 
 %% Update poses of arm collision objects
@@ -146,19 +191,19 @@ for arm_idx=1:length(robot_arm_objects)
                 
                 % Add index for self collision
                 if local_coll
-                   selfCollPairIdx = [selfCollPairIdx; [1 arm_idx]]; %#ok<AGROW>
+                    selfCollPairIdx = [selfCollPairIdx; [1 arm_idx]]; %#ok<AGROW>
                 end
             end
         end
-
+        
         % Check collisions with other arm elements
         for other_arm_idx=arm_idx:length(robot_arm_objects)
             % Do not check collisions with self or neighbors (4 is concave
             % so always in collision with 6)
             if (other_arm_idx ~= arm_idx) && ...
-               (other_arm_idx ~= arm_idx + 1) && ...
-               (other_arm_idx ~= arm_idx - 1) && ...
-               ~(arm_idx == 4 && other_arm_idx == 6)
+                    (other_arm_idx ~= arm_idx + 1) && ...
+                    (other_arm_idx ~= arm_idx - 1) && ...
+                    ~(arm_idx == 4 && other_arm_idx == 6)
                 % Check whether other arm has a collision object
                 if ~isempty(robot_arm_objects{other_arm_idx,1})
                     % Check for local collision and update the overall
@@ -168,12 +213,12 @@ for arm_idx=1:length(robot_arm_objects)
                     
                     % Add index for self collision
                     if local_coll
-                       selfCollPairIdx = [selfCollPairIdx; [arm_idx other_arm_idx]]; %#ok<AGROW>
+                        selfCollPairIdx = [selfCollPairIdx; [arm_idx other_arm_idx]]; %#ok<AGROW>
                     end
                 end
             end
         end
-
+        
         % Check collision with each object of the robot cell
         for cell_idx=1:length(robot_cell_objects)
             % Check whether robot cell object has a collision object
@@ -185,7 +230,7 @@ for arm_idx=1:length(robot_arm_objects)
                 
                 % Add index for cell collision
                 if local_coll
-                   worldCollPairIdx = [worldCollPairIdx; [arm_idx cell_idx]]; %#ok<AGROW>
+                    worldCollPairIdx = [worldCollPairIdx; [arm_idx cell_idx]]; %#ok<AGROW>
                 end
             end
         end
@@ -193,18 +238,27 @@ for arm_idx=1:length(robot_arm_objects)
 end
 
 %% Collisions of arm elements with extruded objects
-% Skip very long collision checking if the pose is already invalid 
-if isColl
+% Skip very long collision checking if the pose is already invalid
+if ~isColl && ~isempty(extrusion_objects)
+    if ~exist('scene_idx', 'var') || isempty(scene_idx)
+        scene_idx = Inf;
+    end
+    
     % Iterate over each extrusion object until the specified scene index
     for L=1:min(length(extrusion_objects), scene_idx)
         % Check collisions with each arm element (base cannot collide)
-        for i=1:length(robot_arm_objects)
+        for arm_idx=1:length(robot_arm_objects)
             % Check whether a collision mesh is available
-            if ~isempty(robot_arm_objects{i,1}) && ~isempty(extrusion_objects{L,1})
+            if ~isempty(robot_arm_objects{arm_idx,1}) && ~isempty(extrusion_objects{L})
                 % Check for local collision and update the overall
                 % collision status flag
-                local_coll = checkCollision(robot_arm_objects{i}, extrusion_objects{L});
+                local_coll = checkCollision(robot_arm_objects{arm_idx}, extrusion_objects{L});
                 isColl = isColl || local_coll;
+                
+                % Set indices
+                if local_coll
+                    extrusionPairIdx = [extrusionPairIdx; [arm_idx L]]; %#ok<AGROW>
+                end
             end
         end
     end
@@ -214,11 +268,11 @@ end
 if interactive
     if ~isempty(robot_cell_objects)
         ax = visualizeCollisionEnvironment(robot_cell_objects(:,1));
-        show(robot,current_config,"Parent",ax,"PreservePlot",false);
+        show(robot,config,"Parent",ax,"PreservePlot",false);
     else
-        ax = show(robot,current_config);
+        ax = show(robot,config);
     end
-
+    
     problemBodies = [];
     if ~isempty(worldCollPairIdx)
         problemBodies = [problemBodies worldCollPairIdx*[1 0]'];
@@ -227,7 +281,7 @@ if interactive
         selfCollPairIdx = reshape(selfCollPairIdx, [], 1);
         problemBodies = [problemBodies; unique(selfCollPairIdx)];
     end
-    if ~isempty(problemBodies)   
+    if ~isempty(problemBodies)
         problemBodies = unique(problemBodies);
         exampleHelperHighlightCollisionBodies(robot,problemBodies,ax);
     end
