@@ -1,6 +1,6 @@
-function [isColl, selfCollPairIdx, worldCollPairIdx, extrusionPairIdx] = validate_config(config, interactive, urdf, extr_vertices, scene_idx)
+function [isColl, selfCollPairIdx, worldCollPairIdx, extrusionPairIdx] = validate_config(config, scene_idx, interactive, urdf, extr_vertices)
 %VALIDATE_CONFIG Check whether a robot configuration is collision free.
-%   isColl = validate_config(config, interactive, urdf)
+%   isColl = validate_config(config, scene_idx, interactive, urdf)
 %   Check a robot model for collisions with itself, its cell and extruded
 %   filament. 
 %   config      - Configuration given as column vector of joint coordinates
@@ -18,7 +18,7 @@ function [isColl, selfCollPairIdx, worldCollPairIdx, extrusionPairIdx] = validat
 %   different configuration in a different state of the robot environment.
 %
 %   [isColl, selfCollPairIdx, worldCollPairIdx, extrusionPairIdx] 
-%   = validate_config(config, interactive, urdf, extr_vertices, scene_idx)
+%   = validate_config(config, scene_idx, interactive, urdf, extr_vertices)
 %
 %   Additional information is returned:
 %   selfCollPairIdx     - Index pairs of the arm elements that are in
@@ -48,8 +48,8 @@ worldCollPairIdx = [];
 extrusionPairIdx = [];
 
 %% Calculate persistent variables
-if isempty(robot) || nargin >= 3
-    if nargin < 3
+if isempty(robot) || (exist('urdf', 'var') && ~isempty(urdf))
+    if ~exist('urdf', 'var') || isempty(urdf)
         % Invalid because URDF was never given
         isColl = -1;
         selfCollPairIdx = -1;
@@ -134,11 +134,11 @@ if isempty(robot) || nargin >= 3
 end
 
 %% Create filament collision meshes
-if nargin >= 4
+if exist('extr_vertices', 'var') && ~isempty(extr_vertices)
     % Allocate cell array
     extrusion_obj = cell(length(extr_vertices),1);
     for i=1:length(extr_vertices)
-        if ~isempty(extr_vertices)
+        if ~isempty(extr_vertices{i})
             extrusion_obj{i} = collisionMesh(extr_vertices{i});
         else
             % Set empty object to be skipped later on
@@ -285,5 +285,6 @@ if interactive
         problemBodies = unique(problemBodies);
         exampleHelperHighlightCollisionBodies(robot,problemBodies,ax);
     end
+    savefig('Collision.fig')
 end
 end

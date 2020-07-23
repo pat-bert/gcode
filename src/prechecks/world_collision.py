@@ -2,6 +2,7 @@ from typing import List
 
 import numpy as np
 
+from src.prechecks.utils import print_progress
 from src.prechecks.trajectory_segment import CartesianTrajSegment
 from src.prechecks.dataclasses import Extrusion
 from src.prechecks.trajectory_segment import LinearSegment, CircularSegment
@@ -83,12 +84,17 @@ def create_vertices_from_arc(arc: CircularSegment, nvec: np.ndarray, extr: Extru
     return np.array(vertices)
 
 
-def create_collision_scenes(task_trajectory: List[CartesianTrajSegment], extr: Extrusion) -> List[np.ndarray]:
-    print('Creating collision scene...')
+def create_collision_objects(task_trajectory: List[CartesianTrajSegment], extr: Extrusion) -> List[np.ndarray]:
+    print('Creating collision objects...')
 
     # Create individual collision objects
     collision_vertices_list = []
-    for seg in task_trajectory:
+    total_len = len(task_trajectory)
+
+    for seg_idx, seg in enumerate(task_trajectory):
+        prefix = f'Creating collision object for segment #{seg_idx} ...'
+        print_progress(seg_idx + 1, total_len, prefix=prefix)
+
         if seg.has_extrusion:
             # Get normal vector from first point (orientation is constant)
             nvec = seg.unmodified_points[0][0:3, 2]
@@ -104,7 +110,4 @@ def create_collision_scenes(task_trajectory: List[CartesianTrajSegment], extr: E
             cuboid = None
             collision_vertices_list.append(cuboid)
 
-    # TODO Accumulate objects to create collision scenes for each step
-    all_collision_scenes = [np.array([1])] * len(task_trajectory)
-
-    return all_collision_scenes
+    return collision_vertices_list

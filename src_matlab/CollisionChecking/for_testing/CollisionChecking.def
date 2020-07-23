@@ -1,9 +1,0 @@
-LIBRARY CollisionChecking
-EXPORTS
-CollisionCheckingInitialize
-CollisionCheckingInitializeWithHandlers
-CollisionCheckingTerminate
-CollisionCheckingPrintStackTrace
-mlxValidate_config
-mlfValidate_config
-

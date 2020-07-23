@@ -2,62 +2,64 @@ from typing import List
 
 import numpy as np
 
-from src.prechecks.utils import print_progress
+from src.Coordinate import Coordinate
 from src.gcode.GCmd import GCmd
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
 from src.prechecks.exceptions import WorkspaceViolation
-from src.prechecks.gcode2segment import linear_segment_from_gcode, circular_segment_from_gcode
+from src.prechecks.gcode2segment import lin_segment_from_gcode, circ_segment_from_gcode
 from src.prechecks.trajectory_segment import CartesianTrajSegment, JointTrajSegment
+from src.prechecks.utils import print_progress
 
 
-def generate_task_trajectory(cmds: List[GCmd], current_pos: np.ndarray, ds: float, acc: float) \
+def generate_task_trajectory(cmds: List[GCmd], curr_pos: np.ndarray, ds: float, acc: float, hb_offset: Coordinate) \
         -> List[CartesianTrajSegment]:
     """
     Generates trajectory points for a list of G-code commands.
     :param cmds: List of G-Code command objects.
-    :param current_pos: Start pose point given as 4x4 homogeneous matrix
+    :param curr_pos: Start pose point given as 4x4 homogeneous matrix
     :param ds: Float value for distance between pose points in mm
     :param acc: Float value for the default robot acceleration in mm/s^2
+    :param hb_offset:
     :return: Task trajectory given as list of CartesianTrajectorySegments
     """
-    is_absolute = True
+    is_abs = True
     all_trajectory_pose_points = []
 
     # Initialize default values
-    current_vel = 0
-    current_acc = acc
+    curr_vel = 0
+    curr_acc = acc
 
     print('Generating task trajectory...')
     total_len = len(cmds)
 
-    for line_number, command in enumerate(cmds):
+    for line_number, cmd in enumerate(cmds):
         prefix = f'Creating task trajectory for command line #{line_number} ...'
         print_progress(line_number + 1, total_len, prefix=prefix)
 
         # Movement commands
-        if command.id in ['G01', 'G1']:
-            lin_segment = linear_segment_from_gcode(command, current_pos, ds, is_absolute, current_vel, current_acc)
+        if cmd.id in ['G01', 'G1']:
+            lin_segment = lin_segment_from_gcode(cmd, curr_pos, ds, is_abs, curr_vel, curr_acc, orig_offset=hb_offset)
             all_trajectory_pose_points.append(lin_segment)
-            current_pos = lin_segment.target
-            current_vel = command.speed or current_vel
-        elif command.id in ['G02', 'G2', 'G03', 'G3']:
-            circ_segment = circular_segment_from_gcode(command, current_pos, ds, is_absolute, current_vel, current_acc)
+            curr_pos = lin_segment.target
+            curr_vel = cmd.speed or curr_vel
+        elif cmd.id in ['G02', 'G2', 'G03', 'G3']:
+            circ_segment = circ_segment_from_gcode(cmd, curr_pos, ds, is_abs, curr_vel, curr_acc, orig_offset=hb_offset)
             all_trajectory_pose_points.append(circ_segment)
-            current_pos = circ_segment.target
-            current_vel = command.speed or current_vel
+            curr_pos = circ_segment.target
+            curr_vel = cmd.speed or curr_vel
         # Consider relative coordinates
-        elif command.id == 'G90':
-            is_absolute = True
-        elif command.id == 'G91':
-            is_absolute = False
-        elif command.id == 'G92':
+        elif cmd.id == 'G90':
+            is_abs = True
+        elif cmd.id == 'G91':
+            is_abs = False
+        elif cmd.id == 'G92':
             # Consider coordinate origin shifting
-            if command.cartesian_abs.values:
-                raise NotImplementedError(f'Origin shifting of XYZ is not supported: #{line_number} {command}')
-        elif command.id[0] == 'T' and command.id[1:] != '0':
+            if cmd.cartesian_abs.values:
+                raise NotImplementedError(f'Origin shifting of XYZ is not supported: #{line_number} {cmd}')
+        elif cmd.id[0] == 'T' and cmd.id[1:] != '0':
             # Consider tool changes
-            raise NotImplementedError(f'Tool changes are not supported: #{line_number} {command}')
+            raise NotImplementedError(f'Tool changes are not supported: #{line_number} {cmd}')
 
     return all_trajectory_pose_points
 

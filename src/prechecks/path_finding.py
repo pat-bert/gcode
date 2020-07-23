@@ -3,17 +3,16 @@ from typing import List
 import numpy as np
 from dijkstar import find_path, NoPathError
 
-from prechecks.exceptions import CollisionViolation, NoValidPathFound
-from prechecks.graph_search import calc_node_idx, calc_conf_from_node
-from prechecks.collision_checking import get_first_colliding_point
-from prechecks.trajectory_segment import JointTrajSegment
+from src.prechecks.collision_checking import get_first_colliding_point
+from src.prechecks.exceptions import CollisionViolation, NoValidPathFound
+from src.prechecks.graph_search import calc_node_idx, calc_conf_from_node
+from src.prechecks.trajectory_segment import JointTrajSegment
 
 
-def get_best_valid_path(all_collision_scenes, collider, graph, joint_traj: List[JointTrajSegment], start_node: int,
-                        stop_node: int) -> List[int]:
+def get_best_valid_path(collider, graph, joint_traj: List[JointTrajSegment], start_node: int, stop_node: int) \
+        -> List[int]:
     """
     Iterate over all paths in order of cost to find the best valid path
-    :param all_collision_scenes:
     :param collider:
     :param graph:
     :param joint_traj:
@@ -35,7 +34,7 @@ def get_best_valid_path(all_collision_scenes, collider, graph, joint_traj: List[
         seg_configs = []
 
         # Iterate over the segments
-        for (i, seg), curr_coll_scene in zip(enumerate(joint_traj), all_collision_scenes):
+        for i, seg in enumerate(joint_traj):
             # Check the current segment for collisions using the relevant slice of all point configurations
             start, end = seg_pt_start[i], seg_pt_end[i]
             curr_seg_conf = list(set(pt_configurations[start:end]))
@@ -43,7 +42,8 @@ def get_best_valid_path(all_collision_scenes, collider, graph, joint_traj: List[
                 raise ValueError('Only common configurations are supported per segment')
 
             # Calculate the collisions
-            colliding_point_idx = get_first_colliding_point(collider, seg, curr_seg_conf[0], curr_coll_scene)
+            # TODO Pass the correct collision index
+            colliding_point_idx = get_first_colliding_point(collider, seg, curr_seg_conf[0], 0)
             if i > 0 and colliding_point_idx is not None:
                 # Point index is internal to segment and needs to be offset by the end of the previous segment
                 colliding_point_idx += seg_pt_end[i - 1]

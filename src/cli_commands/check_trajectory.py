@@ -3,6 +3,7 @@ from configparser import ConfigParser
 from math import pi
 from typing import Optional
 
+from src.Coordinate import Coordinate
 from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
 from src.prechecks.configs import melfa_rv_4a
@@ -54,10 +55,16 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
     inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
     inc_angle_tool_deg = float(config_parser.get('prechecks', 'dphi_deg'))
-    urdf_file_path = config_parser.get('prechecks', 'urdf_path')
+    urdf = config_parser.get('prechecks', 'urdf_path')
     default_acc = float(config_parser.get('prechecks', 'default_acc'))
     extrusion_height = float(config_parser.get('prechecks', 'extrusion_height'))
     extrusion_width = float(config_parser.get('prechecks', 'extrusion_width'))
+
+    # Heat bed offset
+    x_hb = float(config_parser.get('prechecks', 'bed_origin_x'))
+    y_hb = float(config_parser.get('prechecks', 'bed_origin_y'))
+    z_hb = float(config_parser.get('prechecks', 'bed_origin_z'))
+    hb_offset = Coordinate([x_hb, y_hb, z_hb], 'XYZ')
 
     # Create the constraints
     traj_constraint = Constraints(cartesian_limits, joint_limits, joint_velocity_limits)
@@ -70,7 +77,7 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
 
     try:
         # Check the trajectory
-        check_traj(commands, robot_config, traj_constraint, home_position, incs, extr, default_acc, urdf_file_path)
+        check_traj(commands, robot_config, traj_constraint, home_position, incs, extr, default_acc, urdf, hb_offset)
     except (CartesianLimitViolation, WorkspaceViolation) as e:
         logging.exception('Fatal error occured: {}'.format("\n".join(e.args)))
         logging.error('Please verify that the limits are correct and check the positioning of the part.')
