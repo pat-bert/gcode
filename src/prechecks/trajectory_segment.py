@@ -4,7 +4,7 @@ from typing import List, Union, Iterator, Set, Dict, Optional
 
 import numpy as np
 
-from prechecks.exceptions import ConfigurationChangesError, JointVelocityViolation
+from src.prechecks.exceptions import ConfigurationChangesError, JointVelocityViolation
 from src.kinematics.inverse_kinematics import JointSolution
 from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation, JOINT_SPEED_ALLOWABLE_RATIO
 from src.prechecks.speed_profile import trapezoidal_speed_profile
