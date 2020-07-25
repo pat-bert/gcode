@@ -180,7 +180,7 @@ for arm_idx=1:length(robot_arm_objects)
                 
                 % Add index for self collision
                 if local_coll
-                    selfCollPairIdx = [selfCollPairIdx; [1 arm_idx]]; %#ok<AGROW>
+                    selfCollPairIdx = [selfCollPairIdx; [1 arm_idx + 1]]; %#ok<AGROW>
                 end
             end
         end
@@ -202,7 +202,7 @@ for arm_idx=1:length(robot_arm_objects)
                     
                     % Add index for self collision
                     if local_coll
-                        selfCollPairIdx = [selfCollPairIdx; [arm_idx other_arm_idx]]; %#ok<AGROW>
+                        selfCollPairIdx = [selfCollPairIdx; [arm_idx + 1 other_arm_idx + 1]]; %#ok<AGROW>
                     end
                 end
             end
@@ -219,7 +219,7 @@ for arm_idx=1:length(robot_arm_objects)
                 
                 % Add index for cell collision
                 if local_coll
-                    worldCollPairIdx = [worldCollPairIdx; [arm_idx cell_idx]]; %#ok<AGROW>
+                    worldCollPairIdx = [worldCollPairIdx; [arm_idx + 1 cell_idx]]; %#ok<AGROW>
                 end
             end
         end
@@ -246,7 +246,7 @@ if ~isColl && ~isempty(extrusion_objects)
                 
                 % Set indices
                 if local_coll
-                    extrusionPairIdx = [extrusionPairIdx; [arm_idx L]]; %#ok<AGROW>
+                    extrusionPairIdx = [extrusionPairIdx; [arm_idx + 1 L]]; %#ok<AGROW>
                 end
             end
         end

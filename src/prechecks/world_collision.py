@@ -22,7 +22,10 @@ def create_cuboid_from_path(line: LinearSegment, nvec: np.ndarray, extr: Extrusi
     # Get the lateral direction
     lateral_vec = np.cross(nvec, upper_mid_end - upper_mid_start)
     try:
-        ydir = extr.width * lateral_vec / np.linalg.norm(lateral_vec)
+        vector_len = np.linalg.norm(lateral_vec)
+        if vector_len == 0:
+            raise ValueError('Invalid normal vector. Cross product had zero length.')
+        ydir = extr.width * lateral_vec / vector_len
     except ZeroDivisionError:
         raise ValueError('Invalid normal vector. Cross product had zero length.')
 

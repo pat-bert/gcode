@@ -6,6 +6,7 @@ from numpy.core.multiarray import ndarray
 from numpy.linalg import multi_dot, inv
 
 from src.kinematics.joints import BaseJoint, JointType
+from src.kinematics.joints import WristSingularity, ElbowSingularity, ShoulderSingularity
 
 
 def geometric_jacobian(config: List[BaseJoint], joint_coordinates: List[float]) -> ndarray:
@@ -212,7 +213,7 @@ def get_tform(xdir: List[float], ydir: List[float], zdir: List[float], pos: List
     return tform
 
 
-def calculate_pose_flags(config, joint_values) -> float:
+def calculate_pose_flags(config: List[BaseJoint], joint_values: List[float]) -> float:
     """
     Calculate the flags of a roboter pose
     :param config: Tuple of joints
@@ -230,18 +231,32 @@ def calculate_pose_flags(config, joint_values) -> float:
     z_axis_j2 = tjoint12[0:3, 2]
     normal_vec = np.cross(z_axis_j2, z_axis_j1)
 
-    # TODO Consider singularities
     # Use dot product to determine side
-    right = 1 if np.dot(normal_vec, wrist_center_pos) > 0 else 0
+    if np.dot(normal_vec, wrist_center_pos) > 0:
+        right = 1
+    elif np.dot(normal_vec, wrist_center_pos) < 0:
+        right = 0
+    else:
+        raise ShoulderSingularity
 
     # Convert to DH-system
     joint_values_dh = [joint_val + joint.zero_offset for joint_val, joint in zip(joint_values, config)]
 
     # Theta 3 determines elbow position (above or below plane of joint 2 and joint 3)
-    above = 1 if joint_values_dh[2] > - atan(config[3].d / config[2].a) else 0
+    if joint_values_dh[2] > - atan(config[3].d / config[2].a):
+        above = 1
+    elif joint_values_dh[2] < - atan(config[3].d / config[2].a):
+        above = 0
+    else:
+        raise ElbowSingularity
 
     # Theta 5 determines flip/nonflip
-    non_flip = 1 if joint_values_dh[4] > 0 else 0
+    if joint_values_dh[4] > 0:
+        non_flip = 1
+    elif joint_values_dh[4] < 0:
+        non_flip = 0
+    else:
+        raise WristSingularity
 
     return non_flip + above * 2 + right * 4
 

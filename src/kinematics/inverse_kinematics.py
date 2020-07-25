@@ -3,32 +3,12 @@ from typing import List, Optional, Dict
 
 import numpy as np
 
+from src.kinematics.joints import ShoulderSingularity, WristSingularity, WRIST_SINGULARITY_THRESHOLD, \
+    SHOULDER_SINGULARITY_THRESHOLD
 from src.kinematics.forward_kinematics import forward_kinematics, vec3_cross
 from src.kinematics.joints import BaseJoint
 
 JointSolution = Dict[int, List[float]]
-
-
-class Singularity(ValueError):
-    pass
-
-
-class ShoulderSingularity(Singularity):
-    """
-    Will be raised if wrist center point is on J1 axis
-    """
-
-
-class WristSingularity(Singularity):
-    """
-    Will be raised if J4 and J6 align (infinite solutions)
-    """
-
-
-class ElbowSingularity(Singularity):
-    """
-    Will be raised if the wrist center point is within the plane through J2 and J3
-    """
 
 
 class OutOfReachError(ValueError):
@@ -40,11 +20,6 @@ class OutOfReachError(ValueError):
 # Apply the offset and wrap to (-pi, pi]
 def wrap_to_pi(angle):
     return -((- angle + pi) % (2 * pi) - pi)
-
-
-WRIST_SINGULARITY_THRESHOLD = 1e-3
-ELBOW_SINGULARITY_THRESHOLD = 1e-3
-SHOULDER_SINGULARITY_THRESHOLD = 1e-3
 
 
 def ik_spherical_wrist(config: List[BaseJoint], tform: np.ndarray, pose_flags=None) -> JointSolution:
