@@ -34,19 +34,18 @@ def get_best_valid_path(collider, graph, joint_traj: List[JointTrajSegment], sta
         seg_configs = []
 
         # Iterate over the segments
-        for i, seg in enumerate(joint_traj):
+        for segment_idx, seg in enumerate(joint_traj):
             # Check the current segment for collisions using the relevant slice of all point configurations
-            start, end = seg_pt_start[i], seg_pt_end[i]
+            start, end = seg_pt_start[segment_idx], seg_pt_end[segment_idx]
             curr_seg_conf = list(set(pt_configurations[start:end]))
             if len(curr_seg_conf) > 1:
                 raise ValueError('Only common configurations are supported per segment')
 
             # Calculate the collisions
-            # TODO Pass the correct collision index
-            colliding_point_idx = get_first_colliding_point(collider, seg, curr_seg_conf[0], 0)
-            if i > 0 and colliding_point_idx is not None:
+            colliding_point_idx = get_first_colliding_point(collider, seg, curr_seg_conf[0])
+            if segment_idx > 0 and colliding_point_idx is not None:
                 # Point index is internal to segment and needs to be offset by the end of the previous segment
-                colliding_point_idx += seg_pt_end[i - 1]
+                colliding_point_idx += seg_pt_end[segment_idx - 1]
 
             # Update the collision array and the config array
             colliding_points.append(colliding_point_idx)

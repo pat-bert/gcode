@@ -4,7 +4,6 @@ from distutils.core import setup
 from distutils.command.clean import clean
 from distutils.command.install import install
 
-
 class InstallRuntime(install):
     # Calls the default run command, then deletes the build area 
     # (equivalent to "setup clean --all").
@@ -15,8 +14,8 @@ class InstallRuntime(install):
         c.finalize_options()
         c.run()
 
-
 if __name__ == '__main__':
+
     setup(
         name="matlabruntimeforpython",
         version="R2020a",

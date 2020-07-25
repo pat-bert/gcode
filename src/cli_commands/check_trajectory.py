@@ -28,10 +28,37 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
         cmd_raw = f.readlines()
 
     commands = [GCmd.read_cmd_str(cmd_str.strip()) for cmd_str in cmd_raw if not cmd_str.startswith(GCmd.COMMENT)]
-    robot_config = melfa_rv_4a()
+    commands = [cmd for cmd in commands if cmd is not None]
 
     config_parser = ConfigParser()
     config_parser.read(config_f)
+
+    # Parameters that always need to be configured within the config file
+    max_jnt_speed = config_parser.get('prechecks', 'max_joint_speed')
+    joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
+
+    # Increments for sampling
+    inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
+    inc_angle_tool_deg = float(config_parser.get('prechecks', 'dphi_deg'))
+
+    urdf = config_parser.get('prechecks', 'urdf_path')
+    default_acc = float(config_parser.get('prechecks', 'default_acc'))
+
+    # Extrusion parameters
+    extrusion_height = float(config_parser.get('prechecks', 'extrusion_height'))
+    extrusion_width = float(config_parser.get('prechecks', 'extrusion_width'))
+
+    # Tool Center Point offsets
+    tool_offset_x = float(config_parser.get('prechecks', 'tool_offset_x', fallback=0))
+    tool_offset_y = float(config_parser.get('prechecks', 'tool_offset_y', fallback=0))
+    tool_offset_z = float(config_parser.get('prechecks', 'tool_offset_z', fallback=0))
+
+    # Heat bed offsets
+    x_hb = float(config_parser.get('prechecks', 'bed_origin_x', fallback=0))
+    y_hb = float(config_parser.get('prechecks', 'bed_origin_y', fallback=0))
+    z_hb = float(config_parser.get('prechecks', 'bed_origin_z', fallback=0))
+
+    robot_config = melfa_rv_4a(atoff=tool_offset_z, rtoff=tool_offset_x)
 
     if ip is not None:
         # Parameters can be read from the robot
@@ -50,20 +77,7 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
         joint_limits_str = config_parser.get('prechecks', 'joint_limits')
         joint_limits = [float(i) for i in joint_limits_str.split(', ')]
 
-    # Parameters that always need to be configured within the config file
-    max_jnt_speed = config_parser.get('prechecks', 'max_joint_speed')
-    joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
-    inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
-    inc_angle_tool_deg = float(config_parser.get('prechecks', 'dphi_deg'))
-    urdf = config_parser.get('prechecks', 'urdf_path')
-    default_acc = float(config_parser.get('prechecks', 'default_acc'))
-    extrusion_height = float(config_parser.get('prechecks', 'extrusion_height'))
-    extrusion_width = float(config_parser.get('prechecks', 'extrusion_width'))
-
     # Heat bed offset
-    x_hb = float(config_parser.get('prechecks', 'bed_origin_x'))
-    y_hb = float(config_parser.get('prechecks', 'bed_origin_y'))
-    z_hb = float(config_parser.get('prechecks', 'bed_origin_z'))
     hb_offset = Coordinate([x_hb, y_hb, z_hb], 'XYZ')
 
     # Create the constraints

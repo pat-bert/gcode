@@ -61,20 +61,9 @@ if isempty(robot) || (exist('urdf', 'var') && ~isempty(urdf))
     robot = importrobot(urdf);
     
     %% Figure out base
-    base = [];
-    if strcmp(robot.Base.Name, 'base')
-        base = robot.Base;
-    else
-        % Search for base
-        for i=1:numel(robot.Bodies)
-            if strcmp(robot.Bodies{i}.Name, 'base')
-                base = robot.Bodies{i};
-            end
-        end
-    end
-    
-    % Check whether base was found
-    if isempty(base)
+    try
+        base = robot.getBody('base');
+    catch
         disp('Base was not found!')
         isColl = -1;
         selfCollPairIdx = -1;
@@ -264,15 +253,30 @@ if ~isColl && ~isempty(extrusion_objects)
     end
 end
 
-%% Visualize and highlight bodies in collision
-if interactive
+%% Visualize and highlight bodies in collision if collision was detected
+if interactive && isColl
+    figure()
+    
+    %% Show all the existing objects up to the index
     if ~isempty(robot_cell_objects)
         ax = visualizeCollisionEnvironment(robot_cell_objects(:,1));
         show(robot,config,"Parent",ax,"PreservePlot",false);
     else
         ax = show(robot,config);
     end
+    if ~isempty(extrusion_objects)
+        existing_extrusions = extrusion_objects(1:min(length(extrusion_objects), scene_idx));
+        existing_extrusions = existing_extrusions(~cellfun('isempty', existing_extrusions));
+        for i=1:numel(existing_extrusions)
+            show(existing_extrusions{i})
+        end
+    end
     
+    selfCollPairIdx = double(selfCollPairIdx);
+    worldCollPairIdx = double(worldCollPairIdx);
+    extrusionPairIdx = double(extrusionPairIdx);
+
+    %% Mark the collision objects in a different color
     problemBodies = [];
     if ~isempty(worldCollPairIdx)
         problemBodies = [problemBodies worldCollPairIdx*[1 0]'];
@@ -281,10 +285,15 @@ if interactive
         selfCollPairIdx = reshape(selfCollPairIdx, [], 1);
         problemBodies = [problemBodies; unique(selfCollPairIdx)];
     end
+    if ~isempty(extrusionPairIdx)
+        problemBodies = [problemBodies extrusionPairIdx*[1 0]'];
+    end
     if ~isempty(problemBodies)
         problemBodies = unique(problemBodies);
-        exampleHelperHighlightCollisionBodies(robot,problemBodies,ax);
+        % Get subtree from base
+        base = robot.getBody('base');
+        robot_arm_tree = subtree(robot, base.Children{1}.Name);
+        exampleHelperHighlightCollisionBodies(robot_arm_tree,problemBodies,ax);
     end
-    savefig('Collision.fig')
 end
 end

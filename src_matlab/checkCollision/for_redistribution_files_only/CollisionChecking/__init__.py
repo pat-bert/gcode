@@ -16,7 +16,6 @@ import re
 import sys
 import weakref
 
-
 class _PathInitializer(object):
     PLATFORM_DICT = {'Windows': ['PATH', 'dll', ''], 'Linux': ['LD_LIBRARY_PATH', 'so', 'libmw'],
                      'Darwin': ['DYLD_LIBRARY_PATH', 'dylib', 'libmw']}
@@ -281,7 +280,6 @@ class _PathInitializer(object):
     def import_cppext(self):
         self.cppext_handle = importlib.import_module("matlabruntimeforpython" + self.interpreter_version)
 
-
 try:
     _pir = _PathInitializer()
     _pir.get_paths_from_os()
@@ -294,7 +292,6 @@ except Exception as e:
     print("Exception caught during initialization of Python interface. Details: {0}".format(e))
     raise
     # We let the program exit normally.
-
 
 def initialize():
     """ 
@@ -311,7 +308,6 @@ def initialize():
         handle - used to execute deployed MATLAB functions and to call terminate()
     """
     return _pir.initialize_package()
-
 
 def initialize_runtime(option_list):
     """
@@ -344,7 +340,6 @@ def initialize_runtime(option_list):
 # When running a script, the runtime will automatically be terminated when the script ends.
 def terminate_runtime():
     _pir.terminate_runtime();
-
 
 @atexit.register
 def __exit_packages():

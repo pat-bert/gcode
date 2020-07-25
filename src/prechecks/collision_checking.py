@@ -19,9 +19,9 @@ class MatlabCollisionChecker:
         self.checker.wait_for_figures_to_close()
         self.checker.terminate()
 
-    def check_collisions(self, joint_coord: Union[List, np.ndarray], visual: Optional[bool] = False,
+    def check_collisions(self, joint_coord: Union[List, np.ndarray], visual: Optional[bool] = True,
                          path: Optional[str] = None, collision_objects: Optional[List[np.ndarray]] = None,
-                         scene_idx: Optional[int] = 0) -> Tuple[bool, np.ndarray, np.ndarray]:
+                         scene_idx: Optional[int] = 0) -> Tuple[bool, np.ndarray, np.ndarray, np.ndarray]:
         """
 
         :param joint_coord: Joint coordinates in manufacturer system and in rad
@@ -51,21 +51,23 @@ class MatlabCollisionChecker:
             a, b, c, d = self.checker.validate_config(config, scene_idx, visual, nargout=4)
 
         # Rename results
-        is_coll, self_coll_pair, world_coll_pair, extr_coll_pair = a, b, c, d
+        is_coll = a
+        self_coll_pair = np.asarray(b, dtype=np.uint64)
+        world_coll_pair = np.asarray(c, dtype=np.uint64)
+        extr_coll_pair = np.asarray(d, dtype=np.uint64)
 
         if is_coll == -1:
             raise ValueError('Need to supply path at least once to initialize.')
 
-        return is_coll, np.asarray(self_coll_pair, dtype=np.uint64), np.asarray(world_coll_pair, dtype=np.uint64)
+        return is_coll, self_coll_pair, world_coll_pair, extr_coll_pair
 
 
-def get_first_colliding_point(collider, seg: JointTrajSegment, seg_conf: int, collision_idx: int) -> Optional[int]:
+def get_first_colliding_point(collider, seg: JointTrajSegment, seg_conf: int) -> Optional[int]:
     """
     Check whether a segment has any collisions
     :param collider:
     :param seg: Segment of a joint trajectory
     :param seg_conf: Configuration for the whole segment
-    :param collision_idx: Index for the last collision object to be included in the check
     :return:
     """
     # Get joint coordinates at each point for the determined arm onfiguration
@@ -75,9 +77,10 @@ def get_first_colliding_point(collider, seg: JointTrajSegment, seg_conf: int, co
     for point_idx, point_solutions in enumerate(seg.solutions):
         print_progress(point_idx + 1, total_len, prefix=prefix)
         joint_values = point_solutions[seg_conf]
-        collisions = collider.check_collisions(joint_values)
+        # Matlab starts counting from one, so included extrusions are [1,current segment in python indexing]
+        collisions = collider.check_collisions(joint_values, scene_idx=seg.idx)
         if collisions[0]:
             # The current segment is not valid
-            print(f'Found collisions for point #{point_idx} on segment #{seg.idx}.')
+            print(f'Found collisions for point #{point_idx} on segment #{seg.idx}: {collisions[1:]}')
             return point_idx
     return None

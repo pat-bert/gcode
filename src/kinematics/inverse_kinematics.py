@@ -358,7 +358,6 @@ def _ik_spherical_wrist_joint4(non_flip: bool, tjoint14: np.ndarray, zdir) -> fl
 
     if c_vector_len <= WRIST_SINGULARITY_THRESHOLD:
         # Singularity (J4 and J6 are collinear)
-        print('Wrist Singularity detected!')
         raise WristSingularity
 
     # Regular case (need two angles to determine sign
