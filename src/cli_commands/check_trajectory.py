@@ -39,7 +39,7 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
 
     # Increments for sampling
     inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
-    inc_angle_tool_deg = float(config_parser.get('prechecks', 'dphi_deg'))
+    inc_angle_tool_deg = float(config_parser.get('prechecks', 'dphi_deg', fallback=2 * pi))
 
     urdf = config_parser.get('prechecks', 'urdf_path')
     default_acc = float(config_parser.get('prechecks', 'default_acc'))
