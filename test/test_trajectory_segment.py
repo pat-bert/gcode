@@ -149,12 +149,12 @@ class TestCircularSegment:
         # Demonstrate this in 1D
         traj = [np.array(point) for point in traj]
         if exc is None:
-            circular_segment = CircularSegment(traj)
+            circular_segment = CircularSegment(traj, np.array([0, 0, 0]))
             actual_within = circular_segment.get_violated_boundaries(boundaries)
             assert (len(actual_within) == 0) == within
         else:
             with pytest.raises(exc):
-                CircularSegment(traj)
+                CircularSegment(traj, np.array([0, 0, 0]))
 
 
 valid_solution = [-3, 0, 1, -2, 3, 0.2]
@@ -230,7 +230,7 @@ class TestJointSegment:
                          )
 def test_check_cartesian_limits(points, clim, exc):
     points = [np.array([point]) for point in points]
-    traj = [LinearSegment(points), CircularSegment(points)]
+    traj = [LinearSegment(points), CircularSegment(points, np.array([0, 0, 0]))]
     if exc is None:
         check_cartesian_limits(traj, clim)
     else:

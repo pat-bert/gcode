@@ -130,6 +130,62 @@
             <material name="red"/>
         </visual>
     </link>
+    <link name="floor">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="2"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual name="FLOOR_BOX">
+            <geometry>
+                <box size="2000 1000 50"/>
+            </geometry>
+            <origin xyz="0 0 -25" rpy="0 0 0"/>
+            <material name="green"/>
+        </visual>
+    </link>
+    <link name="left wall">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="2"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual name="WALL_BOX">
+            <geometry>
+                <box size="2000 50 1000"/>
+            </geometry>
+            <origin xyz="0 -525 450" rpy="0 0 0"/>
+            <material name="green"/>
+        </visual>
+    </link>
+    <link name="right wall">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="2"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual name="WALL_BOX">
+            <geometry>
+                <box size="2000 50 1000"/>
+            </geometry>
+            <origin xyz="0 +525 450" rpy="0 0 0"/>
+            <material name="green"/>
+        </visual>
+    </link>
+    <link name="heated bed">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="2"/>
+            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual name="FLOOR_BOX">
+            <geometry>
+                <box size="400 400 50"/>
+            </geometry>
+            <origin xyz="600 0 0" rpy="0 0 0"/>
+            <material name="red"/>
+        </visual>
+    </link>
 
     <!-- Serial chain of joints -->
     <joint name="J1" type="revolute">
@@ -182,5 +238,21 @@
     <joint name="INTERFACE EXTRUDER" type="fixed">
         <parent link="adapter_plate"/>
         <child link="tool"/>
+    </joint>
+    <joint name="Floor connector" type="fixed">
+        <parent link="floor"/>
+        <child link="base"/>
+    </joint>
+    <joint name="Heated bed connector" type="fixed">
+        <parent link="floor"/>
+        <child link="heated bed"/>
+    </joint>
+    <joint name="Left wall connector" type="fixed">
+        <parent link="floor"/>
+        <child link="left wall"/>
+    </joint>
+    <joint name="Right wall connector" type="fixed">
+        <parent link="floor"/>
+        <child link="right wall"/>
     </joint>
 </robot>

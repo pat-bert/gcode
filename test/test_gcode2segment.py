@@ -5,7 +5,7 @@ import pytest
 
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import get_tform
-from src.prechecks.gcode2segment import linear_segment_from_gcode, circular_segment_from_gcode
+from src.prechecks.gcode2segment import lin_segment_from_gcode, circ_segment_from_gcode
 
 CURRENT_POSE = get_tform([1, 0, 0], [0, 1, 0], [0, 0, 1], [50, 2, 3])
 DEFAULT_VELOCITY = 100
@@ -20,7 +20,7 @@ DEFAULT_ACCELERATION = 500
                          )
 def test_circular_segment_from_gcode(cmd, ds, is_absolute, curr_vel, curr_acc, ex_points, target):
     gcode = GCmd.read_cmd_str(cmd)
-    circ_segment = circular_segment_from_gcode(gcode, CURRENT_POSE, ds, is_absolute, curr_vel, curr_acc)
+    circ_segment = circ_segment_from_gcode(gcode, CURRENT_POSE, ds, is_absolute, curr_vel, curr_acc)
     common_properties(curr_acc, curr_vel, ds, ex_points, circ_segment, target)
 
 
@@ -37,15 +37,15 @@ def test_circular_segment_from_gcode(cmd, ds, is_absolute, curr_vel, curr_acc, e
                          )
 def test_linear_segment_from_gcode(cmd, ds, is_absolute, curr_vel, curr_acc, ex_points, target):
     gcode = GCmd.read_cmd_str(cmd)
-    lin_segment = linear_segment_from_gcode(gcode, CURRENT_POSE, ds, is_absolute, curr_vel, curr_acc)
+    lin_segment = lin_segment_from_gcode(gcode, CURRENT_POSE, ds, is_absolute, curr_vel, curr_acc)
     common_properties(curr_acc, curr_vel, ds, ex_points, lin_segment, target)
 
 
 def common_properties(curr_acc, curr_vel, ds, ex_points, segment, target):
     assert segment.ds == ds
-    assert len(segment.trajectory_points) == ex_points
+    assert len(segment.unmodified_points) == ex_points
     if curr_vel is not None and curr_acc is not None:
-        assert len(segment.time_points) == len(segment.trajectory_points)
+        assert len(segment.time_points) == len(segment.unmodified_points)
         # Time must be monotonically increasing
         assert all(segment.time_points[i] - segment.time_points[i - 1] > 0 for i in
                    range(1, len(segment.time_points)))
