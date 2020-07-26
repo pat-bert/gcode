@@ -33,9 +33,9 @@ class GCmd(BaseCmd):
     COMMENT = ";"
     # Supported commands
     SUPPORTED_G_CODES = {
-        "G": [0, 1, 2, 3, 4, 17, 18, 19, 20, 21, 28, 90, 91],
-        "M": [104, 106, 109, 140],
-        "T": [0, 1, 2, 3]
+        "G": [0, 1, 2, 3, 4, 17, 18, 19, 20, 21, 28, 90, 91, 92, 222],
+        "M": [82, 84, 104, 106, 107, 109, 140, 190],
+        "T": [0]
     }
 
     def __init__(
@@ -137,20 +137,21 @@ class GCmd(BaseCmd):
         :param command_str: Input string
         :return:
         """
-        # Split space-separated parts of the command
-        segments = command_str.split(" ")
-
-        if command_str.startswith(cls.COMMENT):
+        if command_str.startswith(cls.COMMENT) or len(command_str) == 0:
             # Passed string is a comment so you cannot return a command/maybe an empty one in the future
             return None
         else:
+            # Split off comment in same line
+            command_str = command_str.split(cls.COMMENT)[0]
+            if len(command_str) == 0:
+                return None
+
+            # Split space-separated parts of the command
+            segments = command_str.split(" ")
+
             # Command identifier is required first
             if cls.CMD_REMOVE_LEAD_ZERO:
-                try:
-                    cmd_id = segments[0][0] + str(int(segments[0][1:]))
-                except ValueError:
-                    # TODO Do something else
-                    raise
+                cmd_id = segments[0][0] + str(int(segments[0][1:]))
             else:
                 cmd_id = segments[0]
 

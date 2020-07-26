@@ -288,3 +288,30 @@ class TranslationalJoint(BaseJoint):
         :return: Translational Joint
         """
         return JointType.TRANSLATIONAL
+
+
+class Singularity(ValueError):
+    pass
+
+
+class ShoulderSingularity(Singularity):
+    """
+    Will be raised if wrist center point is on J1 axis
+    """
+
+
+class WristSingularity(Singularity):
+    """
+    Will be raised if J4 and J6 align (infinite solutions)
+    """
+
+
+class ElbowSingularity(Singularity):
+    """
+    Will be raised if the wrist center point is within the plane through J2 and J3
+    """
+
+
+WRIST_SINGULARITY_THRESHOLD = 1e-3
+ELBOW_SINGULARITY_THRESHOLD = 1e-3
+SHOULDER_SINGULARITY_THRESHOLD = 1e-3

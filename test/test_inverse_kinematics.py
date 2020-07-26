@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 
 from src.kinematics.forward_kinematics import forward_kinematics, get_tform, calculate_pose_flags
-from src.kinematics.inverse_kinematics import ik_spherical_wrist, WristSingularity, OutOfReachError, \
-    ShoulderSingularity, ElbowSingularity
+from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
+from src.kinematics.joints import ShoulderSingularity, WristSingularity, ElbowSingularity
 
 ONE_DEGREE = pi / 180
 TENTH_DEGREE = 0.1 * ONE_DEGREE

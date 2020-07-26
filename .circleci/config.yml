@@ -55,7 +55,7 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
-            cd src_matlab/CollisionChecking/for_redistribution_files_only/
+            cd src_matlab/checkCollision/for_redistribution_files_only/
             python3 setup.py install
             cd ./../../../
       - save_cache: &save-cache-pip-template
@@ -150,7 +150,7 @@ jobs:
             venv\Scripts\activate.ps1
             python --version
             python -m pip install -r requirements.txt
-            cd ./src_matlab/CollisionChecking/for_redistribution_files_only/
+            cd ./src_matlab/checkCollision/for_redistribution_files_only/
             python setup.py install
             cd ./../../../
       - save_cache: *save-cache-pip-template

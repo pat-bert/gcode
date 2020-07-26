@@ -45,6 +45,16 @@ classdef helperClassManipCollisionsFromVisuals < robotics.manip.internal.Interna
                 end
             end
         end
+        
+        function collisionArray = createCollisionObj(body)
+            % Create collision object for a single body
+            collisionArray = cell(1, 2);
+            visualsInternal = body.BodyInternal.VisualsInternal;
+            if ~isempty(visualsInternal)
+                collisionArray{1,1} = collisionMesh(double(visualsInternal{1}.Vertices));
+                collisionArray{1,2} = double(visualsInternal{1}.Tform);
+            end
+        end
     end
     
 end

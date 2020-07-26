@@ -1,9 +1,10 @@
 import abc
 from collections import defaultdict
-from typing import List, Union, Iterator, Set, Dict
+from typing import List, Union, Iterator, Set, Dict, Optional
 
 import numpy as np
 
+from src.prechecks.exceptions import ConfigurationChangesError, JointVelocityViolation
 from src.kinematics.inverse_kinematics import JointSolution
 from src.prechecks.exceptions import CartesianLimitViolation, JointLimitViolation, JOINT_SPEED_ALLOWABLE_RATIO
 from src.prechecks.speed_profile import trapezoidal_speed_profile
@@ -36,26 +37,28 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
     Base class for parts of a trajectory within the cartesian task space
     """
 
-    def __init__(self, trajectory_points: Iterator[np.ndarray], velocity=None, acceleration=None, ds=None):
+    def __init__(self, trajectory_points: Iterator[np.ndarray], extrusion: Optional[bool] = False,
+                 vel: Optional[float] = None, acc: Optional[float] = None, ds: Optional[float] = None):
         """
         Create a cartesian trajectory segment. Time points are calculated according to a trapezoidal speed profile.
         :param trajectory_points:
-        :param velocity: Velocity in mm/min
-        :param acceleration: Acceleration in mm/s^2
+        :param vel: Velocity in mm/min
+        :param acc: Acceleration in mm/s^2
         :param ds: Way delta for discretizing the segment in mm
         """
-        self.trajectory_points = list(trajectory_points)
+        self.trajectory_points = {0: list(trajectory_points)}
+        self.has_extrusion = extrusion
 
-        if len(self.trajectory_points) == 0:
+        if len(self.trajectory_points[0]) == 0:
             raise ValueError('Trajectory may not be empty.')
 
         if ds is not None:
-            self.s_total = ds * (len(self.trajectory_points) - 1)
+            self.s_total = ds * (len(self.trajectory_points[0]) - 1)
         else:
             self.s_total = None
         self.ds = ds
-        if velocity is not None and acceleration is not None and ds is not None and self.s_total > 0.0:
-            self.time_points = trapezoidal_speed_profile(velocity / 60, acceleration, self.s_total, self.ds)
+        if vel is not None and acc is not None and ds is not None and self.s_total > 0.0:
+            self.time_points = trapezoidal_speed_profile(vel / 60, acc, self.s_total, self.ds)
         else:
             self.time_points = None
 
@@ -69,7 +72,11 @@ class CartesianTrajSegment(metaclass=abc.ABCMeta):
 
     @property
     def target(self):
-        return self.trajectory_points[-1]
+        return self.trajectory_points[0][-1]
+
+    @property
+    def unmodified_points(self):
+        return self.trajectory_points[0]
 
 
 class LinearSegment(CartesianTrajSegment):
@@ -84,19 +91,19 @@ class LinearSegment(CartesianTrajSegment):
         :return: Boolean to indicate whether the point is within
         """
         # Distinguish element types
-        if self.trajectory_points[0].shape == (4, 4,):
+        if self.unmodified_points[0].shape == (4, 4,):
             # Homogeneous transformation matrix
-            start = self.trajectory_points[0][0:3, 3]
-            end = self.trajectory_points[-1][0:3, 3]
+            start = self.unmodified_points[0][0:3, 3]
+            end = self.unmodified_points[-1][0:3, 3]
         else:
             # Assume single element
-            start = self.trajectory_points[0]
-            end = self.trajectory_points[-1]
+            start = self.unmodified_points[0]
+            end = self.unmodified_points[-1]
 
         start_violations = get_violated_boundaries(start, boundaries)
         end_violations = get_violated_boundaries(end, boundaries)
 
-        if len(self.trajectory_points) > 1:
+        if len(self.unmodified_points) > 1:
             return start_violations | end_violations
         return start_violations
 
@@ -106,16 +113,21 @@ class CircularSegment(CartesianTrajSegment):
     Represents a circular sector within the task space
     """
 
+    def __init__(self, trajectory_points: Iterator[np.ndarray], centre: np.ndarray, extrusion: Optional[bool] = False,
+                 vel: Optional[float] = None, acc: Optional[float] = None, ds: Optional[float] = None):
+        super().__init__(trajectory_points, extrusion, vel, acc, ds)
+        self.centre = centre
+
     def get_violated_boundaries(self, boundaries: List[float]) -> Set[int]:
         """
         A circular segment/sector is within a rectangular cuboid if all points are within.
         :param boundaries: List of boundaries with twice the length of the coordinates
         :return: Boolean to indicate whether the point is within
         """
-        if self.trajectory_points[0].shape == (4, 4,):
-            all_violations = [get_violated_boundaries(point[0:3, 3], boundaries) for point in self.trajectory_points]
+        if self.unmodified_points[0].shape == (4, 4,):
+            all_violations = [get_violated_boundaries(point[0:3, 3], boundaries) for point in self.unmodified_points]
         else:
-            all_violations = [get_violated_boundaries(point, boundaries) for point in self.trajectory_points]
+            all_violations = [get_violated_boundaries(point, boundaries) for point in self.unmodified_points]
         return {element for idx_list in all_violations for element in idx_list}
 
 
@@ -240,7 +252,7 @@ def check_cartesian_limits(task_trajectory: List[CartesianTrajSegment], clim: Li
     print('All segments are located within the cartesian limits.')
 
 
-def filter_joint_limits(joint_trajectory: List[JointTrajSegment], qlim: List[float]):
+def filter_joint_limits(joint_trajectory: List[JointTrajSegment], qlim: List[float]) -> None:
     """
     Eliminates solutions in joint space that violate the joint limits.
     :param joint_trajectory:
@@ -253,3 +265,56 @@ def filter_joint_limits(joint_trajectory: List[JointTrajSegment], qlim: List[flo
         violation_idx = [idx for idx, val in enumerate(within_joint) if not val]
         raise JointLimitViolation('Found segments violating the joint limits.', violation_idx)
     print('All segments have joint solutions within the limits.')
+
+
+def check_common_configurations(joint_trajectory: List[JointTrajSegment]) -> None:
+    """
+    Search for common configurations for each segment of the trajectory.
+    :param joint_trajectory:
+    :raises: ConfigurationChangesError if any segment is found that does not have solutions with a common configuration.
+    """
+    print('Checking common configurations...')
+    common_configurations = [segment.get_common_configurations() for segment in joint_trajectory]
+    if not all(common_configurations):
+        violation_idx = [idx for idx, val in enumerate(common_configurations) if not val]
+        error_msg = ''
+        for idx in violation_idx:
+            configs = {i for point in joint_trajectory[idx].solutions for i in point.keys()}
+            error_msg += f'Segment #{idx}: Points accessible in configurations {configs}\n'
+        raise ConfigurationChangesError(f'Found segments without common configurations:\n{error_msg}')
+    print('Each segment can be executed without configuration change.')
+    print(f'Configurations in trajectory: {set(conf for conf_list in common_configurations for conf in conf_list)}')
+    print(f'Configurations common to all segments: {set.intersection(*map(set, common_configurations))}')
+
+
+def check_joint_velocities(joint_traj: List[JointTrajSegment], config_path: List[int], qdlim: List[float]):
+    """
+    Check the joint velocities along a trajectory for given robot configurations per segment.
+    :param joint_traj: Joint trajectory as list of coherent segments
+    :param config_path: List of robot configurations per point
+    :param qdlim:
+    :return:
+    """
+    if sum(len(seg.solutions) for seg in joint_traj) != len(config_path):
+        raise ValueError('Number of segments is unequal to number of configs.')
+
+    print('Checking joint velocities on selected path..')
+    start = 0
+    exceeding_indices = []
+
+    error_msg = f"Joint velocity ratio {100 * JOINT_SPEED_ALLOWABLE_RATIO :.2f}% exceeded " \
+                f"(max velocities by segment and joint):\n"
+    for seg_idx, seg in enumerate(joint_traj):
+        end = start + len(seg.solutions)
+        current_exceeding = seg.joints_exceeding_velocity_limits(config_path[start:end], qdlim)
+        exceeding_indices.append(current_exceeding)
+        start += len(seg.solutions)
+
+        if current_exceeding:
+            joint_vel_str = [f'J{j_idx}: {vmax :.3f} rad/s' for j_idx, vmax in current_exceeding.items()]
+            error_msg += f"Segment #{seg_idx}: {'; '.join(sorted(joint_vel_str))}\n"
+
+    # Check the violations
+    if any(exceeding_indices):
+        raise JointVelocityViolation(error_msg)
+    print('All movements are done within the defined percentage of maximum joint velocity.')

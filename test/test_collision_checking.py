@@ -2,7 +2,7 @@ from math import pi
 
 import pytest
 
-from src.collisions.collision_checking import MatlabCollisionChecker
+from src.prechecks.collision_checking import MatlabCollisionChecker
 
 
 def test_check_collisions():
@@ -13,13 +13,13 @@ def test_check_collisions():
     with pytest.raises(ValueError):
         eng.check_collisions(valid_joints)
 
-    is_collision, self_collision, world_collision = eng.check_collisions(valid_joints, path='./ressource/robot.urdf')
+    is_collision, self_coll, world_coll, extr_coll = eng.check_collisions(valid_joints, path='./ressource/robot.urdf')
 
     assert not is_collision
-    assert len(self_collision) == 0
-    assert len(world_collision) == 0
+    assert len(self_coll) == 0
+    assert len(world_coll) == 0
 
-    is_collision, self_collision, world_collision = eng.check_collisions(invalid_joints)
+    is_collision, self_coll, world_coll, extr_coll = eng.check_collisions(invalid_joints)
 
     assert is_collision
-    assert len(self_collision) > 0
+    assert len(self_coll) > 0
