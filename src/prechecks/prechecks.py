@@ -76,7 +76,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     # configurations. The nodes of the same points stay unconnected but all nodes of adjacent points are connected at
     # the beginning. The edges between the nodes represent the cost required. The cost is calculated based on the joint
     # coordinates and the robot configurations of the connected nodes.
-    graph, start_node, stop_node = create_graph(joint_traj, limits.pos_joint, limits.vel_joint)
+    graph, start_node, stop_node = create_graph(joint_traj, limits.pos_joint, limits.vel_joint, config)
 
     # Create collision objects for all segments with extrusion
     collision_objects = create_collision_objects(task_trajectory, extr)
