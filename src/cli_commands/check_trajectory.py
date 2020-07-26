@@ -3,9 +3,9 @@ from configparser import ConfigParser
 from math import pi
 from typing import Optional
 
-from MelfaCoordinateService import MelfaCoordinateService
-from src.clients.IClient import ClientError
 from src.Coordinate import Coordinate
+from src.MelfaCoordinateService import MelfaCoordinateService
+from src.clients.IClient import ClientError
 from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
 from src.prechecks.configs import melfa_rv_4a
@@ -97,21 +97,13 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     print(f'Joint home position in rad: {home_position}')
     print(f'Cartesian limits in mm: {cartesian_limits}')
     print(f'Joint limits in rad: {joint_limits}')
-
-    # Parameters that always need to be configured within the config file
-    max_jnt_speed = config_parser.get('prechecks', 'max_joint_speed')
-    joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
-    inc_distance_mm = float(config_parser.get('prechecks', 'ds_mm'))
-    urdf_file_path = config_parser.get('prechecks', 'urdf_path')
-    default_acc = float(config_parser.get('prechecks', 'default_acc'))
-    # Heat bed offset
-    hb_offset = Coordinate([x_hb, y_hb, z_hb], 'XYZ')
-
     print(f'Maximum joint velocities in rad/s: {joint_velocity_limits}')
     print(f'Checking resolution in mm: {inc_distance_mm}')
-    print(f'URDF filepath: {urdf_file_path}')
+    print(f'URDF filepath: {urdf}')
     print(f'Default acceleration set to {default_acc} mm/s^2')
     print('\n')
+
+    hb_offset = Coordinate([x_hb, y_hb, z_hb], 'XYZ')
 
     # Create the constraints
     traj_constraint = Constraints(cartesian_limits, joint_limits, joint_velocity_limits)
