@@ -1,4 +1,5 @@
 import unittest.mock as mock
+from time import sleep
 from unittest.mock import MagicMock
 
 import pytest
@@ -6,7 +7,7 @@ import pytest
 from src.Coordinate import Coordinate
 from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
-from src.printer_components.MelfaRobot import MelfaRobot, IllegalAxesCount
+from src.printer_components.MelfaRobot import MelfaRobot
 
 
 @pytest.fixture
@@ -23,7 +24,10 @@ def safe_robot(tcp):
     :param tcp:
     :return:
     """
-    return MelfaRobot(tcp, safe_return=True)
+    with MelfaRobot(tcp, safe_return=True) as robot:
+        with mock.patch.object(robot.protocol, "poll", spec=mock.Mock()):
+            yield robot
+        robot.protocol.poll = mock.Mock()
 
 
 @pytest.fixture
@@ -33,7 +37,10 @@ def no_safe_robot(tcp):
     :param tcp:
     :return:
     """
-    return MelfaRobot(tcp, safe_return=False)
+    with MelfaRobot(tcp, safe_return=False) as robot:
+        with mock.patch.object(robot.protocol, "poll", spec=mock.Mock()):
+            yield robot
+        robot.protocol.poll = mock.Mock()
 
 
 class TestMelfaRobot:
@@ -43,14 +50,11 @@ class TestMelfaRobot:
         :param tcp:
         :return:
         """
-        with pytest.raises(IllegalAxesCount):
+        with pytest.raises(ValueError):
             MelfaRobot(tcp, number_axes=0)
 
         a = MelfaRobot(tcp, number_axes=1)
-        assert a.joints == ["J1"]
-
-        b = MelfaRobot(tcp, number_axes=2)
-        assert b.joints == ["J1", "J2"]
+        assert a.joints == 1
 
     def test_boot_no_safe(self, no_safe_robot):
         """
@@ -58,12 +62,8 @@ class TestMelfaRobot:
         :param no_safe_robot:
         :return:
         """
-        with mock.patch.object(
-                no_safe_robot, "go_safe_pos", autospec=True
-        ) as mock_func:
-            with mock.patch(
-                    "src.printer_components.MelfaRobot.sleep", return_value=None
-            ):
+        with mock.patch.object(no_safe_robot, "go_safe_pos", autospec=True) as mock_func:
+            with mock.patch("src.printer_components.MelfaRobot.sleep", return_value=None):
                 no_safe_robot.boot()
         assert not mock_func.called
 
@@ -74,9 +74,7 @@ class TestMelfaRobot:
         :return:
         """
         with mock.patch.object(safe_robot, "go_safe_pos", autospec=True) as mock_func:
-            with mock.patch(
-                    "src.printer_components.MelfaRobot.sleep", return_value=None
-            ):
+            with mock.patch("src.printer_components.MelfaRobot.sleep", return_value=None):
                 safe_robot.boot()
         assert mock_func.called
 
@@ -86,10 +84,9 @@ class TestMelfaRobot:
         :param no_safe_robot:
         :return:
         """
-        with mock.patch.object(
-                no_safe_robot, "go_safe_pos", autospec=True
-        ) as mock_func:
-            no_safe_robot.shutdown()
+        with mock.patch.object(no_safe_robot, "go_safe_pos", autospec=True) as mock_func:
+            with mock.patch.object(no_safe_robot.protocol, "poll", spec=mock.Mock()):
+                no_safe_robot.shutdown()
         assert not mock_func.called
 
     def test_shutdown_safe(self, safe_robot):
@@ -99,10 +96,9 @@ class TestMelfaRobot:
         :return:
         """
         with mock.patch.object(safe_robot, "go_safe_pos", autospec=True) as mock_func:
-            with mock.patch(
-                    "src.printer_components.MelfaRobot.sleep", return_value=None
-            ):
-                safe_robot.shutdown()
+            with mock.patch("src.printer_components.MelfaRobot.sleep", return_value=None):
+                with mock.patch.object(safe_robot.protocol, "poll", spec=mock.Mock()):
+                    safe_robot.shutdown()
         assert mock_func.called
 
     def test_activate_work_coordinate(self, no_safe_robot):
@@ -136,10 +132,12 @@ class TestMelfaRobot:
         activate_inch = GCmd.read_cmd_str("G20")
         deactivate_inch = GCmd.read_cmd_str("G21")
 
-        no_safe_robot.handle_gcode(activate_inch)
+        no_safe_robot.assign_task(activate_inch)
+        sleep(0.1)
         assert no_safe_robot.inch_active
 
-        no_safe_robot.handle_gcode(deactivate_inch)
+        no_safe_robot.assign_task(deactivate_inch)
+        sleep(0.1)
         assert not no_safe_robot.inch_active
 
     def test__change_communication_state(self, no_safe_robot):
@@ -175,17 +173,18 @@ class TestMelfaRobot:
         with mock.patch("src.printer_components.MelfaRobot.sleep", return_value=None):
             with mock.patch.object(no_safe_robot.protocol, "activate_servo", spec=mock.Mock()) as mock_on:
                 with mock.patch.object(no_safe_robot.protocol, "deactivate_servo", spec=mock.Mock()) as mock_off:
-                    # Activate
-                    no_safe_robot._change_servo_state(True)
-                    assert no_safe_robot.servo
-                    assert mock_on.called
-                    assert not mock_off.called
+                    with mock.patch.object(no_safe_robot.protocol, "poll", spec=mock.Mock()):
+                        # Activate
+                        no_safe_robot._change_servo_state(True)
+                        assert no_safe_robot.servo
+                        assert mock_on.called
+                        assert not mock_off.called
 
-                    # Deactivate
-                    no_safe_robot._change_servo_state(False)
-                    assert not no_safe_robot.servo
-                    mock_on.assert_called_once()
-                    assert mock_off.called
+                        # Deactivate
+                        no_safe_robot._change_servo_state(False)
+                        assert not no_safe_robot.servo
+                        mock_on.assert_called_once()
+                        assert mock_off.called
 
     def test_set_speed_linear(self, no_safe_robot):
         """

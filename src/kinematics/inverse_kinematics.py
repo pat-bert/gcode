@@ -409,5 +409,5 @@ def acos_safe(arg) -> float:
     arg_clipped = int(1e10 * arg) / 1e10
     try:
         return acos(arg_clipped)
-    except ValueError as e:
-        raise OutOfReachError from e
+    except ValueError:
+        raise OutOfReachError from None

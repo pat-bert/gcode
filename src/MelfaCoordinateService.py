@@ -1,5 +1,5 @@
 from enum import unique, Enum
-from typing import Dict
+from typing import Optional
 
 from src.Coordinate import Coordinate
 
@@ -29,13 +29,14 @@ class MelfaCoordinateService:
         return Coordinate(values, axes)
 
     @staticmethod
-    def to_cmd(c: Coordinate):
+    def to_cmd(c: Coordinate, pose_flag: Optional[int] = 7):
         """
         Convert a coordinate to the point format used in R3 protocol
         :param c:
+        :param pose_flag:
         :return:
         """
         txt = (
             "{:.{d}f}".format(i, d=c.digits) if i is not None else "" for i in c.values
         )
-        return "(" + ",".join(txt) + ")" + "(7,0)"
+        return f'"("{",".join(txt)}")" + "({pose_flag},0)'

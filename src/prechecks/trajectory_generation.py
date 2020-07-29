@@ -39,15 +39,31 @@ def generate_task_trajectory(cmds: List[GCmd], curr_pos: np.ndarray, ds: float, 
 
         # Movement commands
         if cmd.id in ['G01', 'G1']:
-            lin_segment = lin_segment_from_gcode(cmd, curr_pos, ds, is_abs, curr_vel, curr_acc, orig_offset=hb_offset)
-            all_trajectory_pose_points.append(lin_segment)
-            curr_pos = lin_segment.target
+            if len(cmd.cartesian_abs.values) > 0:
+                # G-Code can also be used only to retract filament or change speed
+                lin_segment = lin_segment_from_gcode(cmd, curr_pos, ds, is_abs, curr_vel, curr_acc,
+                                                     orig_offset=hb_offset)
+                all_trajectory_pose_points.append(lin_segment)
+                curr_pos = lin_segment.target
             curr_vel = cmd.speed or curr_vel
         elif cmd.id in ['G02', 'G2', 'G03', 'G3']:
-            circ_segment = circ_segment_from_gcode(cmd, curr_pos, ds, is_abs, curr_vel, curr_acc, orig_offset=hb_offset)
-            all_trajectory_pose_points.append(circ_segment)
-            curr_pos = circ_segment.target
+            if len(cmd.cartesian_abs.values) > 0:
+                # G-Code can also be used only to retract filament or change speed
+                circ_segment = circ_segment_from_gcode(cmd, curr_pos, ds, is_abs, curr_vel, curr_acc,
+                                                       orig_offset=hb_offset)
+                all_trajectory_pose_points.append(circ_segment)
+                curr_pos = circ_segment.target
             curr_vel = cmd.speed or curr_vel
+        elif cmd.id == 'G28':
+            curr_pos = np.array(
+                [
+                    [-1.0, 0.0, +0.0, 0.0],
+                    [+0.0, 1.0, +0.0, 0.0],
+                    [+0.0, 0.0, -1.0, 0.0],
+                    [+0.0, 0.0, +0.0, 0.0]
+                ]
+            )
+            curr_pos[0:3, 3] = hb_offset.values
         # Consider relative coordinates
         elif cmd.id == 'G90':
             is_abs = True
@@ -90,14 +106,15 @@ def generate_joint_trajectory(task_traj: List[CartesianTrajSegment], config: Lis
                 current_point_solutions = ik_spherical_wrist(config, pose, pose_flags=None)
                 # Append the solutions for the current pose
                 current_segment_solutions.append(current_point_solutions)
-            except OutOfReachError as e:
+            except OutOfReachError:
                 # Inverse kinematic cannot be solved for points outside the workspace
                 x_descr = 'XDir {}'.format(', '.join(f'{i:.2f}' for i in pose[0:3, 0]))
                 y_descr = 'YDir {}'.format(', '.join(f'{i:.2f}' for i in pose[0:3, 1]))
                 z_descr = 'ZDir {}'.format(', '.join(f'{i:.2f}' for i in pose[0:3, 2]))
                 pos_descr = 'Pos {}'.format(', '.join(f'{i:.2f}' for i in pose[0:3, 3]))
                 pose_descr = f'{x_descr}; {y_descr}; {z_descr}; {pos_descr}'
-                raise WorkspaceViolation(f'Cannot reach position #{pt_idx} in segment #{seg_idx}:\n{pose_descr}') from e
+                raise WorkspaceViolation(
+                    f'Cannot reach position #{pt_idx} in segment #{seg_idx}:\n{pose_descr}') from None
         # Append the solutions for the current segment
         joint_segments.append(JointTrajSegment(current_segment_solutions, cartesian_segment.time_points))
     return joint_segments

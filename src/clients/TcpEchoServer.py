@@ -1,6 +1,8 @@
+import logging
 import socket
 import threading
-from typing import Union, Optional
+from collections import defaultdict
+from typing import Union, Optional, Dict
 
 
 class TcpEchoServer:
@@ -46,7 +48,7 @@ class TcpEchoServer:
             self.s.bind((self.host, self.port))
 
             # Listen for connections
-            print('Server listening at {}:{}.'.format(self.host, self.port))
+            logging.info('Server listening at {}:{}.'.format(self.host, self.port))
             self.s.listen(5)
 
             # Create a new thread for accepting incoming connections so that this function does not block
@@ -56,7 +58,7 @@ class TcpEchoServer:
             # Change the status
             self._is_listening = True
         else:
-            print('Server already listening.')
+            logging.info('Server already listening.')
 
     @property
     def is_listening(self) -> bool:
@@ -72,14 +74,13 @@ class TcpEchoServer:
         Signals the communication threads to shutdown.
         :return: None
         """
-        print('Waiting for communication thread to shutdown.')
         self.isAlive.clear()
         self.listen_thread.join()
         # Reset the flag so that the same server can be reused for a new connection
         self._is_listening = False
         # Also close the server socket so that it can be rebound
         self.s.close()
-        print('Shutting down server.')
+        logging.info('Server successfully shutdown.')
 
     def _listening_loop(self) -> None:
         """
@@ -94,7 +95,7 @@ class TcpEchoServer:
             except socket.timeout:
                 continue
             else:
-                print('New connection from {}.'.format(client_addr))
+                logging.info('New connection from {}.'.format(client_addr))
 
                 # Setup the worker thread and wait until the communication is finished
                 t = threading.Thread(target=self._echo_loop, args=(conn,), name='TCP-Echo ({}:{})'.format(*client_addr))
@@ -187,7 +188,7 @@ class ConfigurableEchoServer(TcpEchoServer):
     Extends the functionality to include response manipulation.
     """
 
-    def __init__(self, host, port, encoding: str):
+    def __init__(self, host: str, port: int, encoding: str):
         """
         Initialize the TCP Server
         :param host: Hostname as IPv4-adress
@@ -250,3 +251,29 @@ class ConfigurableEchoServer(TcpEchoServer):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         super().__exit__(exc_type, exc_val, exc_tb)
+
+
+class DummyRobotController(ConfigurableEchoServer):
+    def __init__(self, host: str, port: int, encoding: str):
+        super().__init__(host, port, encoding)
+        self.response_lookup: Dict[bytes, Optional[bytes]] = defaultdict(lambda: b'')
+
+    def determine_response(self, msg: bytes) -> bytes:
+        """
+        Apply the modifications to the message.
+        :param msg: Message received by the server in bytes
+        :return: Message to be responded by the server in bytes
+        """
+        # Ensure that the parameters are not accessed
+        with self.lock:
+            # Attempt to look up response
+            response = self.response_lookup[msg]
+            if response is not None:
+                msg = response
+            elif self.replace_msg is not None:
+                msg = self.replace_msg
+            if self.prefix is not None:
+                msg = self.prefix + msg
+            if self.postfix is not None:
+                msg = msg + self.postfix
+        return msg

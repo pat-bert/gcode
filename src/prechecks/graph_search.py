@@ -1,8 +1,11 @@
 from collections import namedtuple
 from typing import List, Tuple, Optional
 
+import numpy as np
 from dijkstar import Graph
 
+from src.kinematics.forward_kinematics import geometric_jacobian
+from src.kinematics.joints import BaseJoint
 from src.prechecks.trajectory_segment import JointTrajSegment
 
 START_NODE = -1
@@ -64,18 +67,33 @@ def joint_velocity_cost(prev_j: List[float], curr_j: List[float], qdlim: List[fl
     return val / (2 * len(curr_j))
 
 
-def singularity_proximity(curr_j: List[float]) -> float:
-    # TODO Apply additional cost depending on proximity to singularitites
-    return 0.0
+def singularity_proximity_cost(config: List[BaseJoint], curr_j: List[float]) -> float:
+    """
+    Measure to penalize singularity proximity.
+    :param config: List of joints containing coordinate transformations.
+    :param curr_j: Joint coordinate of the current node
+    :return: Non-negative cost value for the given joint coordinates. Best is zero.
+    """
+    # Apply additional cost depending on proximity to singularitites
+    jac = geometric_jacobian(config, curr_j)
+
+    try:
+        # Since J is square: det(J*JT) = det(J) * det(JT) = (det(J))^2 >= 0
+        # sqrt((det(J))^2) = |(det(J))^2|
+        return 1 / abs(np.linalg.det(jac))
+    except ZeroDivisionError:
+        # Singularity
+        return float('Inf')
 
 
-def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[float]) -> float:
+def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[float], config: List[BaseJoint]) -> float:
     """
     Calculate the edge cost between two nodes.
     :param curr: Info about the current node
     :param prev: Info about the previous node
     :param qlim: Joint limits in order [J1 min, J1 max, J2 min, J2 max, Jn min, Jn max]
     :param qdlim: Maximum joint velocities in order
+    :param config: List of joints containing coordinate transformations.
     :return: Non-negative cost value for the given joint coordinates. Best is zero.
     """
     if curr.seg_idx == prev.seg_idx:
@@ -90,7 +108,7 @@ def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[flo
         cost += joint_velocity_cost(prev.joints, curr.joints, qdlim, dt=curr.t - prev.t)
 
         # Cost with regard to singularity proximity
-        cost += singularity_proximity(curr.joints)
+        cost += singularity_proximity_cost(config, curr.joints)
 
         return cost
     else:
@@ -128,7 +146,7 @@ def calc_conf_from_node(node_idx, point_idx) -> int:
     raise ValueError('Point index must be positive.')
 
 
-def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: List[float]) \
+def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: List[float], config: List[BaseJoint]) \
         -> Tuple[Graph, int, int]:
     """
     Constructs a graph for a given joint trajectory.
@@ -139,6 +157,7 @@ def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: L
     :param joint_traj: List of JointTrajectorySegments
     :param qlim: Joint limits in order [J1 min, J1 max, J2 min, J2 max, Jn min, Jn max]
     :param qdlim: Maximum joint velocities in order
+    :param config: List of joints containing coordinate transformations.
     :return: Graph that can be used to determine shortest paths, start node, stop node.
     """
     joint_network = Graph()
@@ -169,7 +188,7 @@ def create_graph(joint_traj: List[JointTrajSegment], qlim: List[float], qdlim: L
                         # configurations and the joint values.
                         curr_node_info = NodeInfo(conf=curr_conf, joints=curr_j, seg_idx=seg_idx, t=t_curr_point)
                         prev_node_info = NodeInfo(conf=prev_conf, joints=prev_j, seg_idx=prev_seg_idx, t=t_prev_point)
-                        cost = calc_cost(curr_node_info, prev_node_info, qlim, qdlim)
+                        cost = calc_cost(curr_node_info, prev_node_info, qlim, qdlim, config)
                         # Add the edge to the graph
                         joint_network.add_edge(previous_node_idx, node_idx, edge=cost)
 

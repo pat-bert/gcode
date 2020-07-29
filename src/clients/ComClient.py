@@ -1,3 +1,4 @@
+import logging
 from time import sleep, time
 from typing import Tuple, Optional
 
@@ -48,7 +49,7 @@ class ComClient(ThreadedClient):
         :raises: ValueError if the IDs cannot be converted to int.
         """
         # Get features of threaded client
-        super().__init__()
+        super().__init__(kind='Serial')
 
         # Serial port parameters (blocking)
         self._ser = serial.Serial(baudrate=baud, parity=parity, stopbits=stopbits, bytesize=byte, dsrdtr=None)
@@ -81,7 +82,7 @@ class ComClient(ThreadedClient):
         # Choose manner of port identification
         if self.port is not None:
             self._ser.setPort(self.port)
-            print(f'Attempting connection to port {self.port}...')
+            logging.info(f'Attempting connection to port {self.port}...')
         else:
             self._resolve_ids()
 
@@ -140,7 +141,7 @@ class ComClient(ThreadedClient):
         if len(matches) == 1:
             # Configure the serial port accordingly
             self._ser.port = matches[0].device
-            print(f'Attempting connection to {matches[0].description} - {matches[0].hwid}...')
+            logging.info(f'Attempting connection to {matches[0].description} - {matches[0].hwid}...')
         else:
             # Found multiple clients
             raise AmbiguousHardwareError

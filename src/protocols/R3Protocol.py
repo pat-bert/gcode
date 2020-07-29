@@ -1,9 +1,9 @@
 from time import sleep
-from typing import Tuple, Optional, Callable, List, AnyStr
+from typing import Tuple, Optional, Callable, List
 
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService
-from src.clients.IClient import IClient
+from src.clients.IClient import IClient, ClientError
 
 # General commands
 DELIMITER = ";"
@@ -50,9 +50,13 @@ class R3SubApi:
         super().__init__()
         self.client = client
 
-    def _protocol_send(self, msg: str):
+    def _protocol_send(self, msg: str, silent_send=False, silent_recv=False):
         msg = f'{ROBOT_NO}{DELIMITER}{PROGRAM_NO}{DELIMITER}{msg}'
-        self.client.send(msg)
+
+        if silent_send is False and silent_recv is False:
+            self.client.send(msg)
+        else:
+            self.client.send(msg, silent_send=silent_send, silent_recv=silent_recv)
 
 
 class R3Utility(R3SubApi):
@@ -345,12 +349,14 @@ class R3Reader(R3SubApi):
         """
         # Iteratively call the method
         total_time_waited = 0
+        response = ''
         while total_time_waited < timeout_ms:
             response = func()
             if response == val:
                 return
             sleep(poll_rate_ms / 1000)
             total_time_waited += poll_rate_ms
+        raise ClientError(f"Timeout after {timeout_ms} ms. Expected: '{val}' but got '{response}'")
 
     def _read_parameter(self, parameter: str) -> str:
         """
@@ -601,20 +607,20 @@ class R3Protocol(R3Resetter, R3Setter, R3Reader, R3Positions, R3Utility):
 
     DIGITS = 2
 
-    def __init__(self, client: IClient, coordinate_adapter: MelfaCoordinateService, joints: List[AnyStr],
+    def __init__(self, client: IClient, coordinate_adapter: MelfaCoordinateService, joints: int = 6,
                  digits: int = DIGITS):
         """
         Create a protocol object.
         :param client: Client to be used for the communication.
         :param coordinate_adapter:
-        :param joints: List of joint strings
+        :param joints: Number of joints
         :param digits: Number of digits to be used for string to float conversions, defaults to 2
         """
         # Initialize the individual parts of the API
         super().__init__(
             client=client,
             digits=digits,
-            joints=joints,
+            joints=["J{}".format(i) for i in range(1, joints + 1)],
             coordinate2cmd=coordinate_adapter.to_cmd,
             r2c=coordinate_adapter.from_response
         )

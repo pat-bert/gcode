@@ -1,7 +1,7 @@
 from typing import Optional
 
 from src.ApplicationExceptions import MelfaBaseException
-from src.GPrinter import GPrinter
+from src.printer_components.GPrinter import GPrinter
 from src.gcode.GCmd import GCmd
 
 
