@@ -222,7 +222,6 @@ def virtual_environ(dummy_robot_controller, valid_com_client):
         printer = GPrinter.default_init(ROBOT_IP, ROBOT_PORT, serial_ids=serial_ids, serial_port=serial_port)
         dummy_robot_controller.response_lookup[b'1;1;VALM_SVO'] = b'M_SVO=+0'
         yield printer, dummy_robot_controller
-        printer.shutdown()
 
 
 @pytest.fixture
@@ -235,7 +234,7 @@ def dummy_robot_controller():
 
 
 class TestGPrinter:
-    @pytest.mark.parametrize('cmd_str', ['G91', 'G20'])
+    @pytest.mark.parametrize('cmd_str', ['G91', 'G20', 'G21'])
     def test_execute(self, virtual_environ, cmd_str):
         """
         Test that commands are sent to all corresponding components
@@ -244,10 +243,4 @@ class TestGPrinter:
         printer, dummy_robot_ctrl = virtual_environ
         cmd = GCmd.read_cmd_str(cmd_str)
         printer.execute(cmd)
-
-    def test_shutdown(self, virtual_environ):
-        """
-        Test that all components are shutdown properly
-        :return:
-        """
-        pass
+        printer.shutdown()

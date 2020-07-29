@@ -83,7 +83,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
 
     # Init Matlab Runtime
     with MatlabCollisionChecker() as collider:
-        collisions = collider.check_collisions(home, path=urdf, collision_objects=collision_objects)
+        collisions = collider.check_collisions(home, path=urdf, )  # collision_objects=collision_objects)
         if collisions[0]:
             raise CollisionViolation('Home position is in collision.')
         print('Home position is not in collision.')

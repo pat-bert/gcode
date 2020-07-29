@@ -116,7 +116,7 @@ G1 X0 Y0"""
 
     for command in gcode.split("\n"):
         cmd = GCmd.read_cmd_str(command)
-        robot.handle_gcode(cmd)
+        robot.assign_task(cmd)
 
 
 def demo_mode(ip=None, port=None, safe_return=False) -> None:

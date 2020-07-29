@@ -11,7 +11,6 @@ Usage:
     main.py --gi --vid=<vid> --pid=<pid> [--quiet | --verbose] [--safe]
     main.py --mi --ip=<ip> --port=<port> [--quiet | --verbose] [--safe]
     main.py --demo --ip=<ip> --port=<port> [--safe]
-    main.py --ghelp
     main.py (-h | --help)
     main.py --version
 
@@ -30,7 +29,6 @@ Options:
     --quiet                 Print less text.
     --verbose               Print more text.
     --safe                  Start and finish at safe position.
-    --ghelp                 List supported G-code commands.
 
 """
 __version__ = "0.1.0"  # pragma: no mutate
@@ -40,18 +38,20 @@ import logging
 import os
 import sys
 
-# Own libraries
-from src.cli_commands.interactive_gcode_printer_only import interactive_gcode_printer_only
-from src.clients.ComClient import validate_id
 from src.ApplicationExceptions import ApiException
-from src.printer_components.GRedirect import GRedirect
 from src.cli_commands.check_trajectory import check_trajectory
 from src.cli_commands.demo import demo_mode
+from src.cli_commands.interactive_gcode_printer_only import interactive_gcode_printer_only
 from src.cli_commands.interactive_gcode_robot_only import interactive_gcode
 from src.cli_commands.interactive_melfa import interactive_melfa
+from src.clients.ComClient import validate_id
 from src.clients.TcpClientR3 import validate_ip, validate_port
 from src.exit_codes import (EXIT_SUCCESS, EXIT_BAD_INPUT, EXIT_INTERNAL_ERROR, EXIT_PACKAGE_ERROR,
                             EXIT_UNEXPECTED_ERROR)
+from src.kinematics.inverse_kinematics import OutOfReachError
+from src.kinematics.joints import Singularity
+# Own libraries
+from src.prechecks.exceptions import TrajectoryError
 
 # Third-party libraries
 try:
@@ -117,45 +117,41 @@ def main(*argv):
     """
     # noinspection PyBroadException
     try:
-        if args["--ghelp"]:
-            print("Supported G-Codes:")
-            print(GRedirect.supported_gcodes())
-        else:
-            # Functions using TCP/IP-connection
-            if args["--gi"]:
-                usb_present = args["--vid"] is not None and args["--pid"] is not None
-                tcp_present = args["--ip"] is not None and args["--port"] is not None
-                if tcp_present:
-                    if usb_present:
-                        # Robot and PCB
-                        args.update(usb_schema.validate(args))
-                        args.update(connection_schema.validate(args))
-                    else:
-                        # Robot only
-                        args.update(connection_schema.validate(args))
-                        ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
-                        interactive_gcode(ip, port, safe_return=safe)
-                elif usb_present:
-                    # PCB only
+        # Functions using TCP/IP-connection
+        if args["--gi"]:
+            usb_present = args["--vid"] is not None and args["--pid"] is not None
+            tcp_present = args["--ip"] is not None and args["--port"] is not None
+            if tcp_present:
+                if usb_present:
+                    # Robot and PCB
                     args.update(usb_schema.validate(args))
-                    interactive_gcode_printer_only((args["--vid"], args["--pid"]))
+                    args.update(connection_schema.validate(args))
                 else:
-                    # None present
-                    raise ValueError
-            elif args["--validate"]:
-                input_schema.validate(args)
-                config_schema.validate(args)
-                check_trajectory(config_f=args["CONFIG_FILE"], gcode_f=args["IN_FILE"])
+                    # Robot only
+                    args.update(connection_schema.validate(args))
+                    ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
+                    interactive_gcode(ip, port, safe_return=safe)
+            elif usb_present:
+                # PCB only
+                args.update(usb_schema.validate(args))
+                interactive_gcode_printer_only((args["--vid"], args["--pid"]))
             else:
-                args.update(connection_schema.validate(args))
-                ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
+                # None present
+                raise ValueError
+        elif args["--validate"]:
+            input_schema.validate(args)
+            config_schema.validate(args)
+            check_trajectory(config_f=args["CONFIG_FILE"], gcode_f=args["IN_FILE"])
+        else:
+            args.update(connection_schema.validate(args))
+            ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
 
-                if args["--mi"]:
-                    interactive_melfa(ip, port, safe_return=safe)
-                elif args["--demo"]:
-                    demo_mode(ip, port, safe_return=safe)
-                else:
-                    raise ApiException("Unknown option passed. Type --help for more info.")
+            if args["--mi"]:
+                interactive_melfa(ip, port, safe_return=safe)
+            elif args["--demo"]:
+                demo_mode(ip, port, safe_return=safe)
+            else:
+                raise ApiException("Unknown option passed. Type --help for more info.")
     except SchemaError:
         # Input validation error
         logging.exception("Input data invalid.")

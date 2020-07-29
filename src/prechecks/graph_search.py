@@ -1,5 +1,4 @@
 from collections import namedtuple
-from math import sqrt
 from typing import List, Tuple, Optional
 
 import numpy as np
@@ -75,11 +74,16 @@ def singularity_proximity_cost(config: List[BaseJoint], curr_j: List[float]) -> 
     :param curr_j: Joint coordinate of the current node
     :return: Non-negative cost value for the given joint coordinates. Best is zero.
     """
-    # TODO Apply additional cost depending on proximity to singularitites
+    # Apply additional cost depending on proximity to singularitites
     jac = geometric_jacobian(config, curr_j)
-    jdet = np.linalg.det(jac @ jac.T)
-    # return sqrt(jdet)
-    return 0.0
+
+    try:
+        # Since J is square: det(J*JT) = det(J) * det(JT) = (det(J))^2 >= 0
+        # sqrt((det(J))^2) = |(det(J))^2|
+        return 1 / abs(np.linalg.det(jac))
+    except ZeroDivisionError:
+        # Singularity
+        return float('Inf')
 
 
 def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[float], config: List[BaseJoint]) -> float:

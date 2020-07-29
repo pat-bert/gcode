@@ -1,9 +1,9 @@
-from typing import Dict, Union, Set, Tuple, Optional
+from threading import Barrier
+from typing import Tuple, Optional
 
 from src.clients.ComClient import ComClient
 from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
-from src.printer_components.GRedirect import RedirectionTargets, GRedirect
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.printer_components.Peripherals import Peripherals
 from src.printer_components.PrinterComponent import PrinterComponent
@@ -19,55 +19,28 @@ class GPrinter:
         Initializes the printer with a set of components.
         :param components: Usable list of printer components
         """
-        self.components: Union[Dict[RedirectionTargets, Set[PrinterComponent]], Dict] = {}
-
-        # Initialize components and register
-        for printer_component in components:
-            # Link component to all its redirection targets
-            for red in printer_component.redirector:
-                if red not in self.components.keys():
-                    self.components[red] = {printer_component}
-                else:
-                    self.components[red].add(printer_component)
-            # Boot component
-            printer_component.boot()
+        self.barrier = Barrier(len(components))
+        self.components = components
+        # Boot component
+        for component in components:
+            component.boot()
 
     def execute(self, gcode: GCmd) -> None:
         """
         Execute a G-code command on the printer.
         :param gcode: Command object
         """
-        try:
-            target = GRedirect.redirect_cmd(gcode)
-        except ValueError as e:
-            print(e)
-        else:
-            try:
-                # Queue the commands for all required components
-                for responsible_component in self.components[target]:
-                    responsible_component.handle_gcode(gcode)
-
-                # TODO Fire the communication
-            except KeyError:
-                raise ValueError("Unsupported redirection target: {}".format(target))
+        print(f'Printer executing command: {gcode}')
+        for component in self.components:
+            component.assign_task(gcode, barrier=self.barrier)
 
     def shutdown(self) -> None:
         """
         Shutdown for all unique components.
         """
-        for comp in self.unique_components:
-            comp.shutdown()
-
-    @property
-    def unique_components(self) -> Set[PrinterComponent]:
-        """
-        Acquires a list of unique components registered in all redirection targets.
-        :return: Set of PrinterComponent objects.
-        """
-        comp = set()
-        for val_set in self.components.values():
-            comp.update(val_set)
-        return comp
+        print('Shutting down all components.')
+        for component in self.components:
+            component.shutdown()
 
     @classmethod
     def default_init(cls, ip: str, port: int, serial_port: Optional[str] = None,
@@ -105,3 +78,23 @@ class GPrinter:
 
         # Create printer object
         return cls(mover, perip)
+
+
+if __name__ == '__main__':
+
+    import time
+    import random
+    import threading
+
+
+    def f(b):
+        time.sleep(random.randint(2, 10))
+        print("{} woke at: {}".format(threading.current_thread().getName(), time.ctime()))
+        b.wait()
+        print("{} passed the barrier at: {}".format(threading.current_thread().getName(), time.ctime()))
+
+
+    barrier = threading.Barrier(3)
+    for i in range(3):
+        t = threading.Thread(target=f, args=(barrier,))
+        t.start()

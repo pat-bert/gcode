@@ -1,7 +1,8 @@
+import threading
 import time
 from math import pi
 from time import sleep
-from typing import AnyStr, Union, List, Optional
+from typing import AnyStr, List, Optional
 
 import numpy as np
 from numpy import ndarray
@@ -14,7 +15,6 @@ from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
 from src.clients.IClient import IClient
 from src.gcode.GCmd import GCmd
-from src.printer_components.GRedirect import RedirectionTargets
 from src.printer_components.PrinterComponent import PrinterComponent
 from src.protocols.R3Protocol import R3Protocol
 from src.protocols.R3Protocol import R3Reader
@@ -25,7 +25,6 @@ class MelfaRobot(PrinterComponent):
     Class representing the physical robots with its unique routines, properties and actions.
     """
 
-    redirector = [RedirectionTargets.MOVER, RedirectionTargets.BROADCAST]
     AXES = "XYZABC"
     INCH_IN_MM = 25.4
 
@@ -36,6 +35,7 @@ class MelfaRobot(PrinterComponent):
         :param number_axes: Number of robot AXES, declared by 'J[n]', n>=1
         :param safe_return: Flag to specify whether the robot should start and stop at its safe position
         """
+        super().__init__(name='Melfa Robot')
         if number_axes <= 0:
             raise ValueError('Number of axes needs to be larger than zero.')
 
@@ -59,7 +59,7 @@ class MelfaRobot(PrinterComponent):
         self.zero = Coordinate([0, 0, 0, None, None, None], "XYZABC")
 
     # Administration functions
-    def boot(self, *args, **kwargs) -> None:
+    def hook_boot(self, *args, **kwargs) -> None:
         """
         Starts the robot and initialises it.
         :return: None
@@ -84,7 +84,7 @@ class MelfaRobot(PrinterComponent):
         # Activate work coordinates
         self.activate_work_coordinate(True)
 
-    def shutdown(self, *args, **kwargs) -> None:
+    def hook_shutdown(self, *args, **kwargs) -> None:
         """
         Safely shuts down the robot.
         :return: None
@@ -129,11 +129,11 @@ class MelfaRobot(PrinterComponent):
 
         self.work_coordinate_active = active
 
-    def handle_gcode(self, gcode: GCmd, gcode_prev: Union[GCmd, None] = None, *args, **kwargs) -> None:
+    def hook_handle_gcode(self, gcode: GCmd, barrier: Optional[threading.Barrier]) -> None:
         """
-        Translates a G-Code to a Mitsubishi Melfa R3 command.
+        Implements the G-Code execution.
         :param gcode: G-Code object
-        :param gcode_prev: Optional object for previous G-Code to be considered for speed setting
+        :param barrier: Synchronization primitive
         :return:
         """
         # G-Code is executed directly
@@ -148,25 +148,25 @@ class MelfaRobot(PrinterComponent):
         if gcode.speed is not None:
             gcode.speed /= 60
 
+        # Synchronize it here
+        if barrier is not None:
+            barrier.wait()
+
         # Movement G-code
         if gcode.id in ["G00", "G0", "G01", "G1"]:
             if not self.absolute_coordinates:
-                self.linear_move_poll(gcode.cartesian_abs + current_pos, gcode.speed, current_pos=current_pos)
+                target_pos = gcode.cartesian_abs + current_pos
+                self.linear_move_poll(target_pos, gcode.speed, current_pos=current_pos)
             else:
                 self.linear_move_poll(gcode.cartesian_abs, gcode.speed, current_pos=current_pos)
-        elif gcode.id in ["G02", "G2"]:
+        elif gcode.id in ["G02", "G2", "G03", "G3"]:
+            is_cw = gcode.id in ["G02", "G2"]
+            center_pos = current_pos + gcode.cartesian_rel
             if not self.absolute_coordinates:
-                self.circular_move_poll(gcode.cartesian_abs + current_pos, current_pos + gcode.cartesian_rel, True,
-                                        gcode.speed, start_pos=current_pos)
+                target_pos = gcode.cartesian_abs + current_pos
+                self.circular_move_poll(target_pos, center_pos, is_cw, gcode.speed, start_pos=current_pos)
             else:
-                self.circular_move_poll(gcode.cartesian_abs, current_pos + gcode.cartesian_rel, True, gcode.speed,
-                                        start_pos=current_pos)
-        elif gcode.id in ["G03", "G3"]:
-            if not self.absolute_coordinates:
-                self.circular_move_poll(gcode.cartesian_abs + current_pos, current_pos + gcode.cartesian_rel, False,
-                                        gcode.speed)
-            else:
-                self.circular_move_poll(gcode.cartesian_abs, current_pos + gcode.cartesian_rel, False, gcode.speed)
+                self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed, start_pos=current_pos)
         elif gcode.id in ["G04", "G4"]:
             self.wait(gcode.time_ms)
 
@@ -207,10 +207,6 @@ class MelfaRobot(PrinterComponent):
 
         elif gcode.id == 'G200':
             self.move_joint(gcode.joints)
-
-        # Unsupported G-code
-        else:
-            raise NotImplementedError("Unsupported G-code: '{}'".format(str(gcode)))
 
     def adjust_units(self, gcode: GCmd) -> GCmd:
         """
