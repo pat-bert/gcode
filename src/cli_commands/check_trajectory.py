@@ -115,8 +115,7 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     try:
         # Check the trajectory
         check_traj(commands, robot_config, traj_constraint, home_position, incs, extr, default_acc, urdf, hb_offset)
-    except (CartesianLimitViolation, WorkspaceViolation) as e:
-        logging.exception('Fatal error occured: {}'.format("\n".join(e.args)))
+    except (CartesianLimitViolation, WorkspaceViolation):
         logging.error('Please verify that the limits are correct and check the positioning of the part.')
         raise
     except ConfigurationChangesError:

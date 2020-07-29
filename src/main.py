@@ -147,7 +147,7 @@ def main(*argv):
         # Input validation error
         logging.exception("Input data invalid.")
         sys.exit(EXIT_BAD_INPUT)
-    except ApiException:
+    except (ApiException, Singularity, OutOfReachError, TrajectoryError):
         # Intentionally thrown exception by functions of this module
         logging.exception("Internal error.")
         sys.exit(EXIT_INTERNAL_ERROR)
