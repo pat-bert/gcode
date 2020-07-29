@@ -1,7 +1,8 @@
 import abc
+import logging
 import threading
 from queue import Queue, Empty
-from typing import Optional, NamedTuple
+from typing import Optional, NamedTuple, Union
 
 from src.gcode.GCmd import GCmd
 
@@ -9,6 +10,11 @@ from src.gcode.GCmd import GCmd
 class CommandTask(NamedTuple):
     cmd: GCmd
     b: Optional[threading.Barrier]
+
+
+class CommandResponse(NamedTuple):
+    kind: int
+    response: Union[Exception, str]
 
 
 class PrinterComponent(metaclass=abc.ABCMeta):
@@ -63,8 +69,13 @@ class PrinterComponent(metaclass=abc.ABCMeta):
         task = CommandTask(gcode, barrier)
         self.send_q.put(task)
 
-    def get_result(self):
-        pass
+    def get_result(self) -> str:
+        return_value: CommandResponse = self.recv_q.get()
+
+        if return_value.kind == -1:
+            raise return_value.response
+        else:
+            return return_value.response
 
     def execute_task_loop(self) -> None:
         """
@@ -86,13 +97,20 @@ class PrinterComponent(metaclass=abc.ABCMeta):
                     break
                 else:
                     # Component-specific command handling
-                    print(f'{self.name} is handling {task.cmd}')
-                    self.hook_handle_gcode(task.cmd, task.b)
-                    print(f'{self.name} is done with {task.cmd}')
+                    logging.info(f'{self.name} is handling {task.cmd}')
+                    return_val = self.hook_handle_gcode(task.cmd, task.b)
+                    logging.info(f'{self.name} is done with {task.cmd}')
                     self.send_q.task_done()
 
+                    if isinstance(return_val, Exception):
+                        cmd_response = CommandResponse(-1, return_val)
+                    else:
+                        cmd_response = CommandResponse(0, return_val)
+
+                    self.recv_q.put(cmd_response)
+
     @abc.abstractmethod
-    def hook_handle_gcode(self, gcode: GCmd, barrier: Optional[threading.Barrier]) -> None:
+    def hook_handle_gcode(self, gcode: GCmd, barrier: Optional[threading.Barrier]) -> Union[str, Exception]:
         """
         Implements the G-Code execution (needs to be overridden).
         :param gcode: G-Code object

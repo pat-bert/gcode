@@ -1,3 +1,4 @@
+import logging
 from threading import Barrier
 from typing import Tuple, Optional
 
@@ -30,9 +31,13 @@ class GPrinter:
         Execute a G-code command on the printer.
         :param gcode: Command object
         """
-        print(f'Printer executing command: {gcode}')
+        logging.info(f'Printer executing command: {gcode}')
         for component in self.components:
             component.assign_task(gcode, barrier=self.barrier)
+
+        for component in self.components:
+            result = component.get_result()
+            print(f'{component.name}: {result}')
 
     def shutdown(self) -> None:
         """
@@ -78,23 +83,3 @@ class GPrinter:
 
         # Create printer object
         return cls(mover, perip)
-
-
-if __name__ == '__main__':
-
-    import time
-    import random
-    import threading
-
-
-    def f(b):
-        time.sleep(random.randint(2, 10))
-        print("{} woke at: {}".format(threading.current_thread().getName(), time.ctime()))
-        b.wait()
-        print("{} passed the barrier at: {}".format(threading.current_thread().getName(), time.ctime()))
-
-
-    barrier = threading.Barrier(3)
-    for i in range(3):
-        t = threading.Thread(target=f, args=(barrier,))
-        t.start()

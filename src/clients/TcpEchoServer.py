@@ -1,3 +1,4 @@
+import logging
 import socket
 import threading
 from collections import defaultdict
@@ -47,7 +48,7 @@ class TcpEchoServer:
             self.s.bind((self.host, self.port))
 
             # Listen for connections
-            print('Server listening at {}:{}.'.format(self.host, self.port))
+            logging.info('Server listening at {}:{}.'.format(self.host, self.port))
             self.s.listen(5)
 
             # Create a new thread for accepting incoming connections so that this function does not block
@@ -57,7 +58,7 @@ class TcpEchoServer:
             # Change the status
             self._is_listening = True
         else:
-            print('Server already listening.')
+            logging.info('Server already listening.')
 
     @property
     def is_listening(self) -> bool:
@@ -73,14 +74,13 @@ class TcpEchoServer:
         Signals the communication threads to shutdown.
         :return: None
         """
-        print('Waiting for communication thread to shutdown.')
         self.isAlive.clear()
         self.listen_thread.join()
         # Reset the flag so that the same server can be reused for a new connection
         self._is_listening = False
         # Also close the server socket so that it can be rebound
         self.s.close()
-        print('Shutting down server.')
+        logging.info('Server successfully shutdown.')
 
     def _listening_loop(self) -> None:
         """
@@ -95,7 +95,7 @@ class TcpEchoServer:
             except socket.timeout:
                 continue
             else:
-                print('New connection from {}.'.format(client_addr))
+                logging.info('New connection from {}.'.format(client_addr))
 
                 # Setup the worker thread and wait until the communication is finished
                 t = threading.Thread(target=self._echo_loop, args=(conn,), name='TCP-Echo ({}:{})'.format(*client_addr))

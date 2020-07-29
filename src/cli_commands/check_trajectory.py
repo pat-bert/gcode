@@ -41,9 +41,6 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     cartesian_limits = None
     joint_limits = None
 
-    if ip is not None and port is not None:
-        print(f'Attempting to read configuration from {ip}:{port}')
-
     # Parameters that always need to be configured within the config file
     max_jnt_speed = config_parser.get('prechecks', 'max_joint_speed')
     joint_velocity_limits = [float(i) for i in max_jnt_speed.split(', ')]
@@ -71,9 +68,10 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
 
     robot_config = melfa_rv_4a(atoff=tool_offset_z, rtoff=tool_offset_x)
 
-    if ip is not None:
+    if ip is not None and port is not None:
         # Parameters can be read from the robot
         try:
+            print(f'Attempting to read configuration from {ip}:{port}')
             tcp_client = TcpClientR3(host=ip, port=port)
             protocol = R3Protocol(tcp_client, MelfaCoordinateService())
             home_position = protocol.get_safe_pos().values

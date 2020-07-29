@@ -197,7 +197,7 @@ for arm_idx=1:length(robot_arm_objects)
                 if ~isempty(robot_arm_objects{other_arm_idx,1})
                     % Check for local collision and update the overall
                     % collision status flag
-                    local_coll = checkCollision(robot_arm_objects{arm_idx}, robot_arm_objects{other_arm_idx});
+                    local_coll = test_codegen_mex(robot_arm_objects{arm_idx}.Vertices, robot_arm_objects{other_arm_idx}.Vertices);
                     isColl = isColl || local_coll;
                     
                     % Add index for self collision

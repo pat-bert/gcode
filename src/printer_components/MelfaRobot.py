@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 from math import pi
@@ -90,7 +91,6 @@ class MelfaRobot(PrinterComponent):
         :return: None
         """
         # Finish robot communication
-        print("Finishing control...")
         try:
             # Deactivate work coordinates
             self.activate_work_coordinate(False)
@@ -150,7 +150,9 @@ class MelfaRobot(PrinterComponent):
 
         # Synchronize it here
         if barrier is not None:
+            logging.info(f'{self.name} reached barrier')
             barrier.wait()
+            logging.info(f'{self.name} passed barrier')
 
         # Movement G-code
         if gcode.id in ["G00", "G0", "G01", "G1"]:
@@ -168,7 +170,7 @@ class MelfaRobot(PrinterComponent):
             else:
                 self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed, start_pos=current_pos)
         elif gcode.id in ["G04", "G4"]:
-            self.wait(gcode.time_ms)
+            sleep(1000 * gcode.time_ms)
 
         elif gcode.id in ["G04", "G4"]:
             # Adjust the offsets for the current tool
@@ -313,7 +315,7 @@ class MelfaRobot(PrinterComponent):
         """
         if self.work_coordinate_active:
             # Acquire new zero coordinate
-            zero = self._zero()
+            zero = Coordinate(self.zero.values, self.zero.axes)
 
             if option != "":
                 zero = zero.reduce_to_axes(option, make_none=True)
@@ -480,24 +482,13 @@ class MelfaRobot(PrinterComponent):
         if speed > speed_threshold:
             try:
                 self.protocol.set_override(speed_threshold)
-                print("Reduced speed to threshold value: {}".format(speed_threshold))
+                print(f"Reduced speed to threshold value: {speed_threshold}")
             except ApplicationExceptions.MelfaBaseException:
                 raise ApplicationExceptions.MelfaBaseException(
                     "Please ensure a speed lower or equal 10% in interactive mode!"
                 )
         else:
-            print("Speed of {}%. Okay!".format(speed))
-
-    @staticmethod
-    def wait(time_ms) -> None:
-        """
-        Waits for a specified time.
-        :param time_ms: Time to wait in ms.
-        """
-        sleep(1000 * time_ms)
-
-    def _zero(self) -> Coordinate:
-        return Coordinate(self.zero.values, self.zero.axes)
+            print(f"Speed of {speed}%. Okay!")
 
     def move_joint(self, joint_values: List[float]) -> None:
         """
@@ -510,7 +501,7 @@ class MelfaRobot(PrinterComponent):
 
 
 def cmp_response(poll_cmd: str, response_t: str, protocol: R3Reader, poll_rate_ms: int = 5, timeout_s: int = 60,
-                 track_speed=False, ):
+                 track_speed=False):
     """
     Uses a given cmd to poll for a given response.
     :param poll_cmd: Command used to execute the poll
@@ -564,5 +555,4 @@ def cmp_response(poll_cmd: str, response_t: str, protocol: R3Reader, poll_rate_m
 
     if track_speed:
         return time_samples, speed_samples
-    else:
-        return None, None
+    return None, None

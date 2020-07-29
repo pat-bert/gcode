@@ -38,6 +38,9 @@ import logging
 import os
 import sys
 
+from docopt import docopt
+from schema import Schema, And, Use, SchemaError
+
 from src.ApplicationExceptions import ApiException
 from src.cli_commands.check_trajectory import check_trajectory
 from src.cli_commands.demo import demo_mode
@@ -46,30 +49,18 @@ from src.cli_commands.interactive_gcode_robot_only import interactive_gcode
 from src.cli_commands.interactive_melfa import interactive_melfa
 from src.clients.ComClient import validate_id
 from src.clients.TcpClientR3 import validate_ip, validate_port
-from src.exit_codes import (EXIT_SUCCESS, EXIT_BAD_INPUT, EXIT_INTERNAL_ERROR, EXIT_PACKAGE_ERROR,
-                            EXIT_UNEXPECTED_ERROR)
+from src.exit_codes import (EXIT_SUCCESS, EXIT_BAD_INPUT, EXIT_INTERNAL_ERROR, EXIT_UNEXPECTED_ERROR)
 from src.kinematics.inverse_kinematics import OutOfReachError
 from src.kinematics.joints import Singularity
-# Own libraries
 from src.prechecks.exceptions import TrajectoryError
-
-# Third-party libraries
-try:
-    from docopt import docopt
-    from schema import Schema, And, Use, SchemaError
-except ImportError:
-    print(
-        "This application requires some modules that you can install using the requirements.txt file."
-    )
-    sys.exit(EXIT_PACKAGE_ERROR)
 
 
 def main(*argv):
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(asctime)s %(message)s',
+                        datefmt='%d/%m/%Y %H:%M:%S')
     # Gather command line arguments
     argv = list(*argv) if len(argv) == 1 else [i for i in argv]
-    args = docopt(
-        __doc__, argv=argv, help=True, version=__version__, options_first=False
-    )
+    args = docopt(__doc__, argv=argv, help=True, version=__version__, options_first=False)
 
     """
     Create input schemata - Options accepting user input as value are checked for plausibility

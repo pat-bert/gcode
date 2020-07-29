@@ -1,6 +1,11 @@
+import logging
+
 import pytest
 
 from src.prechecks.configs import melfa_rv_4a
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(asctime)s %(message)s',
+                    datefmt='%d/%m/%Y %H:%M:%S')
 
 
 @pytest.fixture

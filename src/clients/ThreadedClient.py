@@ -1,4 +1,5 @@
 import abc
+import logging
 import threading
 from queue import Queue, Empty
 from typing import Optional
@@ -30,13 +31,14 @@ class ThreadedClient(IClient):
 
     """
 
-    def __init__(self, thread_poll_delay=0.01):
+    def __init__(self, thread_poll_delay=0.01, kind=''):
         """
         Creates everything required for a threaded client (threads, queues, thread-safe flags).
         :param thread_poll_delay: Time in seconds to block while getting items from the queue.
         """
         # Parameters
         self.queue_delay = thread_poll_delay
+        self.kind = kind
 
         # Queues and thread for communication from and to worker tread
         self.t: Optional[threading.Thread] = None
@@ -58,9 +60,9 @@ class ThreadedClient(IClient):
         peer_name = self.hook_connect()
 
         if peer_name is not None:
-            print(f'Connected to {peer_name}.')
+            logging.info(f'Connected to {peer_name}.')
         else:
-            print('Connected.')
+            logging.info('Connected.')
 
         # Post-connect procedure (read initial message)
         self.hook_post_successful_connect()
@@ -113,13 +115,13 @@ class ThreadedClient(IClient):
                     msg, silent_send, silent_recv = msg.unpack()
 
                     if not silent_send:
-                        print(f'>>: {str(msg).strip()}')
+                        print(f'{self.kind} >>: {str(msg).strip()}')
 
                     # Client-specific message handling
                     response = self.hook_handle_msg(msg)
 
                     if not silent_recv:
-                        print(f'<<: {str(response).strip()}')
+                        print(f'{self.kind} <<: {str(response).strip()}')
 
                     # Put the response and indicate that the task is done
                     self.recv_q.put(response)
@@ -148,23 +150,23 @@ class ThreadedClient(IClient):
 
             # Emptying queue
             if not self.recv_q.empty():
-                print('Not all responses were received:')
-                print('============================')
+                logging.warning('Not all responses were received:')
+                logging.warning('============================')
                 for i in range(self.recv_q.unfinished_tasks):
                     try:
                         response = self.recv_q.get_nowait()
                     except Empty:
-                        print('Queue empty.')
+                        logging.info('Queue empty.')
                     else:
-                        print(f'{i + 1}.) response:\n{response}')
-                        print('============================')
+                        logging.warning(f'{i + 1}.) response:\n{response}')
+                        logging.warning('============================')
                         self.recv_q.task_done()
 
             # Client specific closing
             self.hook_close()
-            print('Closed communication.')
+            logging.info('Closed communication.')
         else:
-            print('Communication already closed.')
+            logging.info('Communication already closed.')
 
     def send(self, msg: Optional[str], silent_send: bool = False, silent_recv: bool = False) -> None:
         """

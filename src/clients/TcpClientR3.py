@@ -3,6 +3,7 @@ File:       TCPClient.py
 Author:     Patrick Bertsch
 Content:    Implement TCP/IP communication to robot
 """
+import logging
 import socket
 from typing import AnyStr, Union, Optional
 
@@ -47,7 +48,7 @@ class TcpClientR3(ThreadedClient):
         :param timeout: Specifies a timeout in seconds to be applied during connection phase, defaults to 60 s.
         """
         # Get features of threaded client
-        super().__init__()
+        super().__init__(kind='TCP')
 
         # Socket parameters (blocking)
         self.s: Union[socket.socket, None] = None
@@ -81,7 +82,7 @@ class TcpClientR3(ThreadedClient):
             self.s.settimeout(self.timeout)
 
             peer_name = f'{self.host}:{self.port}'
-            print(f'Attempting TCP connection to {peer_name}')
+            logging.info(f'Attempting TCP connection to {peer_name}')
             self.s.connect((self.host, self.port))
 
             # Reset the socket to blocking mode
