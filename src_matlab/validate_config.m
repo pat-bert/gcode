@@ -58,6 +58,7 @@ if isempty(robot) || (exist('urdf', 'var') && ~isempty(urdf))
     end
     %% Create robot tree structure from URDF
     % 'D:\Nutzer\Documents\PycharmProjects\gcode\ressource\robot.urdf'
+    warning('off', 'robotics:robotmanip:joint:ResettingHomePosition');
     robot = importrobot(urdf);
     
     %% Figure out base

@@ -7,7 +7,7 @@ import logging
 import socket
 from typing import AnyStr, Union, Optional
 
-from clients.ThreadedClient import ThreadedClient
+from src.clients.ThreadedClient import ThreadedClient
 from src import ApplicationExceptions
 from src.ApplicationExceptions import TcpError
 

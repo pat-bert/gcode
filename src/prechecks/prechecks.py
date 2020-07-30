@@ -1,5 +1,6 @@
 from typing import List
 
+from src.prechecks.prm import create_roadmap
 from src.Coordinate import Coordinate
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
@@ -7,7 +8,7 @@ from src.kinematics.joints import BaseJoint
 from src.prechecks.collision_checking import MatlabCollisionChecker
 from src.prechecks.dataclasses import Constraints, Increments, Extrusion
 from src.prechecks.exceptions import CollisionViolation
-from src.prechecks.graph_search import create_graph
+from src.prechecks.graph_creation import create_graph
 from src.prechecks.path_finding import get_best_valid_path
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
 from src.prechecks.trajectory_segment import check_cartesian_limits, filter_joint_limits, check_common_configurations, \
@@ -29,7 +30,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     :param extr: Extrusion information, e.g. height, widht of the extruded filament
     :param default_acc: Float value for the default robot acceleration in mm/s^2
     :param urdf: File path for the URDF file
-    :param hb_offset:
+    :param hb_offset: Origin of the heat bed given in robot coordinate system
     :return: None
 
     The following checks are done in order:
@@ -87,6 +88,9 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
         if collisions[0]:
             raise CollisionViolation('Home position is in collision.')
         print('Home position is not in collision.')
+
+        # Create the PRM
+        create_roadmap(config, collider, limits, 5, float('Inf'))
 
         # Get the best path that is valid
         pt_configurations = get_best_valid_path(collider, graph, joint_traj, start_node, stop_node)

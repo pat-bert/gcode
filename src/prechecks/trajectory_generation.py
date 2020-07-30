@@ -30,7 +30,6 @@ def generate_task_trajectory(cmds: List[GCmd], curr_pos: np.ndarray, ds: float, 
     curr_vel = 0
     curr_acc = acc
 
-    print('Generating task trajectory...')
     total_len = len(cmds)
 
     for line_number, cmd in enumerate(cmds):
@@ -87,7 +86,7 @@ def generate_joint_trajectory(task_traj: List[CartesianTrajSegment], config: Lis
     :param config: List of joints implementing the BaseJoint interface
     :return: Joint trajectory given as list of JointTrajectorySegments
     """
-    print('Generating joint trajectory...')
+    print('\n')
 
     joint_segments = []
 
@@ -96,7 +95,7 @@ def generate_joint_trajectory(task_traj: List[CartesianTrajSegment], config: Lis
     for seg_idx, cartesian_segment in enumerate(task_traj):
         current_segment_solutions = []
 
-        prefix = f'Calculating joint solutions for segment #{seg_idx} ...'
+        prefix = f'Generating joint trajectory for segment #{seg_idx} ...'
         print_progress(seg_idx + 1, total_len, prefix=prefix)
 
         for pt_idx, pose in enumerate(cartesian_segment.unmodified_points):

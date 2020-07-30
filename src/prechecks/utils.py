@@ -18,6 +18,9 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
     filled_length = int(round(bar_length * iteration / float(total)))
     bar = '█' * filled_length + '-' * (bar_length - filled_length)
 
+    if len(prefix) < 65:
+        prefix += ' ' * (65 - len(prefix))
+
     sys.stdout.write(f'\r{prefix} |{bar}| {percents}% {suffix}')
 
     if iteration == total:
