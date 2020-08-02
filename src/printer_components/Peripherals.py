@@ -27,9 +27,9 @@ class Peripherals(PrinterComponent):
         """
         # Wait for other components if barrier is passed
         if barrier is not None:
-            logging.info(f'{self.name} reached barrier')
+            logging.debug(f'{self.name} reached barrier')
             barrier.wait()
-            logging.info(f'{self.name} passed barrier')
+            logging.debug(f'{self.name} passed barrier')
         # Send the command and get the response
         try:
             self.client.send(str(gcode))

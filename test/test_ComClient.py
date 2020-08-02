@@ -234,7 +234,7 @@ def dummy_robot_controller():
 
 
 class TestGPrinter:
-    @pytest.mark.parametrize('cmd_str', ['G91', 'G20', 'G21'])
+    @pytest.mark.parametrize('cmd_str', ['G91', 'G20', 'G21', 'G222'])
     def test_execute(self, virtual_environ, cmd_str):
         """
         Test that commands are sent to all corresponding components

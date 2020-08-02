@@ -3,18 +3,18 @@ import threading
 import time
 from math import pi
 from time import sleep
-from typing import AnyStr, List, Optional
+from typing import AnyStr, List, Optional, Union
 
 import numpy as np
 from numpy import ndarray
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
-from src.ApplicationExceptions import MelfaBaseException, TcpError
+from src.ApplicationExceptions import MelfaBaseException
 from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
-from src.clients.IClient import IClient
+from src.clients.IClient import IClient, ClientError
 from src.gcode.GCmd import GCmd
 from src.printer_components.PrinterComponent import PrinterComponent
 from src.protocols.R3Protocol import R3Protocol
@@ -129,7 +129,7 @@ class MelfaRobot(PrinterComponent):
 
         self.work_coordinate_active = active
 
-    def hook_handle_gcode(self, gcode: GCmd, barrier: Optional[threading.Barrier]) -> None:
+    def hook_handle_gcode(self, gcode: GCmd, barrier: Optional[threading.Barrier]) -> Union[str, Exception]:
         """
         Implements the G-Code execution.
         :param gcode: G-Code object
@@ -150,35 +150,49 @@ class MelfaRobot(PrinterComponent):
 
         # Synchronize it here
         if barrier is not None:
-            logging.info(f'{self.name} reached barrier')
+            logging.debug(f'{self.name} reached barrier')
             barrier.wait()
-            logging.info(f'{self.name} passed barrier')
+            logging.debug(f'{self.name} passed barrier')
 
         # Movement G-code
-        if gcode.id in ["G00", "G0", "G01", "G1"]:
-            if not self.absolute_coordinates:
-                target_pos = gcode.cartesian_abs + current_pos
-                self.linear_move_poll(target_pos, gcode.speed, current_pos=current_pos)
-            else:
-                self.linear_move_poll(gcode.cartesian_abs, gcode.speed, current_pos=current_pos)
-        elif gcode.id in ["G02", "G2", "G03", "G3"]:
-            is_cw = gcode.id in ["G02", "G2"]
-            center_pos = current_pos + gcode.cartesian_rel
-            if not self.absolute_coordinates:
-                target_pos = gcode.cartesian_abs + current_pos
-                self.circular_move_poll(target_pos, center_pos, is_cw, gcode.speed, start_pos=current_pos)
-            else:
-                self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed, start_pos=current_pos)
-        elif gcode.id in ["G04", "G4"]:
-            sleep(1000 * gcode.time_ms)
+        try:
+            if gcode.id in ["G00", "G0", "G01", "G1"]:
+                if not self.absolute_coordinates:
+                    target_pos = gcode.cartesian_abs + current_pos
+                    self.linear_move_poll(target_pos, gcode.speed, current_pos=current_pos)
+                else:
+                    self.linear_move_poll(gcode.cartesian_abs, gcode.speed, current_pos=current_pos)
+            elif gcode.id in ["G02", "G2", "G03", "G3"]:
+                is_cw = gcode.id in ["G02", "G2"]
+                center_pos = current_pos + gcode.cartesian_rel
+                if not self.absolute_coordinates:
+                    target_pos = gcode.cartesian_abs + current_pos
+                    self.circular_move_poll(target_pos, center_pos, is_cw, gcode.speed, start_pos=current_pos)
+                else:
+                    self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed, start_pos=current_pos)
+            elif gcode.id in ["G04", "G4"]:
+                sleep(1000 * gcode.time_ms)
 
-        elif gcode.id in ["G04", "G4"]:
-            # Adjust the offsets for the current tool
-            # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
-            pass
+            elif gcode.id in ["G04", "G4"]:
+                # Adjust the offsets for the current tool
+                # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
+                pass
+            # Homing
+            elif gcode.id == "G28":
+                self.go_home(option=gcode.home_opt)
+            # Tools
+            elif gcode.id.startswith('T'):
+                # Tool commands start with T followed by the tool number.
+                # G-Code starts counting at zero, Mitsubishi starts at one
+                self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
+
+            elif gcode.id == 'G200':
+                self.move_joint(gcode.joints)
+        except (MelfaBaseException, ClientError, ValueError) as e:
+            return e
 
         # Plane selection
-        elif gcode.id == "G17":
+        if gcode.id == "G17":
             self.active_plane = Plane.XY
         elif gcode.id == "G18":
             self.active_plane = Plane.XZ
@@ -191,24 +205,11 @@ class MelfaRobot(PrinterComponent):
         elif gcode.id == "G21":
             self.inch_active = False
 
-        # Homing
-        elif gcode.id == "G28":
-            self.go_home(option=gcode.home_opt)
-
         # Absolute/Relative mode
         elif gcode.id == "G90":
             self.absolute_coordinates = True
         elif gcode.id == "G91":
             self.absolute_coordinates = False
-
-        # Tools
-        elif gcode.id.startswith('T'):
-            # Tool commands start with T followed by the tool number.
-            # G-Code starts counting at zero, Mitsubishi starts at one
-            self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
-
-        elif gcode.id == 'G200':
-            self.move_joint(gcode.joints)
 
     def adjust_units(self, gcode: GCmd) -> GCmd:
         """
@@ -551,7 +552,7 @@ def cmp_response(poll_cmd: str, response_t: str, protocol: R3Reader, poll_rate_m
         sleep(poll_rate_ms / 1000)
         t += poll_rate_ms
     else:
-        raise TcpError(f"Timeout after {timeout_s} seconds. Expected: '{response_t}' but got '{response_act}'")
+        raise ClientError(f"Timeout after {timeout_s} seconds. Expected: '{response_t}' but got '{response_act}'")
 
     if track_speed:
         return time_samples, speed_samples

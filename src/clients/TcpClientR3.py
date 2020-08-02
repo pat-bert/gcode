@@ -7,9 +7,9 @@ import logging
 import socket
 from typing import AnyStr, Union, Optional
 
-from src.clients.ThreadedClient import ThreadedClient
 from src import ApplicationExceptions
-from src.ApplicationExceptions import TcpError
+from src.clients.IClient import ClientOpenError
+from src.clients.ThreadedClient import ThreadedClient
 
 
 def validate_ip(ip: AnyStr) -> bool:
@@ -91,13 +91,13 @@ class TcpClientR3(ThreadedClient):
             return peer_name
         except socket.gaierror as e:
             # Specifically bad connection parameters
-            raise TcpError('Invalid connection parameters.') from e
+            raise ClientOpenError('Invalid connection parameters.') from e
         except socket.timeout as e:
             # Connection timeout
-            raise TcpError('Connection attempt timed out.') from e
+            raise ClientOpenError('Connection attempt timed out.') from e
         except socket.error as e:
             # Any other socket error
-            raise TcpError('No connection possible.') from e
+            raise ClientOpenError('No connection possible.') from e
         # Otherwise return from the hook
 
     def hook_close(self) -> None:

@@ -115,13 +115,13 @@ class ThreadedClient(IClient):
                     msg, silent_send, silent_recv = msg.unpack()
 
                     if not silent_send:
-                        print(f'{self.kind} >>: {str(msg).strip()}')
+                        logging.debug(f'{self.kind} >>: {str(msg).strip()}')
 
                     # Client-specific message handling
                     response = self.hook_handle_msg(msg)
 
                     if not silent_recv:
-                        print(f'{self.kind} <<: {str(response).strip()}')
+                        logging.debug(f'{self.kind} <<: {str(response).strip()}')
 
                     # Put the response and indicate that the task is done
                     self.recv_q.put(response)
