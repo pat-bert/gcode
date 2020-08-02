@@ -1,27 +1,23 @@
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
-from src.printer_components.MelfaRobot import MelfaRobot
 from src.ApplicationExceptions import MelfaBaseException
-from src.clients.TcpClientR3 import TcpClientR3
 from src.gcode.GCmd import GCmd
+from src.printer_components.GPrinter import GPrinter
 
 
-def interactive_gcode_robot_only(ip: str, port: int, safe_return: Optional[bool] = False) -> None:
+def interactive_gcode(ip: str, port: int, serial_ids: Tuple[int, int], safe_return: Optional[bool] = False) -> None:
     """
     Launches an interactive shell accepting G-code.
     :param ip: IPv4 network address of the robot
     :param port: Port of the robot
+    :param serial_ids:
     :param safe_return:
     """
-    logging.info("Launching interactive G-code shell (robot only)...")
-
-    # Create clients and connect
-    tcp_client = TcpClientR3(host=ip, port=port)
-    tcp_client.connect()
+    logging.info("Launching interactive G-code shell...")
 
     # Create printer object
-    printer = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return)
+    printer = GPrinter.default_init(ip, port, serial_ids=serial_ids, safe_return=safe_return)
 
     # Executing communication
     try:
@@ -33,7 +29,7 @@ def interactive_gcode_robot_only(ip: str, port: int, safe_return: Optional[bool]
                 # Parse G-code
                 gcode = GCmd.read_cmd_str(usr_msg)
                 print(str(gcode))
-                printer.assign_task(gcode)
+                printer.execute(gcode)
     except MelfaBaseException as e:
         print(str(e))
     except KeyboardInterrupt:

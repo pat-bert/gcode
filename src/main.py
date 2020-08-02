@@ -41,11 +41,12 @@ import sys
 from docopt import docopt
 from schema import Schema, And, Use, SchemaError
 
+from src.cli_commands.interactive_gcode import interactive_gcode
 from src.ApplicationExceptions import ApiException
 from src.cli_commands.check_trajectory import check_trajectory
 from src.cli_commands.demo import demo_mode
 from src.cli_commands.interactive_gcode_printer_only import interactive_gcode_printer_only
-from src.cli_commands.interactive_gcode_robot_only import interactive_gcode
+from src.cli_commands.interactive_gcode_robot_only import interactive_gcode_robot_only
 from src.cli_commands.interactive_melfa import interactive_melfa
 from src.clients.ComClient import validate_id
 from src.clients.TcpClientR3 import validate_ip, validate_port
@@ -113,15 +114,16 @@ def main(*argv):
             usb_present = args["--vid"] is not None and args["--pid"] is not None
             tcp_present = args["--ip"] is not None and args["--port"] is not None
             if tcp_present:
+                args.update(connection_schema.validate(args))
+                ip, port, safe = args["--ip"], args["--port"], args["--safe"]
+
                 if usb_present:
                     # Robot and PCB
                     args.update(usb_schema.validate(args))
-                    args.update(connection_schema.validate(args))
+                    interactive_gcode(ip, port, (args["--vid"], args["--pid"]))
                 else:
                     # Robot only
-                    args.update(connection_schema.validate(args))
-                    ip, port, safe = (args["--ip"], args["--port"], args["--safe"],)
-                    interactive_gcode(ip, port, safe_return=safe)
+                    interactive_gcode_robot_only(ip, port, safe_return=safe)
             elif usb_present:
                 # PCB only
                 args.update(usb_schema.validate(args))

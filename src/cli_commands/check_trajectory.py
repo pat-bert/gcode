@@ -66,6 +66,9 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     y_hb = float(config_parser.get('prechecks', 'bed_origin_y', fallback=0))
     z_hb = float(config_parser.get('prechecks', 'bed_origin_z', fallback=0))
 
+    # Learning time
+    prm_learning_time_s = int(config_parser.get('prechecks', 'prm_learning_time', fallback=120))
+
     robot_config = melfa_rv_4a(atoff=tool_offset_z, rtoff=tool_offset_x)
 
     if ip is not None and port is not None:
@@ -114,7 +117,8 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
 
     try:
         # Check the trajectory
-        check_traj(commands, robot_config, traj_constraint, home_position, incs, extr, default_acc, urdf, hb_offset)
+        check_traj(commands, robot_config, traj_constraint, home_position, incs, extr, default_acc, urdf, hb_offset,
+                   prm_learning_time_s)
     except (CartesianLimitViolation, WorkspaceViolation):
         logging.error('Please verify that the limits are correct and check the positioning of the part.')
         raise

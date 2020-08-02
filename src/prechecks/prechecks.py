@@ -1,6 +1,5 @@
 from typing import List
 
-from src.prechecks.prm import create_roadmap
 from src.Coordinate import Coordinate
 from src.gcode.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
@@ -10,6 +9,7 @@ from src.prechecks.dataclasses import Constraints, Increments, Extrusion
 from src.prechecks.exceptions import CollisionViolation
 from src.prechecks.graph_creation import create_graph
 from src.prechecks.path_finding import get_best_valid_path
+from src.prechecks.prm import create_prm
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
 from src.prechecks.trajectory_segment import check_cartesian_limits, filter_joint_limits, check_common_configurations, \
     check_joint_velocities
@@ -19,7 +19,7 @@ from src.prechecks.world_collision import create_collision_objects
 
 @time_func_call
 def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, home: List[float], incs: Increments,
-               extr: Extrusion, default_acc: float, urdf: str, hb_offset: Coordinate):
+               extr: Extrusion, default_acc: float, urdf: str, hb_offset: Coordinate, prm_learning_time_s: int):
     """
     Validate a trajectory defined by a list of G-code commands.
     :param cmds: List of G-Code command objects.
@@ -31,6 +31,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
     :param default_acc: Float value for the default robot acceleration in mm/s^2
     :param urdf: File path for the URDF file
     :param hb_offset: Origin of the heat bed given in robot coordinate system
+    :param prm_learning_time_s: Time in seconds to be spent on creating a probabilistic roadmap
     :return: None
 
     The following checks are done in order:
@@ -90,7 +91,9 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
         print('Home position is not in collision.')
 
         # Create the PRM
-        create_roadmap(config, collider, limits, 5, float('Inf'))
+        max_time = [30, 60, 120, 180, 240, 300]
+
+        prm_graph, prm_nodes = create_prm(config, collider, limits, 5, float('Inf'), max_time_s=prm_learning_time_s)
 
         # Get the best path that is valid
         pt_configurations = get_best_valid_path(collider, graph, joint_traj, start_node, stop_node)
