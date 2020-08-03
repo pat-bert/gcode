@@ -34,7 +34,7 @@ class GCmd(BaseCmd):
     # Supported commands
     SUPPORTED_G_CODES = {
         "G": [0, 1, 2, 3, 4, 17, 18, 19, 20, 21, 28, 90, 91, 92, 222],
-        "M": [82, 84, 104, 106, 107, 109, 140, 190],
+        "M": [82, 83, 84, 104, 106, 107, 109, 140, 190, 302],
         "T": [0]
     }
 
@@ -84,12 +84,13 @@ class GCmd(BaseCmd):
         Validate input.
         :return:
         """
-        cmd_char = self.id[0]
-        cmd_cnt = int(self.id[1:])
-        return (
-                cmd_char in self.SUPPORTED_G_CODES.keys()
-                and cmd_cnt in self.SUPPORTED_G_CODES[cmd_char]
-        )
+        try:
+            cmd_char = self.id[0]
+            cmd_cnt = int(self.id[1:])
+        except TypeError:
+            return False
+        else:
+            return True
 
     def __str__(self):
         """

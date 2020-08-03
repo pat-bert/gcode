@@ -40,7 +40,7 @@ class MelfaRobot(PrinterComponent):
         if number_axes <= 0:
             raise ValueError('Number of axes needs to be larger than zero.')
 
-        self.work_coordinate_offset = "(-500,0,-250,0,0,0)"
+        self.work_coordinate_offset_xyz = (None, 200, None)
         self.joints = number_axes
         self.speed_threshold = speed_threshold
 
@@ -122,7 +122,7 @@ class MelfaRobot(PrinterComponent):
         """
         if active:
             # Set coordinate system
-            self.protocol.set_work_coordinate(self.work_coordinate_offset)
+            self.protocol.set_work_coordinate(self.work_coordinate_offset_xyz)
         else:
             # Reset coordinate system
             self.protocol.reset_base_coordinate_system()
@@ -157,19 +157,21 @@ class MelfaRobot(PrinterComponent):
         # Movement G-code
         try:
             if gcode.id in ["G00", "G0", "G01", "G1"]:
-                if not self.absolute_coordinates:
-                    target_pos = gcode.cartesian_abs + current_pos
-                    self.linear_move_poll(target_pos, gcode.speed, current_pos=current_pos)
-                else:
-                    self.linear_move_poll(gcode.cartesian_abs, gcode.speed, current_pos=current_pos)
+                if gcode.cartesian_abs.values:
+                    if not self.absolute_coordinates:
+                        target_pos = gcode.cartesian_abs + current_pos
+                        self.linear_move_poll(target_pos, gcode.speed)
+                    else:
+                        self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
             elif gcode.id in ["G02", "G2", "G03", "G3"]:
-                is_cw = gcode.id in ["G02", "G2"]
-                center_pos = current_pos + gcode.cartesian_rel
-                if not self.absolute_coordinates:
-                    target_pos = gcode.cartesian_abs + current_pos
-                    self.circular_move_poll(target_pos, center_pos, is_cw, gcode.speed, start_pos=current_pos)
-                else:
-                    self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed, start_pos=current_pos)
+                if gcode.cartesian_abs.values:
+                    is_cw = gcode.id in ["G02", "G2"]
+                    center_pos = current_pos + gcode.cartesian_rel
+                    if not self.absolute_coordinates:
+                        target_pos = gcode.cartesian_abs + current_pos
+                        self.circular_move_poll(target_pos, center_pos, is_cw, gcode.speed)
+                    else:
+                        self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed)
             elif gcode.id in ["G04", "G4"]:
                 sleep(1000 * gcode.time_ms)
 
@@ -271,11 +273,11 @@ class MelfaRobot(PrinterComponent):
         """
         if activate:
             self.protocol.activate_servo()
-            self.protocol.poll(self.protocol.get_servo_state, 1, timeout_ms=5000)
+            self.protocol.poll(self.protocol.get_servo_state, 1, timeout_ms=5000, poll_rate_ms=500)
             sleep(1)
         else:
             self.protocol.deactivate_servo()
-            self.protocol.poll(self.protocol.get_servo_state, 0, timeout_ms=5000)
+            self.protocol.poll(self.protocol.get_servo_state, 0, timeout_ms=5000, poll_rate_ms=500)
 
         self.servo = activate
 
@@ -363,6 +365,7 @@ class MelfaRobot(PrinterComponent):
             if current_pos is None:
                 # No need to do this twice
                 current_pos = self.protocol.get_current_xyzabc()
+            target_pos.add_axis(current_pos)
             target_pos.update_empty(current_pos)
 
             # Send move command
@@ -541,7 +544,7 @@ def cmp_response(poll_cmd: str, response_t: str, protocol: R3Reader, poll_rate_m
             time_samples.append(float(current_time - start_time))
             speed_samples.append(float(speed))
 
-        protocol._protocol_send(poll_cmd, silent_send=True, silent_recv=True)
+        protocol.protocol_send(poll_cmd, silent_send=True, silent_recv=True)
         response_act = protocol.client.receive()
 
         # Check response

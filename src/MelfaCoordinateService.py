@@ -39,4 +39,4 @@ class MelfaCoordinateService:
         txt = (
             "{:.{d}f}".format(i, d=c.digits) if i is not None else "" for i in c.values
         )
-        return f'"("{",".join(txt)}")" + "({pose_flag},0)'
+        return f'({",".join(txt)}) ({pose_flag},0)'

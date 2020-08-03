@@ -57,7 +57,7 @@ from src.prechecks.exceptions import TrajectoryError
 
 
 def main(*argv):
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(asctime)s %(message)s',
+    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(asctime)s %(message)s',
                         datefmt='%d/%m/%Y %H:%M:%S')
     # Gather command line arguments
     argv = list(*argv) if len(argv) == 1 else [i for i in argv]

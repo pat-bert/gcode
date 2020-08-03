@@ -50,7 +50,7 @@ class R3SubApi:
         super().__init__()
         self.client = client
 
-    def _protocol_send(self, msg: str, silent_send=False, silent_recv=False):
+    def protocol_send(self, msg: str, silent_send=False, silent_recv=False):
         msg = f'{ROBOT_NO}{DELIMITER}{PROGRAM_NO}{DELIMITER}{msg}'
 
         if silent_send is False and silent_recv is False:
@@ -72,7 +72,7 @@ class R3Utility(R3SubApi):
         Reset the alarm bell on the rboot control.
         :return: None
         """
-        self._protocol_send("RSTALRM")
+        self.protocol_send("RSTALRM")
         self.client.receive(silence_errors=True)
 
     def activate_servo(self) -> None:
@@ -80,7 +80,7 @@ class R3Utility(R3SubApi):
         Activates the servos.
         :return: None
         """
-        self._protocol_send("SRVON")
+        self.protocol_send("SRVON")
         self.client.receive()
 
     def deactivate_servo(self) -> None:
@@ -88,7 +88,7 @@ class R3Utility(R3SubApi):
         Deactivate the servos.
         :return: None
         """
-        self._protocol_send("SRVOFF")
+        self.protocol_send("SRVOFF")
         self.client.receive()
 
     def obtain_control(self) -> None:
@@ -96,7 +96,7 @@ class R3Utility(R3SubApi):
         Sends the cmd to obtain control.
         :return: None
         """
-        self._protocol_send("CNTLON")
+        self.protocol_send("CNTLON")
         self.client.receive()
 
     def release_control(self) -> None:
@@ -104,7 +104,7 @@ class R3Utility(R3SubApi):
         Sends the cmd to release control.
         :return: None
         """
-        self._protocol_send("CNTLOFF")
+        self.protocol_send("CNTLOFF")
         self.client.receive()
 
     def open_communication(self) -> None:
@@ -112,7 +112,7 @@ class R3Utility(R3SubApi):
         Sends the cmd to open the communication.
         :return: None
         """
-        self._protocol_send("OPEN=NARCUSER")
+        self.protocol_send("OPEN=NARCUSER")
         self.client.receive()
 
     def close_communication(self) -> None:
@@ -120,7 +120,7 @@ class R3Utility(R3SubApi):
         Sends the cmd to close the communication.
         :return: None
         """
-        self._protocol_send("CLOSE")
+        self.protocol_send("CLOSE")
         self.client.receive()
 
 
@@ -141,7 +141,7 @@ class R3Positions(R3SubApi):
         :param pos: Coordinate to be set
         :return: None
         """
-        self._protocol_send(f"{DIRECT_CMD}{name}={pos.to_melfa_point()}")
+        self.protocol_send(f"{DIRECT_CMD}{name}={pos.to_melfa_point()}")
         self.client.receive()
         sleep(0.01)
 
@@ -159,7 +159,7 @@ class R3Positions(R3SubApi):
         else:
             raise ValueError("Unknown variable type.")
 
-        self._protocol_send(f"{DIRECT_CMD}DEF {var_cmd} {name}")
+        self.protocol_send(f"{DIRECT_CMD}DEF {var_cmd} {name}")
         self.client.receive()
         sleep(0.01)
 
@@ -170,7 +170,7 @@ class R3Positions(R3SubApi):
         :return: None
         """
         coord_str = self.from_coord_to_cmd(target)
-        self._protocol_send(f"{DIRECT_CMD}MVS{coord_str}")
+        self.protocol_send(f"{DIRECT_CMD}MVS {coord_str}")
         self.client.receive()
 
     def joint_move(self, values: List[float]) -> None:
@@ -192,7 +192,7 @@ class R3Positions(R3SubApi):
         :param center: Center position of the arc (variable name)
         :return: None
         """
-        self._protocol_send(f"{DIRECT_CMD}MVR3 {start},{target},{center}")
+        self.protocol_send(f"{DIRECT_CMD}MVR3 {start},{target},{center}")
         self.client.receive()
 
     def circular_move_intermediate(self, start: str, intermediate: str, target: str) -> None:
@@ -203,7 +203,7 @@ class R3Positions(R3SubApi):
         :param target: End position of the arc (variable name)
         :return: None
         """
-        self._protocol_send(f"{DIRECT_CMD}MVR {start},{intermediate},{target}")
+        self.protocol_send(f"{DIRECT_CMD}MVR {start},{intermediate},{target}")
         self.client.receive()
 
     def circular_move_full(self, start: str, intermediate1: str, intermediate2: str) -> None:
@@ -214,7 +214,7 @@ class R3Positions(R3SubApi):
         :param intermediate2: Second intermediate position of the arc (variable name)
         :return: None
         """
-        self._protocol_send(f"{DIRECT_CMD}MVC {start},{intermediate1},{intermediate2}")
+        self.protocol_send(f"{DIRECT_CMD}MVC {start},{intermediate1},{intermediate2}")
         self.client.receive()
 
     def go_safe_pos(self) -> None:
@@ -222,7 +222,7 @@ class R3Positions(R3SubApi):
         Moves the robot to its safe position.
         :return: None
         """
-        self._protocol_send("MOVSP")
+        self.protocol_send("MOVSP")
         self.client.receive()
 
 
@@ -310,7 +310,7 @@ class R3Reader(R3SubApi):
         Get the current positions for XYZABC.
         :return: Coordinate object
         """
-        self._protocol_send("PPOSF")
+        self.protocol_send("PPOSF")
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=6)
 
@@ -319,7 +319,7 @@ class R3Reader(R3SubApi):
         Get the current joint angles.
         :return: Coordinate object
         """
-        self._protocol_send("JPOSF")
+        self.protocol_send("JPOSF")
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=len(self.joints))
 
@@ -364,7 +364,7 @@ class R3Reader(R3SubApi):
         :param parameter: String representation of the paramter
         :return: Client response excluding status
         """
-        self._protocol_send(f"PNR{parameter}")
+        self.protocol_send(f"PNR{parameter}")
         return self.client.receive()
 
     def read_variable(self, variable: str) -> str:
@@ -373,7 +373,7 @@ class R3Reader(R3SubApi):
         :param variable: String representation of the variable
         :return: Client response excluding status
         """
-        self._protocol_send(f"VAL{variable}")
+        self.protocol_send(f"VAL{variable}")
         response = self.client.receive()
         return response.split(f"{variable}=")[-1]
 
@@ -386,9 +386,9 @@ class R3Reader(R3SubApi):
         """
         # Send cmd
         if direct:
-            self._protocol_send(f"{DIRECT_CMD}{cmd}")
+            self.protocol_send(f"{DIRECT_CMD}{cmd}")
         else:
-            self._protocol_send(cmd)
+            self.protocol_send(cmd)
         return_val = self.client.receive()
 
         # Convert value to float
@@ -397,9 +397,9 @@ class R3Reader(R3SubApi):
 
     def _get_coordinate_cmd(self, cmd: str, direct=True) -> float:
         if direct:
-            self._protocol_send(f"{DIRECT_CMD}{cmd}")
+            self.protocol_send(f"{DIRECT_CMD}{cmd}")
         else:
-            self._protocol_send(cmd)
+            self.protocol_send(cmd)
         coord_str = self.client.receive()
         return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=len(self.joints))
 
@@ -427,7 +427,7 @@ class R3Setter(R3SubApi):
         """
         tool_number = int(tool_number)
         self._check_bounds(tool_number, lbound=1, ubound=4)
-        self._protocol_send(f"{DIRECT_CMD}{CURRENT_TOOL_NO}={int(tool_number)}")
+        self.protocol_send(f"{DIRECT_CMD}{CURRENT_TOOL_NO}={int(tool_number)}")
         self.client.receive()
 
     def set_current_tool_data(self, tool_offset: str) -> None:
@@ -437,18 +437,21 @@ class R3Setter(R3SubApi):
         :return: None
         """
         # TODO Check conversion from coordinate to tool offset
-        self._protocol_send(f"{DIRECT_CMD}{TOOL_OFFSET_CMD} {tool_offset}")
+        self.protocol_send(f"{DIRECT_CMD}{TOOL_OFFSET_CMD} {tool_offset}")
         self.client.receive()
 
-    def set_work_coordinate(self, offset: str) -> None:
+    def set_work_coordinate(self, xyz: Tuple[Optional[float], Optional[float], Optional[float]]) -> None:
         """
         Sets the current coordinate system to the origin specified by the offset
-        :param offset:
+        :param xyz:
         :return: None
         """
-        # TODO Check conversion from coordinate to offset
-        self._protocol_send(f"{DIRECT_CMD}{BASE_COORDINATE_CMD} {offset}")
+        # Conversion from coordinate to offset
+        xyz_offsets = [f'{var:.2f}' if var is not None else '' for var in xyz]
+        offset = f'({",".join(xyz_offsets)},,,)'
+        self.protocol_send(f"{DIRECT_CMD}{BASE_COORDINATE_CMD} {offset}")
         self.client.receive()
+        sleep(5)
 
     def set_override(self, factor: float) -> None:
         """
@@ -458,7 +461,7 @@ class R3Setter(R3SubApi):
         :raises: ValueError, if the value is outside of the bounds
         """
         self._check_bounds(factor, lbound=1.0, ubound=100.0)
-        self._protocol_send("{}={:.{d}f}".format(OVERRIDE_CMD, factor, d=self.digits))
+        self.protocol_send("{}={:.{d}f}".format(OVERRIDE_CMD, factor, d=self.digits))
         self.client.receive()
 
     def set_linear_speed(self, speed: float) -> None:
@@ -500,11 +503,11 @@ class R3Setter(R3SubApi):
 
         # Send cmd
         if direct:
-            self._protocol_send(
+            self.protocol_send(
                 "{}{} {:.{d}f}".format(DIRECT_CMD, cmd, float(value), d=self.digits)
             )
         else:
-            self._protocol_send("{} {:.{d}f}".format(cmd, float(value), d=self.digits))
+            self.protocol_send("{} {:.{d}f}".format(cmd, float(value), d=self.digits))
         self.client.receive()
 
     def _check_bounds(self, value: float, lbound: Optional[float], ubound: Optional[float]) -> None:
@@ -593,9 +596,9 @@ class R3Resetter(R3SubApi):
             else:
                 raise ValueError(f"Unknown variable type: {var_type}")
         if direct:
-            self._protocol_send(f"{DIRECT_CMD}{cmd} {default_name}")
+            self.protocol_send(f"{DIRECT_CMD}{cmd} {default_name}")
         else:
-            self._protocol_send(f"{cmd} {default_name}")
+            self.protocol_send(f"{cmd} {default_name}")
         self.client.receive()
 
 

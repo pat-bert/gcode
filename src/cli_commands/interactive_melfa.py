@@ -29,9 +29,13 @@ def interactive_melfa(ip: str, port: int, safe_return: Optional[bool] = False) -
             if usr_msg.lower() in ["quit"]:
                 raise KeyboardInterrupt
             if len(usr_msg) > 0:
-                robot.client.wait_send(usr_msg.upper())
+                robot.protocol.protocol_send(usr_msg.upper())
                 try:
-                    robot.client.receive()
+                    response = robot.protocol.client.receive()
+                    if len(response) > 0:
+                        print(response)
+                    else:
+                        print('Ok')
                 except ApplicationExceptions.MelfaBaseException as ex:
                     # Print error message
                     if len(ex.status) > 0:
@@ -39,9 +43,10 @@ def interactive_melfa(ip: str, port: int, safe_return: Optional[bool] = False) -
                     else:
                         # Resolve empty status codes
                         print("Empty status code. Trying to resolve.")
-                        robot.client.wait_send("ERROR")
+                        robot.protocol.protocol_send("ERROR")
                         try:
-                            robot.client.receive()
+                            response = robot.protocol.client.receive()
+                            print(response)
                         except ApplicationExceptions.MelfaBaseException as ex_res:
                             print(str(ex_res))
                     # Reset alarm
