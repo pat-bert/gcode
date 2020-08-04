@@ -6,7 +6,7 @@ import pytest
 
 from src.Coordinate import Coordinate
 from src.clients.TcpClientR3 import TcpClientR3
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.printer_components.MelfaRobot import MelfaRobot
 
 

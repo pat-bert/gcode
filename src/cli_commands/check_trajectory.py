@@ -7,7 +7,7 @@ from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService
 from src.clients.IClient import ClientError
 from src.clients.TcpClientR3 import TcpClientR3
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.prechecks.configs import melfa_rv_4a
 from src.prechecks.dataclasses import Constraints, Increments, Extrusion
 from src.prechecks.exceptions import CartesianLimitViolation, ConfigurationChangesError, JointVelocityViolation, \

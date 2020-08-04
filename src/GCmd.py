@@ -1,9 +1,9 @@
-from typing import Union, Tuple, List
-from src.BaseCmd import BaseCmd
+from typing import Union, Tuple, List, Any
+
 from src.Coordinate import Coordinate
 
 
-class GCmd(BaseCmd):
+class GCmd:
     """
     This class implements a base G-code command.
     """
@@ -91,6 +91,13 @@ class GCmd(BaseCmd):
             return False
         else:
             return True
+
+    @staticmethod
+    def combine(descriptor: Any, value: Any, delimiter: str = "") -> str:
+        if value is not None:
+            return "{}{}{} ".format(descriptor, delimiter, value)
+        else:
+            return ""
 
     def __str__(self):
         """
@@ -213,9 +220,7 @@ class GCmd(BaseCmd):
                 )
 
     @classmethod
-    def expand_coordinates(
-            cls, coordinates: List[Union[str, None]]
-    ) -> Union[Tuple[float, ...], None]:
+    def expand_coordinates(cls, coordinates: List[Union[str, None]]) -> Union[Tuple[float, ...], None]:
         """
 
         :param coordinates:

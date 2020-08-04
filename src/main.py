@@ -41,19 +41,23 @@ import sys
 from docopt import docopt
 from schema import Schema, And, Use, SchemaError
 
-from src.cli_commands.interactive_gcode import interactive_gcode
 from src.ApplicationExceptions import ApiException
 from src.cli_commands.check_trajectory import check_trajectory
 from src.cli_commands.demo import demo_mode
+from src.cli_commands.interactive_gcode import interactive_gcode
 from src.cli_commands.interactive_gcode_printer_only import interactive_gcode_printer_only
 from src.cli_commands.interactive_gcode_robot_only import interactive_gcode_robot_only
 from src.cli_commands.interactive_melfa import interactive_melfa
 from src.clients.ComClient import validate_id
 from src.clients.TcpClientR3 import validate_ip, validate_port
-from src.exit_codes import (EXIT_SUCCESS, EXIT_BAD_INPUT, EXIT_INTERNAL_ERROR, EXIT_UNEXPECTED_ERROR)
 from src.kinematics.inverse_kinematics import OutOfReachError
 from src.kinematics.joints import Singularity
 from src.prechecks.exceptions import TrajectoryError
+
+EXIT_SUCCESS = 0
+EXIT_UNEXPECTED_ERROR = -1
+EXIT_INTERNAL_ERROR = -2
+EXIT_BAD_INPUT = -3
 
 
 def main(*argv):

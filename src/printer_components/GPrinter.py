@@ -4,7 +4,7 @@ from typing import Tuple, Optional
 
 from src.clients.ComClient import ComClient
 from src.clients.TcpClientR3 import TcpClientR3
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.printer_components.Peripherals import Peripherals
 from src.printer_components.PrinterComponent import PrinterComponent

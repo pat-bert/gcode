@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from src.Coordinate import Coordinate
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.kinematics.inverse_kinematics import ik_spherical_wrist, OutOfReachError
 from src.kinematics.joints import BaseJoint
 from src.prechecks.exceptions import WorkspaceViolation

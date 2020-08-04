@@ -1,7 +1,7 @@
 from typing import List
 
 from src.Coordinate import Coordinate
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.kinematics.forward_kinematics import forward_kinematics
 from src.kinematics.joints import BaseJoint
 from src.prechecks.collision_checking import MatlabCollisionChecker

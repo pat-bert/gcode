@@ -1,6 +1,6 @@
 import pytest
 
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 
 
 class TestGCmd:

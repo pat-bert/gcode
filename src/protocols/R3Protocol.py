@@ -312,7 +312,7 @@ class R3Reader(R3SubApi):
         """
         self.protocol_send("PPOSF")
         coord_str = self.client.receive()
-        return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=6)
+        return self.from_response_to_coordinate(melfa_str=coord_str, number_axes=len(self.joints))
 
     def get_current_joint(self) -> Coordinate:
         """

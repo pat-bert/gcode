@@ -15,7 +15,7 @@ from src.Coordinate import Coordinate
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
 from src.clients.IClient import IClient, ClientError
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.printer_components.PrinterComponent import PrinterComponent
 from src.protocols.R3Protocol import R3Protocol
 from src.protocols.R3Protocol import R3Reader
@@ -174,11 +174,6 @@ class MelfaRobot(PrinterComponent):
                         self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed)
             elif gcode.id in ["G04", "G4"]:
                 sleep(1000 * gcode.time_ms)
-
-            elif gcode.id in ["G04", "G4"]:
-                # Adjust the offsets for the current tool
-                # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
-                pass
             # Homing
             elif gcode.id == "G28":
                 self.go_home(option=gcode.home_opt)

@@ -4,7 +4,7 @@ from typing import Optional
 from src.printer_components.MelfaRobot import MelfaRobot
 from src.ApplicationExceptions import MelfaBaseException
 from src.clients.TcpClientR3 import TcpClientR3
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 
 
 def interactive_gcode_robot_only(ip: str, port: int, safe_return: Optional[bool] = False) -> None:

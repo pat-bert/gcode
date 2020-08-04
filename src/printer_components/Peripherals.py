@@ -3,7 +3,7 @@ import threading
 from typing import Optional, Union
 
 from src.clients.IClient import IClient, ClientError
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.printer_components.PrinterComponent import PrinterComponent
 
 

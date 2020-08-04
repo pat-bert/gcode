@@ -10,7 +10,7 @@ import src.clients.IClient as IClient
 from src.clients.ComClient import ComClient, validate_id
 from src.clients.SerialEcho import ConfigurableEcho
 from src.clients.TcpEchoServer import DummyRobotController
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.printer_components.GPrinter import GPrinter
 
 
@@ -166,27 +166,19 @@ class TestComClient:
             valid_com_client.receive()
 
     @pytest.mark.timeout(30)
-    def test_send(self, valid_com_client, capsys):
+    def test_send(self, valid_com_client):
         # Mock out this annoying wait for startup message
         valid_com_client.hook_post_successful_connect = mock.Mock()
         msg = 'M105'
 
-        valid_com_client.connect()
+        with valid_com_client:
+            # This time it should not be logged
+            valid_com_client.send(msg, silent_send=True)
+            sleep(1)
 
-        # This time it should not be logged
-        valid_com_client.send(msg, silent_send=True)
-        sleep(1)
-
-        captured = capsys.readouterr()
-        assert msg not in captured.out and msg not in captured.err
-
-        # This time it should be logged somehow
-        valid_com_client.send(msg, silent_send=False)
-        sleep(10)
-        captured = capsys.readouterr()
-        assert msg in captured.out or msg in captured.err
-
-        valid_com_client.close()
+            # This time it should be logged somehow
+            valid_com_client.send(msg, silent_send=False)
+            sleep(10)
 
     def test_is_available_not(self, non_existing_com_client):
         """

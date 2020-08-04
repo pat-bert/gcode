@@ -2,9 +2,8 @@ import unittest.mock as mock
 
 import pytest
 
-from src.exit_codes import EXIT_SUCCESS, EXIT_BAD_INPUT
+from src.main import EXIT_SUCCESS, EXIT_BAD_INPUT, main
 from src.main import __doc__ as cli_doc
-from src.main import main
 
 
 class TestMain:

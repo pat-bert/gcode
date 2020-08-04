@@ -4,7 +4,7 @@ import threading
 from queue import Queue, Empty
 from typing import Optional, NamedTuple, Union
 
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 
 
 class CommandTask(NamedTuple):

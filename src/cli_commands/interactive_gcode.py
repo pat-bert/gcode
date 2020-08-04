@@ -2,7 +2,7 @@ import logging
 from typing import Optional, Tuple
 
 from src.ApplicationExceptions import MelfaBaseException
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.printer_components.GPrinter import GPrinter
 
 

@@ -3,7 +3,7 @@ from math import pi
 import numpy as np
 import pytest
 
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.kinematics.forward_kinematics import get_tform
 from src.prechecks.gcode2segment import lin_segment_from_gcode, circ_segment_from_gcode
 

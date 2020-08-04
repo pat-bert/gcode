@@ -1,6 +1,7 @@
 from typing import List
 
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
@@ -11,9 +12,7 @@ def calc_average(t: List[float], v: List[float]) -> float:
     return sum_sample / t[-1]
 
 
-def draw_speed(
-        target_velocity: float, time: List[float], velocity_samples: List[float]
-) -> None:
+def draw_speed(target_velocity: float, time: List[float], velocity_samples: List[float]) -> None:
     """
     Plots a speed profile and visualizes the average
     :param target_velocity: Value for comparison
@@ -39,14 +38,3 @@ def draw_speed(
     ax.legend()
 
     plt.show()
-
-
-def test_draw_speed():
-    t = [i for i in range(11)]
-    v = t
-    target = 5
-    draw_speed(target, t, v)
-
-
-if __name__ == "__main__":
-    test_draw_speed()
