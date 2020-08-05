@@ -30,6 +30,10 @@ class Peripherals(PrinterComponent):
             logging.debug(f'{self.name} reached barrier')
             barrier.wait()
             logging.debug(f'{self.name} passed barrier')
+
+        if gcode.id == 'G28':
+            return ''
+
         # Send the command and get the response
         try:
             self.client.send(str(gcode))

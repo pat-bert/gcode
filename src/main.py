@@ -61,7 +61,7 @@ EXIT_BAD_INPUT = -3
 
 
 def main(*argv):
-    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(asctime)s %(message)s',
+    logging.basicConfig(level=logging.DEBUG, format='%(levelname)5s:%(asctime)s %(message)s',
                         datefmt='%d/%m/%Y %H:%M:%S')
     # Gather command line arguments
     argv = list(*argv) if len(argv) == 1 else [i for i in argv]

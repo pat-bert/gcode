@@ -37,13 +37,13 @@ class GPrinter:
 
         for component in self.components:
             result = component.get_result()
-            print(f'{component.name}: {result}')
+            logging.info(f'{component.name}: {result}')
 
     def shutdown(self) -> None:
         """
         Shutdown for all unique components.
         """
-        print('Shutting down all components.')
+        logging.info('Shutting down all components.')
         for component in self.components:
             component.shutdown()
 
