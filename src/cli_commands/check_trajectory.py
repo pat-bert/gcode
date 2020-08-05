@@ -4,10 +4,10 @@ from math import pi
 from typing import Optional
 
 from src.Coordinate import Coordinate
+from src.GCmd import GCmd
 from src.MelfaCoordinateService import MelfaCoordinateService
 from src.clients.IClient import ClientError
 from src.clients.TcpClientR3 import TcpClientR3
-from src.GCmd import GCmd
 from src.prechecks.configs import melfa_rv_4a
 from src.prechecks.dataclasses import Constraints, Increments, Extrusion
 from src.prechecks.exceptions import CartesianLimitViolation, ConfigurationChangesError, JointVelocityViolation, \
@@ -95,9 +95,11 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
         joint_limits = [float(i) for i in joint_limits_str.split(', ')]
 
     print('\nConfiguration parameters:')
-    print(f'Joint home position in rad: {home_position}')
+    print(f'Joint home position in deg: {home_position}')
+    home_position = [i / 180 * pi for i in home_position]
     print(f'Cartesian limits in mm: {cartesian_limits}')
-    print(f'Joint limits in rad: {joint_limits}')
+    print(f'Joint limits in deg: {joint_limits}')
+    joint_limits = [i / 180 * pi for i in joint_limits]
     print(f'Maximum joint velocities in rad/s: {joint_velocity_limits}')
     print(f'Checking resolution in mm: {inc_distance_mm}')
     print(f'URDF filepath: {urdf}')

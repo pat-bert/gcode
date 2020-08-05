@@ -22,6 +22,7 @@ def interactive_gcode_robot_only(ip: str, port: int, safe_return: Optional[bool]
 
     # Create printer object
     printer = MelfaRobot(tcp_client, number_axes=6, speed_threshold=10, safe_return=safe_return)
+    printer.boot()
 
     # Executing communication
     try:

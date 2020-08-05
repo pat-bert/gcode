@@ -12,10 +12,10 @@ import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
 from src.ApplicationExceptions import MelfaBaseException
 from src.Coordinate import Coordinate
+from src.GCmd import GCmd
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
 from src.clients.IClient import IClient, ClientError
-from src.GCmd import GCmd
 from src.printer_components.PrinterComponent import PrinterComponent
 from src.protocols.R3Protocol import R3Protocol
 from src.protocols.R3Protocol import R3Reader
@@ -40,7 +40,7 @@ class MelfaRobot(PrinterComponent):
         if number_axes <= 0:
             raise ValueError('Number of axes needs to be larger than zero.')
 
-        self.work_coordinate_offset_xyz = (None, 200, None)
+        self.work_coordinate_offset_xyz = (-600, 180, -44)
         self.joints = number_axes
         self.speed_threshold = speed_threshold
 
@@ -299,9 +299,7 @@ class MelfaRobot(PrinterComponent):
         except ValueError:
             # Indicate spare speed reserve
             if ovrd_speed_factor < 100 and speed >= 1.0:
-                raise ValueError(
-                    "Could not increase the speed setting above the maximum. Please increase override."
-                )
+                raise ValueError("Could not increase the speed setting above the maximum. Please increase override.")
             raise
 
     # Movement functions
@@ -339,8 +337,7 @@ class MelfaRobot(PrinterComponent):
         self.protocol.go_safe_pos()
 
         # Wait until position is reached
-        # self.protocol.poll(self.protocol.get_current_joint, safe_pos)
-        cmp_response(R3Protocol_Cmd.CURRENT_JOINT, safe_pos.to_melfa_response(), self.protocol.reader)
+        self.protocol.poll(self.protocol.reader.get_current_joint, safe_pos, poll_rate_ms=1000)
 
     def linear_move_poll(self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None):
         """
@@ -386,6 +383,7 @@ class MelfaRobot(PrinterComponent):
         # Determine start position
         if start_pos is None:
             start_pos = self.protocol.get_current_xyzabc()
+        start_pos = start_pos.reduce_to_axes('XYZ')
 
         # Set speed
         if speed is not None:
@@ -481,13 +479,11 @@ class MelfaRobot(PrinterComponent):
         if speed > speed_threshold:
             try:
                 self.protocol.set_override(speed_threshold)
-                print(f"Reduced speed to threshold value: {speed_threshold}")
+                logging.info(f"Reduced speed to threshold value: {speed_threshold}")
             except ApplicationExceptions.MelfaBaseException:
-                raise ApplicationExceptions.MelfaBaseException(
-                    "Please ensure a speed lower or equal 10% in interactive mode!"
-                )
+                raise ApplicationExceptions.MelfaBaseException("Please ensure a speed <= 10% in interactive mode!")
         else:
-            print(f"Speed of {speed}%. Okay!")
+            logging.info(f"Speed of {speed}%. Okay!")
 
     def move_joint(self, joint_values: List[float]) -> None:
         """

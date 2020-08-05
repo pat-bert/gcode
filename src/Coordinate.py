@@ -36,7 +36,7 @@ class Coordinate:
         return ";".join(txt)
 
     def to_melfa_point(self) -> str:
-        angles = {"A": -180, "B": 0, "C": 0}
+        angles = {"A": -180, "B": 0, "C": -180}
         for angle, val in angles.items():
             if angle not in self.coordinate.keys():
                 self.coordinate[angle] = val
@@ -66,16 +66,12 @@ class Coordinate:
                 key: None if key not in axes_to_keep else val
                 for key, val in self.coordinate.items()
             }
-            return self.__class__(
-                coordinate.values(), coordinate.keys(), digits=self.digits
-            )
+            return self.__class__(coordinate.values(), coordinate.keys(), digits=self.digits)
         else:
             coordinate = {
                 key: val for key, val in self.coordinate.items() if key in axes_to_keep
             }
-            return self.__class__(
-                coordinate.values(), coordinate.keys(), digits=self.digits
-            )
+            return self.__class__(coordinate.values(), coordinate.keys(), digits=self.digits)
 
     def __str__(self):
         """
@@ -148,6 +144,9 @@ class Coordinate:
         """
         return self.__sub__(other)
 
+    def __eq__(self, other):
+        return str(self) == str(other)
+
     def __mul__(self, other: Union[float, int]) -> "Coordinate":
         """
         Multiplication of a coordinate and a constant
@@ -188,30 +187,7 @@ class Coordinate:
         :return:
         """
         if self._are_axes_compatible(other):
-            return sum(
-                (self.coordinate[axis] * other.coordinate[axis] for axis in self.axes)
-            )
-        raise TypeError("Incompatible axis.")
-
-    def cross(self, other: "Coordinate") -> "Coordinate":
-        if self._are_axes_compatible(other):
-            axis_list = self.axes
-            digits = min(self.digits, other.digits)
-
-            indices_a = [i for i in range(1, len(axis_list))] + [0]
-            indices_b = [len(axis_list) - 1] + [i for i in range(0, len(axis_list) - 1)]
-
-            def cross_row_formula(a, b):
-                add1 = self.coordinate[axis_list[a]] * other.coordinate[axis_list[b]]
-                add2 = self.coordinate[axis_list[b]] * other.coordinate[axis_list[a]]
-                return add1 - add2
-
-            values = [
-                cross_row_formula(idx_a, idx_b)
-                for idx_a, idx_b in zip(indices_a, indices_b)
-            ]
-
-            return Coordinate(values, axis_list, digits)
+            return sum((self.coordinate[axis] * other.coordinate[axis] for axis in self.axes))
         raise TypeError("Incompatible axis.")
 
     def vector_len(self):

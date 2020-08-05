@@ -542,6 +542,7 @@ class R3Resetter(R3SubApi):
         :return: None
         """
         self._reset_cmd(BASE_COORDINATE_CMD, var_type="point")
+        sleep(5)
 
     def reset_tool_data(self) -> None:
         """
