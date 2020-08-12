@@ -37,7 +37,7 @@ class GPrinter:
 
         for component in self.components:
             result = component.get_result()
-            logging.info(f'{component.name}: {result}')
+            logging.info(f'{component.name}: {str(result).strip()}')
 
     def shutdown(self) -> None:
         """

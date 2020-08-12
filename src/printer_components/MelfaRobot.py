@@ -40,7 +40,7 @@ class MelfaRobot(PrinterComponent):
         if number_axes <= 0:
             raise ValueError('Number of axes needs to be larger than zero.')
 
-        self.work_coordinate_offset_xyz = (-600, 180, -44)
+        self.work_coordinate_offset_xyz = (-600, 140, -36.15 - 2.48)
         self.joints = number_axes
         self.speed_threshold = speed_threshold
 
@@ -83,7 +83,14 @@ class MelfaRobot(PrinterComponent):
             self.go_safe_pos()
 
         # Activate work coordinates
+        sleep(0.1)
         self.activate_work_coordinate(True)
+
+        self.protocol.protocol_send('EXECTOOL (-175,0,180,0,0,0)')
+        self.protocol.client.receive()
+
+        self.protocol.protocol_send('PNRMEXTL')
+        self.protocol.client.receive()
 
     def hook_shutdown(self, *args, **kwargs) -> None:
         """
@@ -146,7 +153,8 @@ class MelfaRobot(PrinterComponent):
 
         # Speed conversion mm/min to mm/s
         if gcode.speed is not None:
-            gcode.speed /= 60
+            actual_speed = gcode.speed / 60
+            self.set_speed(actual_speed, 'linear')
 
         # Synchronize it here
         if barrier is not None:
@@ -234,6 +242,7 @@ class MelfaRobot(PrinterComponent):
         except ApplicationExceptions.MelfaBaseException as e:
             if str(e.status).startswith(ApplicationExceptions.DuplicateVariableDeclaration):
                 self.protocol.reset_alarm()
+                sleep(0.1)
             else:
                 raise
 
@@ -348,9 +357,6 @@ class MelfaRobot(PrinterComponent):
         :param current_pos:
         :return:
         """
-        if speed is not None:
-            self.set_speed(speed, "linear")
-
         # Only send command if any coordinates are passed, otherwise just set the speed
         if len(target_pos.values) > 0 and any(a is not None for a in target_pos.values):
             # Fill None values with current position to predict correct response

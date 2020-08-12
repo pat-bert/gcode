@@ -601,6 +601,7 @@ class R3Resetter(R3SubApi):
         else:
             self.protocol_send(f"{cmd} {default_name}")
         self.client.receive()
+        sleep(0.1)
 
 
 class R3Protocol(R3Resetter, R3Setter, R3Reader, R3Positions, R3Utility):

@@ -61,12 +61,20 @@ EXIT_BAD_INPUT = -3
 
 
 def main(*argv):
-    logging.basicConfig(level=logging.DEBUG, format='%(levelname)5s:%(asctime)s %(message)s',
-                        datefmt='%d/%m/%Y %H:%M:%S')
     # Gather command line arguments
     argv = list(*argv) if len(argv) == 1 else [i for i in argv]
     args = docopt(__doc__, argv=argv, help=True, version=__version__, options_first=False)
 
+    # Choose an appropriate log level
+    if args['--verbose']:
+        log_level = logging.DEBUG
+    elif args['--quiet']:
+        log_level = logging.INFO
+    else:
+        # Default to debugging (complete I/O output)
+        log_level = logging.DEBUG
+    logging.basicConfig(level=log_level, format='%(levelname)5s:%(asctime)s %(message)s',
+                        datefmt='%d/%m/%Y %H:%M:%S')
     """
     Create input schemata - Options accepting user input as value are checked for plausibility
     """
@@ -113,7 +121,6 @@ def main(*argv):
     """
     # noinspection PyBroadException
     try:
-        # Functions using TCP/IP-connection
         if args["--gi"]:
             usb_present = args["--vid"] is not None and args["--pid"] is not None
             tcp_present = args["--ip"] is not None and args["--port"] is not None
