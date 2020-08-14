@@ -40,7 +40,7 @@ class MelfaRobot(PrinterComponent):
         if number_axes <= 0:
             raise ValueError('Number of axes needs to be larger than zero.')
 
-        self.work_coordinate_offset_xyz = (-600, 140, -36.15 - 2.48)
+        self.work_coordinate_offset_xyz = (-600, 140, -38.63)
         self.joints = number_axes
         self.speed_threshold = speed_threshold
 

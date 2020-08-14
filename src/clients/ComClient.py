@@ -172,7 +172,7 @@ class ComClient(ThreadedClient):
         response = ''
 
         got_terminator = False
-        terminators = [b'ok\n', b'//action:disconnect\n', b'action:disconnect\n']
+        terminators = [b'ok\n', b'//action:disconnect\n', b'action:disconnect\n', b'Thermal Runaway Protection Reset\n']
 
         t0 = time()
         initial_bits = len(self.buffer)

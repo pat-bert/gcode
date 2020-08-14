@@ -88,7 +88,7 @@
     <link name="floor">
         <visual name="FLOOR_BOX">
             <geometry>
-                <box size="2000 1000 50"/>
+                <box size="1700 800 50"/>
             </geometry>
             <origin xyz="0 0 -25" rpy="0 0 0"/>
             <material name="green"/>
@@ -97,27 +97,36 @@
     <link name="left wall">
         <visual name="WALL_BOX">
             <geometry>
-                <box size="2000 50 1000"/>
+                <box size="1700 50 1000"/>
             </geometry>
-            <origin xyz="0 -525 450" rpy="0 0 0"/>
+            <origin xyz="0 -375 450" rpy="0 0 0"/>
             <material name="green"/>
         </visual>
     </link>
     <link name="right wall">
         <visual name="WALL_BOX">
             <geometry>
-                <box size="2000 50 1000"/>
+                <box size="1700 50 1000"/>
             </geometry>
-            <origin xyz="0 +525 450" rpy="0 0 0"/>
+            <origin xyz="0 +375 450" rpy="0 0 0"/>
+            <material name="green"/>
+        </visual>
+    </link>
+    <link name="front wall">
+        <visual name="WALL_BOX">
+            <geometry>
+                <box size="50 800 1000"/>
+            </geometry>
+            <origin xyz="825 0 450" rpy="0 0 0"/>
             <material name="green"/>
         </visual>
     </link>
     <link name="heated bed">
         <visual name="FLOOR_BOX">
             <geometry>
-                <box size="400 400 50"/>
+                <box size="400 400 38"/>
             </geometry>
-            <origin xyz="600 0 0" rpy="0 0 0"/>
+            <origin xyz="480 0 0" rpy="0 0 0"/>
             <material name="red"/>
         </visual>
     </link>
@@ -189,5 +198,9 @@
     <joint name="Right wall connector" type="fixed">
         <parent link="floor"/>
         <child link="right wall"/>
+    </joint>
+    <joint name="Front wall connector" type="fixed">
+        <parent link="floor"/>
+        <child link="front wall"/>
     </joint>
 </robot>
