@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import numpy as np
@@ -60,19 +61,19 @@ def get_best_valid_path(collider, graph, joint_traj: List[JointTrajSegment], sta
 
         if all(i is None for i in colliding_points):
             # The configuration list is valid for all segments, no need to calculate the next best path
-            print('\nAll segments were collision-free with the current configuration path.')
+            logging.info('\nAll segments were collision-free with the current configuration path.')
             break
 
         # Calculate indices of nodes to be removed
         node_indices = [calc_node_idx(pt, conf) for conf, pt in zip(seg_configs, colliding_points) if pt is not None]
 
         # Remove the nodes from the graph
-        print('Removing first colliding point of each segment in collision.')
+        logging.warning('Removing first colliding point of each segment in collision.')
         for node in node_indices:
             graph.remove_node(node)
 
         # Nodes in collision can be removed to query for the next best path.
-        print('Querying next-best configuration path.')
+        logging.info('Querying next-best configuration path.')
     else:
         raise CollisionViolation('No collision-free trajectory could be determined.')
     return pt_configurations
