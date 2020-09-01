@@ -16,7 +16,37 @@ def interactive_gcode(ip: str, port: int, serial_ids: Tuple[int, int], safe_retu
     """
     logging.info("Launching interactive G-code shell...")
 
-    filepath = 'xyzCalibration_cube.gcode'
+    # Create printer object
+    printer = GPrinter.default_init(ip, port, serial_ids=serial_ids, safe_return=safe_return)
+
+    # Executing communication
+    try:
+        while True:
+            usr_msg = input("G-Code>")
+            if usr_msg.lower() in ["quit"]:
+                raise KeyboardInterrupt
+            if len(usr_msg) > 0:
+                # Parse G-code
+                gcode = GCmd.read_cmd_str(usr_msg)
+                print(str(gcode))
+                printer.execute(gcode)
+    except MelfaBaseException as e:
+        print(str(e))
+    except KeyboardInterrupt:
+        print('Program terminated by user.')
+    finally:
+        printer.shutdown()
+
+
+def execute_gcode(ip: str, port: int, serial_ids: Tuple[int, int], filepath: str) -> None:
+    """
+    Executing G-Code commands from a file.
+    :param ip:
+    :param port:
+    :param serial_ids:
+    :param filepath:
+    :return:
+    """
     logging.info(f'Reading G-Code from "{filepath}".')
     with open(filepath, 'r') as f:
         cmd_raw = f.readlines()
@@ -26,7 +56,7 @@ def interactive_gcode(ip: str, port: int, serial_ids: Tuple[int, int], safe_retu
     total_commands = len(commands)
 
     # Create printer object
-    printer = GPrinter.default_init(ip, port, serial_ids=serial_ids, safe_return=safe_return)
+    printer = GPrinter.default_init(ip, port, serial_ids=serial_ids, safe_return=False)
 
     # Executing communication
     try:
@@ -39,14 +69,3 @@ def interactive_gcode(ip: str, port: int, serial_ids: Tuple[int, int], safe_retu
         print('Program terminated by user.')
     finally:
         printer.shutdown()
-
-# Interactive:
-# while True:
-#     usr_msg = input("G-Code>")
-#     if usr_msg.lower() in ["quit"]:
-#         raise KeyboardInterrupt
-#     if len(usr_msg) > 0:
-#         # Parse G-code
-#         gcode = GCmd.read_cmd_str(usr_msg)
-#         print(str(gcode))
-#         printer.execute(gcode)

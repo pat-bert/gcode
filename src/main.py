@@ -6,7 +6,7 @@ Translate G-Code to Mitsubishi commands.
 
 Usage:
     main.py (-V | --validate) IN_FILE CONFIG_FILE [-o OUTPUT_FILE] [--quiet | --verbose]
-    main.py --gi --ip=<ip> --port=<port> --vid=<vid> --pid=<pid> [--quiet | --verbose] [--safe]
+    main.py --gi --ip=<ip> --port=<port> --vid=<vid> --pid=<pid> [--f=<file>] [--quiet | --verbose] [--safe]
     main.py --gi --ip=<ip> --port=<port> [--quiet | --verbose] [--safe]
     main.py --gi --vid=<vid> --pid=<pid> [--quiet | --verbose] [--safe]
     main.py --mi --ip=<ip> --port=<port> [--quiet | --verbose] [--safe]
@@ -26,6 +26,7 @@ Options:
     --port=<port>           Specify port of the robot.
     --vid=<vid>             Specify the USB vendor id
     --pid=<pid>             Specify the USB product id
+    --f=<file>              G-Code-file to be executed
     --quiet                 Print less text.
     --verbose               Print more text.
     --safe                  Start and finish at safe position.
@@ -44,7 +45,7 @@ from schema import Schema, And, Use, SchemaError
 from src.ApplicationExceptions import ApiException
 from src.cli_commands.check_trajectory import check_trajectory
 from src.cli_commands.demo import demo_mode
-from src.cli_commands.interactive_gcode import interactive_gcode
+from src.cli_commands.interactive_gcode import interactive_gcode, execute_gcode
 from src.cli_commands.interactive_gcode_printer_only import interactive_gcode_printer_only
 from src.cli_commands.interactive_gcode_robot_only import interactive_gcode_robot_only
 from src.cli_commands.interactive_melfa import interactive_melfa
@@ -84,6 +85,10 @@ def main(*argv):
     )
     config_schema = Schema(
         {"CONFIG_FILE": And(os.path.exists, error="CONFIG_FILE should exist")},
+        ignore_extra_keys=True,
+    )
+    gcode_schema = Schema(
+        {"--f": And(os.path.exists, error="G-Code file should exist")},
         ignore_extra_keys=True,
     )
     connection_schema = Schema(
@@ -131,7 +136,11 @@ def main(*argv):
                 if usb_present:
                     # Robot and PCB
                     args.update(usb_schema.validate(args))
-                    interactive_gcode(ip, port, (args["--vid"], args["--pid"]))
+                    if args["--f"]:
+                        gcode_schema.validate(args)
+                        execute_gcode(ip, port, (args["--vid"], args["--pid"]), args["--f"])
+                    else:
+                        interactive_gcode(ip, port, (args["--vid"], args["--pid"]))
                 else:
                     # Robot only
                     interactive_gcode_robot_only(ip, port, safe_return=safe)
