@@ -111,14 +111,15 @@ def calc_cost(curr: NodeInfo, prev: NodeInfo, qlim: List[float], qdlim: List[flo
         cost += singularity_proximity_cost(config, curr.joints)
 
         return cost
-    else:
-        if curr.conf != prev.conf:
-            # Currently, configuration changes between segments are not allowed either (not worth it).
-            return float('Inf')
-            # return joint_limit_cost(curr.joints, qlim) + singularity_proximity_cost(config, curr.joints)
 
-        # Otherwise you can go as you like
-        return 0
+    # Else
+    if curr.conf != prev.conf:
+        # Currently, configuration changes between segments are not allowed either (not worth it).
+        return float('Inf')
+        # return joint_limit_cost(curr.joints, qlim) + singularity_proximity_cost(config, curr.joints)
+
+    # Otherwise you can go as you like
+    return 0
 
 
 def calc_node_idx(point_idx: int, configuration: int) -> int:

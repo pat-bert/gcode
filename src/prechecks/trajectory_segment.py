@@ -283,7 +283,7 @@ def check_common_configurations(joint_trajectory: List[JointTrajSegment]) -> Non
             error_msg += f'Segment #{idx}: Points accessible in configurations {configs}\n'
         raise ConfigurationChangesError(f'Found segments without common configurations:\n{error_msg}')
     print('=>Each segment can be executed without configuration change.')
-    print(f'=>Configurations in trajectory: {set(conf for conf_list in common_configurations for conf in conf_list)}')
+    print(f'=>Configurations in trajectory: {{conf for conf_list in common_configurations for conf in conf_list}}')
     print(f'=>Configurations common to all segments: {set.intersection(*map(set, common_configurations))}')
 
 

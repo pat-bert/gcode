@@ -1,11 +1,10 @@
 from typing import Union, List, Optional, Tuple
 
-import src_matlab.checkCollision.for_redistribution_files_only.CollisionChecking as CollisionChecking
 import matlab
 import numpy as np
 
+import src_matlab.checkCollision.for_redistribution_files_only.CollisionChecking as CollisionChecking
 from src.prechecks.trajectory_segment import JointTrajSegment
-from src.prechecks.utils import print_progress
 
 
 class MatlabCollisionChecker:

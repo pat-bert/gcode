@@ -168,18 +168,18 @@ class MelfaRobot(PrinterComponent):
                 if gcode.cartesian_abs.values:
                     if not self.absolute_coordinates:
                         target_pos = gcode.cartesian_abs + current_pos
-                        self.linear_move_poll(target_pos, gcode.speed)
+                        self.linear_move_poll(target_pos)
                     else:
-                        self.linear_move_poll(gcode.cartesian_abs, gcode.speed)
+                        self.linear_move_poll(gcode.cartesian_abs)
             elif gcode.id in ["G02", "G2", "G03", "G3"]:
                 if gcode.cartesian_abs.values:
                     is_cw = gcode.id in ["G02", "G2"]
                     center_pos = current_pos + gcode.cartesian_rel
                     if not self.absolute_coordinates:
                         target_pos = gcode.cartesian_abs + current_pos
-                        self.circular_move_poll(target_pos, center_pos, is_cw, gcode.speed)
+                        self.circular_move_poll(target_pos, center_pos, is_cw)
                     else:
-                        self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed)
+                        self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw)
             elif gcode.id in ["G04", "G4"]:
                 sleep(1000 * gcode.time_ms)
             # Homing
@@ -357,6 +357,10 @@ class MelfaRobot(PrinterComponent):
         :param current_pos:
         :return:
         """
+        # Set speed
+        if speed is not None:
+            self.set_speed(speed, 'linear')
+
         # Only send command if any coordinates are passed, otherwise just set the speed
         if len(target_pos.values) > 0 and any(a is not None for a in target_pos.values):
             # Fill None values with current position to predict correct response

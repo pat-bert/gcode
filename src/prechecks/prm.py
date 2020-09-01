@@ -109,7 +109,7 @@ def create_prm(config: List[BaseJoint], collider: MatlabCollisionChecker, constr
     t0 = time.time()
     current_time = t0
     print('\n')
-    prefix = f'Creating probabilistic roadmap ...'
+    prefix = 'Creating probabilistic roadmap ...'
 
     while current_time - t0 < max_time_s:
         # Update the progress bar

@@ -16,8 +16,9 @@ def interactive_gcode(ip: str, port: int, serial_ids: Tuple[int, int], safe_retu
     """
     logging.info("Launching interactive G-code shell...")
 
-    print(f'Reading G-Code from file.')
-    with open('xyzCalibration_cube.gcode', 'r') as f:
+    filepath = 'xyzCalibration_cube.gcode'
+    logging.info(f'Reading G-Code from "{filepath}".')
+    with open(filepath, 'r') as f:
         cmd_raw = f.readlines()
 
     commands = [GCmd.read_cmd_str(cmd_str.strip()) for cmd_str in cmd_raw if not cmd_str.startswith(GCmd.COMMENT)]
