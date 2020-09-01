@@ -246,10 +246,6 @@ class MelfaRobot(PrinterComponent):
             else:
                 raise
 
-    def maintenance(self) -> None:
-        # Communication & Control on
-        self._change_communication_state(True)
-
     # Utility functions
 
     def _change_communication_state(self, activate: bool) -> None:
