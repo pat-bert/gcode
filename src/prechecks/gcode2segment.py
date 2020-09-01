@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 
 from src.Coordinate import Coordinate
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.kinematics.forward_kinematics import pose2tform
 from src.prechecks.spatial_interpolation import circular_interpolation, linear_interpolation
 from src.prechecks.trajectory_segment import CircularSegment, LinearSegment

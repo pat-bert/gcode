@@ -2,25 +2,6 @@ class ApiException(Exception):
     pass
 
 
-# G-Code Errors
-class GCmdError(ApiException):
-    pass
-
-
-# TCP Errors
-class TcpError(ApiException):
-    pass
-
-
-# Pre-Check Errors
-class PreCheckError(ApiException):
-    pass
-
-
-class OutOfOperationalArea(PreCheckError):
-    pass
-
-
 NonExistentVariable = "4340"
 DuplicateVariableDeclaration = "4350"
 

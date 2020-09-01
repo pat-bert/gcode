@@ -3,19 +3,19 @@ import threading
 import time
 from math import pi
 from time import sleep
-from typing import AnyStr, List, Optional
+from typing import AnyStr, List, Optional, Union
 
 import numpy as np
 from numpy import ndarray
 
 import src.protocols.R3Protocol as R3Protocol_Cmd
 from src import ApplicationExceptions
-from src.ApplicationExceptions import MelfaBaseException, TcpError
+from src.ApplicationExceptions import MelfaBaseException
 from src.Coordinate import Coordinate
+from src.GCmd import GCmd
 from src.MelfaCoordinateService import MelfaCoordinateService, Plane
 from src.circle_util import get_angle, get_intermediate_point
-from src.clients.IClient import IClient
-from src.gcode.GCmd import GCmd
+from src.clients.IClient import IClient, ClientError
 from src.printer_components.PrinterComponent import PrinterComponent
 from src.protocols.R3Protocol import R3Protocol
 from src.protocols.R3Protocol import R3Reader
@@ -40,7 +40,7 @@ class MelfaRobot(PrinterComponent):
         if number_axes <= 0:
             raise ValueError('Number of axes needs to be larger than zero.')
 
-        self.work_coordinate_offset = "(-500,0,-250,0,0,0)"
+        self.work_coordinate_offset_xyz = (-600, 140, -38.63)
         self.joints = number_axes
         self.speed_threshold = speed_threshold
 
@@ -83,7 +83,14 @@ class MelfaRobot(PrinterComponent):
             self.go_safe_pos()
 
         # Activate work coordinates
+        sleep(0.1)
         self.activate_work_coordinate(True)
+
+        self.protocol.protocol_send('EXECTOOL (-175,0,180,0,0,0)')
+        self.protocol.client.receive()
+
+        self.protocol.protocol_send('PNRMEXTL')
+        self.protocol.client.receive()
 
     def hook_shutdown(self, *args, **kwargs) -> None:
         """
@@ -122,14 +129,14 @@ class MelfaRobot(PrinterComponent):
         """
         if active:
             # Set coordinate system
-            self.protocol.set_work_coordinate(self.work_coordinate_offset)
+            self.protocol.set_work_coordinate(self.work_coordinate_offset_xyz)
         else:
             # Reset coordinate system
             self.protocol.reset_base_coordinate_system()
 
         self.work_coordinate_active = active
 
-    def hook_handle_gcode(self, gcode: GCmd, barrier: Optional[threading.Barrier]) -> None:
+    def hook_handle_gcode(self, gcode: GCmd, barrier: Optional[threading.Barrier]) -> Union[str, Exception]:
         """
         Implements the G-Code execution.
         :param gcode: G-Code object
@@ -146,39 +153,51 @@ class MelfaRobot(PrinterComponent):
 
         # Speed conversion mm/min to mm/s
         if gcode.speed is not None:
-            gcode.speed /= 60
+            actual_speed = gcode.speed / 60
+            self.set_speed(actual_speed, 'linear')
 
         # Synchronize it here
         if barrier is not None:
-            logging.info(f'{self.name} reached barrier')
+            logging.debug(f'{self.name} reached barrier')
             barrier.wait()
-            logging.info(f'{self.name} passed barrier')
+            logging.debug(f'{self.name} passed barrier')
 
         # Movement G-code
-        if gcode.id in ["G00", "G0", "G01", "G1"]:
-            if not self.absolute_coordinates:
-                target_pos = gcode.cartesian_abs + current_pos
-                self.linear_move_poll(target_pos, gcode.speed, current_pos=current_pos)
-            else:
-                self.linear_move_poll(gcode.cartesian_abs, gcode.speed, current_pos=current_pos)
-        elif gcode.id in ["G02", "G2", "G03", "G3"]:
-            is_cw = gcode.id in ["G02", "G2"]
-            center_pos = current_pos + gcode.cartesian_rel
-            if not self.absolute_coordinates:
-                target_pos = gcode.cartesian_abs + current_pos
-                self.circular_move_poll(target_pos, center_pos, is_cw, gcode.speed, start_pos=current_pos)
-            else:
-                self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw, gcode.speed, start_pos=current_pos)
-        elif gcode.id in ["G04", "G4"]:
-            sleep(1000 * gcode.time_ms)
+        try:
+            if gcode.id in ["G00", "G0", "G01", "G1"]:
+                if gcode.cartesian_abs.values:
+                    if not self.absolute_coordinates:
+                        target_pos = gcode.cartesian_abs + current_pos
+                        self.linear_move_poll(target_pos)
+                    else:
+                        self.linear_move_poll(gcode.cartesian_abs)
+            elif gcode.id in ["G02", "G2", "G03", "G3"]:
+                if gcode.cartesian_abs.values:
+                    is_cw = gcode.id in ["G02", "G2"]
+                    center_pos = current_pos + gcode.cartesian_rel
+                    if not self.absolute_coordinates:
+                        target_pos = gcode.cartesian_abs + current_pos
+                        self.circular_move_poll(target_pos, center_pos, is_cw)
+                    else:
+                        self.circular_move_poll(gcode.cartesian_abs, center_pos, is_cw)
+            elif gcode.id in ["G04", "G4"]:
+                sleep(1000 * gcode.time_ms)
+            # Homing
+            elif gcode.id == "G28":
+                self.go_home(option=gcode.home_opt)
+            # Tools
+            elif gcode.id.startswith('T'):
+                # Tool commands start with T followed by the tool number.
+                # G-Code starts counting at zero, Mitsubishi starts at one
+                self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
 
-        elif gcode.id in ["G04", "G4"]:
-            # Adjust the offsets for the current tool
-            # TODO self.protocol.set_current_tool_data(gcode.cartesian_abs) (requires Hardware)
-            pass
+            elif gcode.id == 'G200':
+                self.move_joint(gcode.joints)
+        except (MelfaBaseException, ClientError, ValueError) as e:
+            return e
 
         # Plane selection
-        elif gcode.id == "G17":
+        if gcode.id == "G17":
             self.active_plane = Plane.XY
         elif gcode.id == "G18":
             self.active_plane = Plane.XZ
@@ -191,24 +210,11 @@ class MelfaRobot(PrinterComponent):
         elif gcode.id == "G21":
             self.inch_active = False
 
-        # Homing
-        elif gcode.id == "G28":
-            self.go_home(option=gcode.home_opt)
-
         # Absolute/Relative mode
         elif gcode.id == "G90":
             self.absolute_coordinates = True
         elif gcode.id == "G91":
             self.absolute_coordinates = False
-
-        # Tools
-        elif gcode.id.startswith('T'):
-            # Tool commands start with T followed by the tool number.
-            # G-Code starts counting at zero, Mitsubishi starts at one
-            self.protocol.set_current_tool(int(gcode.id[1:]) + 1)
-
-        elif gcode.id == 'G200':
-            self.move_joint(gcode.joints)
 
     def adjust_units(self, gcode: GCmd) -> GCmd:
         """
@@ -236,12 +242,9 @@ class MelfaRobot(PrinterComponent):
         except ApplicationExceptions.MelfaBaseException as e:
             if str(e.status).startswith(ApplicationExceptions.DuplicateVariableDeclaration):
                 self.protocol.reset_alarm()
+                sleep(0.1)
             else:
                 raise
-
-    def maintenance(self) -> None:
-        # Communication & Control on
-        self._change_communication_state(True)
 
     # Utility functions
 
@@ -270,11 +273,11 @@ class MelfaRobot(PrinterComponent):
         """
         if activate:
             self.protocol.activate_servo()
-            self.protocol.poll(self.protocol.get_servo_state, 1, timeout_ms=5000)
+            self.protocol.poll(self.protocol.get_servo_state, 1, timeout_ms=5000, poll_rate_ms=500)
             sleep(1)
         else:
             self.protocol.deactivate_servo()
-            self.protocol.poll(self.protocol.get_servo_state, 0, timeout_ms=5000)
+            self.protocol.poll(self.protocol.get_servo_state, 0, timeout_ms=5000, poll_rate_ms=500)
 
         self.servo = activate
 
@@ -301,9 +304,7 @@ class MelfaRobot(PrinterComponent):
         except ValueError:
             # Indicate spare speed reserve
             if ovrd_speed_factor < 100 and speed >= 1.0:
-                raise ValueError(
-                    "Could not increase the speed setting above the maximum. Please increase override."
-                )
+                raise ValueError("Could not increase the speed setting above the maximum. Please increase override.")
             raise
 
     # Movement functions
@@ -322,6 +323,7 @@ class MelfaRobot(PrinterComponent):
 
             # Acquire current position to determine robot orientation
             current_position = self.protocol.reader.get_current_xyzabc()
+            zero.add_axis(current_position)
             zero.update_empty(current_position)
 
             # Move to zero
@@ -341,8 +343,7 @@ class MelfaRobot(PrinterComponent):
         self.protocol.go_safe_pos()
 
         # Wait until position is reached
-        # self.protocol.poll(self.protocol.get_current_joint, safe_pos)
-        cmp_response(R3Protocol_Cmd.CURRENT_JOINT, safe_pos.to_melfa_response(), self.protocol.reader)
+        self.protocol.poll(self.protocol.reader.get_current_joint, safe_pos, poll_rate_ms=1000)
 
     def linear_move_poll(self, target_pos: Coordinate, speed: float = None, track_speed=False, current_pos=None):
         """
@@ -353,8 +354,9 @@ class MelfaRobot(PrinterComponent):
         :param current_pos:
         :return:
         """
+        # Set speed
         if speed is not None:
-            self.set_speed(speed, "linear")
+            self.set_speed(speed, 'linear')
 
         # Only send command if any coordinates are passed, otherwise just set the speed
         if len(target_pos.values) > 0 and any(a is not None for a in target_pos.values):
@@ -362,6 +364,7 @@ class MelfaRobot(PrinterComponent):
             if current_pos is None:
                 # No need to do this twice
                 current_pos = self.protocol.get_current_xyzabc()
+            target_pos.add_axis(current_pos)
             target_pos.update_empty(current_pos)
 
             # Send move command
@@ -387,6 +390,7 @@ class MelfaRobot(PrinterComponent):
         # Determine start position
         if start_pos is None:
             start_pos = self.protocol.get_current_xyzabc()
+        start_pos = start_pos.reduce_to_axes('XYZ')
 
         # Set speed
         if speed is not None:
@@ -482,13 +486,11 @@ class MelfaRobot(PrinterComponent):
         if speed > speed_threshold:
             try:
                 self.protocol.set_override(speed_threshold)
-                print(f"Reduced speed to threshold value: {speed_threshold}")
+                logging.info(f"Reduced speed to threshold value: {speed_threshold}")
             except ApplicationExceptions.MelfaBaseException:
-                raise ApplicationExceptions.MelfaBaseException(
-                    "Please ensure a speed lower or equal 10% in interactive mode!"
-                )
+                raise ApplicationExceptions.MelfaBaseException("Please ensure a speed <= 10% in interactive mode!")
         else:
-            print(f"Speed of {speed}%. Okay!")
+            logging.info(f"Speed of {speed}%. Okay!")
 
     def move_joint(self, joint_values: List[float]) -> None:
         """
@@ -540,7 +542,7 @@ def cmp_response(poll_cmd: str, response_t: str, protocol: R3Reader, poll_rate_m
             time_samples.append(float(current_time - start_time))
             speed_samples.append(float(speed))
 
-        protocol._protocol_send(poll_cmd, silent_send=True, silent_recv=True)
+        protocol.protocol_send(poll_cmd, silent_send=True, silent_recv=True)
         response_act = protocol.client.receive()
 
         # Check response
@@ -551,7 +553,7 @@ def cmp_response(poll_cmd: str, response_t: str, protocol: R3Reader, poll_rate_m
         sleep(poll_rate_ms / 1000)
         t += poll_rate_ms
     else:
-        raise TcpError(f"Timeout after {timeout_s} seconds. Expected: '{response_t}' but got '{response_act}'")
+        raise ClientError(f"Timeout after {timeout_s} seconds. Expected: '{response_t}' but got '{response_act}'")
 
     if track_speed:
         return time_samples, speed_samples

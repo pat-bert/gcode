@@ -4,7 +4,7 @@ import threading
 from queue import Queue, Empty
 from typing import Optional, NamedTuple, Union
 
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 
 
 class CommandTask(NamedTuple):
@@ -97,9 +97,9 @@ class PrinterComponent(metaclass=abc.ABCMeta):
                     break
                 else:
                     # Component-specific command handling
-                    logging.info(f'{self.name} is handling {task.cmd}')
+                    logging.debug(f'{self.name} is handling {task.cmd}')
                     return_val = self.hook_handle_gcode(task.cmd, task.b)
-                    logging.info(f'{self.name} is done with {task.cmd}')
+                    logging.debug(f'{self.name} is done with {task.cmd}')
                     self.send_q.task_done()
 
                     if isinstance(return_val, Exception):

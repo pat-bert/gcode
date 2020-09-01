@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Tuple
 
 from ApplicationExceptions import MelfaBaseException
@@ -9,7 +10,7 @@ def interactive_gcode_printer_only(usb_ids: Optional[Tuple[int, int]]) -> None:
     Launches an interactive shell accepting G-code to send to a printer PCB.
     :param usb_ids: USB VID and PID to identify device
     """
-    print("Launching interactive G-code shell (printer only)...")
+    logging.info("Launching interactive G-code shell (printer only)...")
 
     # Create com client
     with ComClient(usb_ids) as client:

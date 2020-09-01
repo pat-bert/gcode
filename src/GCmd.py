@@ -1,9 +1,9 @@
-from typing import Union, Tuple, List
-from src.BaseCmd import BaseCmd
+from typing import Union, Tuple, List, Any
+
 from src.Coordinate import Coordinate
 
 
-class GCmd(BaseCmd):
+class GCmd:
     """
     This class implements a base G-code command.
     """
@@ -34,7 +34,7 @@ class GCmd(BaseCmd):
     # Supported commands
     SUPPORTED_G_CODES = {
         "G": [0, 1, 2, 3, 4, 17, 18, 19, 20, 21, 28, 90, 91, 92, 222],
-        "M": [82, 84, 104, 106, 107, 109, 140, 190],
+        "M": [82, 83, 84, 104, 106, 107, 109, 140, 190, 302],
         "T": [0]
     }
 
@@ -84,12 +84,19 @@ class GCmd(BaseCmd):
         Validate input.
         :return:
         """
-        cmd_char = self.id[0]
-        cmd_cnt = int(self.id[1:])
-        return (
-                cmd_char in self.SUPPORTED_G_CODES.keys()
-                and cmd_cnt in self.SUPPORTED_G_CODES[cmd_char]
-        )
+        try:
+            cmd_char = self.id[0]
+            cmd_cnt = int(self.id[1:])
+        except TypeError:
+            return False
+        else:
+            return True
+
+    @staticmethod
+    def combine(descriptor: Any, value: Any, delimiter: str = "") -> str:
+        if value is not None:
+            return f"{descriptor}{delimiter}{value} "
+        return ""
 
     def __str__(self):
         """
@@ -117,17 +124,7 @@ class GCmd(BaseCmd):
         m_str = self.combine(self.M_DESCRIPTOR, self.machine_option)
         home_str = " ".join(self.home_opt)
 
-        total_str = (
-                str(self.id)
-                + " "
-                + abs_str
-                + rel_str
-                + speed_str
-                + extruder_len_str
-                + time_str
-                + m_str
-                + home_str
-        )
+        total_str = f'{self.id} {abs_str}{rel_str}{speed_str}{extruder_len_str}{time_str}{m_str}{home_str}'
         return total_str.strip()
 
     @classmethod
@@ -140,81 +137,71 @@ class GCmd(BaseCmd):
         if command_str.startswith(cls.COMMENT) or len(command_str) == 0:
             # Passed string is a comment so you cannot return a command/maybe an empty one in the future
             return None
+
+        # Split off comment in same line
+        command_str = command_str.split(cls.COMMENT)[0]
+        if len(command_str) == 0:
+            return None
+
+        # Split space-separated parts of the command
+        segments = command_str.split(" ")
+
+        # Command identifier is required first
+        if cls.CMD_REMOVE_LEAD_ZERO:
+            cmd_id = segments[0][0] + str(int(segments[0][1:]))
         else:
-            # Split off comment in same line
-            command_str = command_str.split(cls.COMMENT)[0]
-            if len(command_str) == 0:
-                return None
+            cmd_id = segments[0]
 
-            # Split space-separated parts of the command
-            segments = command_str.split(" ")
-
-            # Command identifier is required first
-            if cls.CMD_REMOVE_LEAD_ZERO:
-                cmd_id = segments[0][0] + str(int(segments[0][1:]))
+        # Split remaining parts into their identifiers and recognise each of them
+        args = {}
+        for arg in segments[1:]:
+            if len(arg) > 1:
+                # Arguments consisting of descriptor and value
+                try:
+                    val = float(arg[1:])
+                except ValueError:
+                    val = arg[1:]
+                args[arg[0]] = val
             else:
-                cmd_id = segments[0]
+                # Arguments consisting only of a descriptor
+                args[arg] = None
 
-            # Split remaining parts into their identifiers and recognise each of them
-            args = {}
-            for arg in segments[1:]:
-                if len(arg) > 1:
-                    # Arguments consisting of descriptor and value
-                    try:
-                        val = float(arg[1:])
-                    except ValueError:
-                        val = arg[1:]
-                    args[arg[0]] = val
-                else:
-                    # Arguments consisting only of a descriptor
-                    args[arg] = None
-            else:
-                # Get speed arguments
-                speed = args.get(cls.SPEED_DESCRIPTOR, None)
-                e_length = args.get(cls.EXTRUDE_DESCRIPTOR, None)
+        # Get speed arguments
+        speed = args.get(cls.SPEED_DESCRIPTOR, None)
+        e_length = args.get(cls.EXTRUDE_DESCRIPTOR, None)
 
-                # Get time argument, preferring milliseconds
-                time_ms = args.get(cls.TIME_MS_DESCRIPTOR, None)
-                if time_ms is None and cmd_id[0] not in cls.MISC_CMD_IDS:
-                    time_ms = args.get(cls.TIME_S_DESCRIPTOR, None)
-                    if time_ms is not None:
-                        time_ms *= 1000
+        # Get time argument, preferring milliseconds
+        time_ms = args.get(cls.TIME_MS_DESCRIPTOR, None)
+        if time_ms is None and cmd_id[0] not in cls.MISC_CMD_IDS:
+            time_ms = args.get(cls.TIME_S_DESCRIPTOR, None)
+            if time_ms is not None:
+                time_ms *= 1000
 
-                # Get miscellaneous argument
-                if cmd_id[0] in cls.MISC_CMD_IDS:
-                    misc_cmd = args.get(cls.M_DESCRIPTOR, None)
-                else:
-                    misc_cmd = None
+        # Get miscellaneous argument
+        if cmd_id[0] in cls.MISC_CMD_IDS:
+            misc_cmd = args.get(cls.M_DESCRIPTOR, None)
+        else:
+            misc_cmd = None
 
-                # Get relative arguments
-                rel_cr = [args.get(axis, None) for axis in cls.REL_AXES]
-                rel_cr = cls.expand_coordinates(rel_cr)
+        # Get relative arguments
+        rel_cr = [args.get(axis, None) for axis in cls.REL_AXES]
+        rel_cr = cls.expand_coordinates(rel_cr)
 
-                # Get absolute coordinates or home axis respectively
-                if cmd_id == cls.HOME_CMD:
-                    abs_cr = None
-                    home = "".join((axis for axis in cls.ABS_AXES if axis in args))
-                else:
-                    home = ""
-                    abs_cr = [args.get(axis, None) for axis in cls.ABS_AXES]
-                    abs_cr = cls.expand_coordinates(abs_cr)
+        # Get absolute coordinates or home axis respectively
+        if cmd_id == cls.HOME_CMD:
+            abs_cr = None
+            home = "".join((axis for axis in cls.ABS_AXES if axis in args))
+        else:
+            home = ""
+            abs_cr = [args.get(axis, None) for axis in cls.ABS_AXES]
+            abs_cr = cls.expand_coordinates(abs_cr)
 
-                # Initialise command
-                return cls(
-                    cmd_id,
-                    abs_cr=abs_cr,
-                    rel_cr=rel_cr,
-                    speed=speed,
-                    e_length=e_length,
-                    time_ms=time_ms,
-                    misc_cmd=misc_cmd,
-                    home=home,
-                )
+        # Initialise command
+        return cls(cmd_id, abs_cr=abs_cr, rel_cr=rel_cr, speed=speed, e_length=e_length, time_ms=time_ms,
+                   misc_cmd=misc_cmd, home=home)
 
     @classmethod
-    def expand_coordinates(
-            cls, coordinates: List[Union[str, None]]
-    ) -> Union[Tuple[float, ...], None]:
+    def expand_coordinates(cls, coordinates: List[Union[str, None]]) -> Union[Tuple[float, ...], None]:
         """
 
         :param coordinates:

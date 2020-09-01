@@ -18,10 +18,6 @@ class Plane(Enum):
 
 class MelfaCoordinateService:
     @staticmethod
-    def to_melfa_response(c: Coordinate):
-        pass
-
-    @staticmethod
     def from_response(melfa_str: str, number_axes: int) -> Coordinate:
         segments = melfa_str.split(";")
         values = [float(i) for i in segments[1: 2 * number_axes: 2]]
@@ -36,7 +32,5 @@ class MelfaCoordinateService:
         :param pose_flag:
         :return:
         """
-        txt = (
-            "{:.{d}f}".format(i, d=c.digits) if i is not None else "" for i in c.values
-        )
-        return f'"("{",".join(txt)}")" + "({pose_flag},0)'
+        txt = ("{:.{d}f}".format(i, d=c.digits) if i is not None else "" for i in c.values)
+        return f'({",".join(txt)}) ({pose_flag},0)'

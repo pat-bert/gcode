@@ -67,8 +67,8 @@ class TestR3ProtocolSetter:
     def test_set_work_coordinate(self, agent: R3Setter, fake_tcp):
         agent.client = fake_tcp
         with mock.patch.object(agent.client, "send", spec=mock.Mock()) as mock_func:
-            agent.set_work_coordinate('Test')
-        mock_func.assert_called_with('1;1;EXECBASE Test')
+            agent.set_work_coordinate((0, 2, 3))
+        mock_func.assert_called_with('1;1;EXECBASE (0.00,2.00,3.00,,,)')
 
     @pytest.mark.parametrize("val", [1.0, 100.0])
     def test_set_override(self, agent: R3Setter, fake_tcp, val):

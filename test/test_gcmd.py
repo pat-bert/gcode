@@ -1,6 +1,6 @@
 import pytest
 
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 
 
 class TestGCmd:
@@ -63,10 +63,6 @@ class TestGCmd:
 
         out_act = GCmd.read_cmd_str("; I am a comment.")
         assert out_act is None
-
-    def test_invalid_command(self):
-        with pytest.raises(ValueError):
-            GCmd("G-1")
 
     @pytest.mark.parametrize("cmd", ["GK"])
     def test_invalid_command_from_str(self, cmd):

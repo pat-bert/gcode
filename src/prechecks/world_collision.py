@@ -88,11 +88,10 @@ def create_vertices_from_arc(arc: CircularSegment, nvec: np.ndarray, extr: Extru
 
 
 def create_collision_objects(task_trajectory: List[CartesianTrajSegment], extr: Extrusion) -> List[np.ndarray]:
-    print('Creating collision objects...')
-
     # Create individual collision objects
     collision_vertices_list = []
     total_len = len(task_trajectory)
+    print('\n')
 
     for seg_idx, seg in enumerate(task_trajectory):
         prefix = f'Creating collision object for segment #{seg_idx} ...'

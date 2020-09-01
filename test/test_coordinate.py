@@ -239,31 +239,6 @@ class TestCoordinate:
             a.dot(b)
 
     @pytest.mark.parametrize(
-        "values_first,values_second,values_result", [([1, 0, 0], [0, 1, 0], (0, 0, 1))]
-    )
-    def test_cross(self, values_first, values_second, values_result):
-        a = Coordinate(values_first, "XYZ")
-        b = Coordinate(values_second, "XYZ")
-        result = a.cross(b)
-        assert list(result.values) == list(values_result)
-
-    def test_cross_incompatible_axes(self):
-        a = Coordinate((0, 0, None), "XYZ")
-        b = Coordinate((1, 2, 3), "XZ")
-
-        with pytest.raises(TypeError) as excinfo:
-            a.cross(b)
-
-        assert str(excinfo.value.args[0]) == "Incompatible axis."
-
-    def test_cross_none(self):
-        a = Coordinate((0, 0, None), "XYZ")
-        b = Coordinate((1, 2, 3), "XYZ")
-
-        with pytest.raises(TypeError):
-            a.cross(b)
-
-    @pytest.mark.parametrize(
         "axes,values,expected",
         [("XYZ", [2, 5, 8], 9.64), ("XY", [3, 4], 5), ("XY", [0, -3], 3)],
     )

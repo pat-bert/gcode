@@ -6,7 +6,7 @@ import pytest
 
 from src.Coordinate import Coordinate
 from src.clients.TcpClientR3 import TcpClientR3
-from src.gcode.GCmd import GCmd
+from src.GCmd import GCmd
 from src.printer_components.MelfaRobot import MelfaRobot
 
 
@@ -270,10 +270,4 @@ class TestMelfaRobot:
         assert True
 
     def test_set_global_positions(self):
-        assert True
-
-    def test_wait(self):
-        assert True
-
-    def test__zero(self):
         assert True

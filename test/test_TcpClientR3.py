@@ -2,7 +2,7 @@ import pytest
 
 from src.clients.IClient import ClientError
 from src.ApplicationExceptions import ErrorDispatch
-from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3, TcpError
+from src.clients.TcpClientR3 import validate_ip, validate_port, TcpClientR3
 from src.clients.TcpEchoServer import ConfigurableEchoServer
 
 VALID_HOST, VALID_PORT = 'localhost', 10002
@@ -86,7 +86,7 @@ class TestTcpClientR3:
         :param non_existing_tcp_client: TCP-Client configured with a non-existing server adress
         :return:
         """
-        with pytest.raises(TcpError):
+        with pytest.raises(ClientError):
             non_existing_tcp_client.connect()
         non_existing_tcp_client.close()
 

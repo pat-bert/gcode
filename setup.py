@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="gcode",
     version="",
-    packages=["gcode", "clients", "cli_commands", "printer_components", "."],
+    packages=["clients", "cli_commands", "kinematics", "prechecks", "printer_components", "protocols", "."],
     package_dir={"": "src"},
     url="",
     license="",

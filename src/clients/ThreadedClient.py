@@ -110,27 +110,27 @@ class ThreadedClient(IClient):
                     # End of queue
                     self.send_q.task_done()
                     break
-                else:
-                    # Regular message
-                    msg, silent_send, silent_recv = msg.unpack()
 
-                    if not silent_send:
-                        print(f'{self.kind} >>: {str(msg).strip()}')
+                # Regular message
+                msg, silent_send, silent_recv = msg.unpack()
 
-                    # Client-specific message handling
-                    response = self.hook_handle_msg(msg)
+                if not silent_send:
+                    logging.debug(f'{self.kind} >>: {str(msg).strip()}')
 
-                    if not silent_recv:
-                        print(f'{self.kind} <<: {str(response).strip()}')
+                # Client-specific message handling
+                response = self.hook_handle_msg(msg)
 
-                    # Put the response and indicate that the task is done
-                    self.recv_q.put(response)
-                    self.send_q.task_done()
+                if not silent_recv:
+                    logging.debug(f'{self.kind} <<: {str(response).strip()}')
 
-                    # Server closed down connection
-                    if response is not None and len(response) == 0:
-                        self.alive.clear()
-                        return
+                # Put the response and indicate that the task is done
+                self.recv_q.put(response)
+                self.send_q.task_done()
+
+                # Server closed down connection
+                if response is not None and len(response) == 0:
+                    self.alive.clear()
+                    return
 
     def close(self) -> None:
         """

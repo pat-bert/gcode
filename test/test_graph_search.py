@@ -1,6 +1,6 @@
 import pytest
 
-from src.prechecks.graph_search import calc_node_idx, joint_limit_cost
+from src.prechecks.graph_creation import calc_node_idx, joint_limit_cost
 
 
 @pytest.mark.parametrize("pt_idx,conf,node_idx,exc",

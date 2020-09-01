@@ -119,9 +119,9 @@ class ComClient(ThreadedClient):
 
             # Verify message
             if startup_message.endswith(self.terminator):
-                print('Startup message:')
+                logging.info('Startup message:')
                 for line in startup_message.split(self.terminator):
-                    print(line)
+                    logging.info(line)
             else:
                 raise ClientOpenError('Message was not terminated correctly.')
 
@@ -172,7 +172,7 @@ class ComClient(ThreadedClient):
         response = ''
 
         got_terminator = False
-        terminators = [b'ok\n', b'//action:disconnect\n', b'action:disconnect\n']
+        terminators = [b'ok\n', b'//action:disconnect\n', b'action:disconnect\n', b'Thermal Runaway Protection Reset\n']
 
         t0 = time()
         initial_bits = len(self.buffer)
@@ -187,9 +187,8 @@ class ComClient(ThreadedClient):
             try:
                 # Attempt to read new bits
                 self.buffer += self._ser.read_all()
-                # print(self.buffer)
             except SerialException as e:
-                print(e)
+                logging.error(e)
 
             # Check terminators
             for term in terminators:
@@ -201,7 +200,7 @@ class ComClient(ThreadedClient):
 
             # Check timeout
             if time() - t0 > self.MAX_TIME_WITHOUT_NEW_BIT:
-                # Timeout occured
+                # Timeout occurred
                 response = self.buffer.decode(encoding=self.read_encoding)
                 self.buffer = bytes()
                 break

@@ -5,7 +5,6 @@ import matlab
 import numpy as np
 
 from src.prechecks.trajectory_segment import JointTrajSegment
-from src.prechecks.utils import print_progress
 
 
 class MatlabCollisionChecker:
@@ -71,11 +70,7 @@ def get_first_colliding_point(collider, seg: JointTrajSegment, seg_conf: int) ->
     :return:
     """
     # Get joint coordinates at each point for the determined arm onfiguration
-    total_len = len(seg.solutions)
-    prefix = f'Checking collisions for segment #{seg.idx} in robot config {seg_conf}...'
-    print_progress(0, total_len, prefix=prefix)
     for point_idx, point_solutions in enumerate(seg.solutions):
-        print_progress(point_idx + 1, total_len, prefix=prefix)
         joint_values = point_solutions[seg_conf]
         # Matlab starts counting from one, so included extrusions are [1,current segment in python indexing]
         collisions = collider.check_collisions(joint_values, scene_idx=seg.idx)

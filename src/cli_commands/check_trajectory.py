@@ -4,10 +4,10 @@ from math import pi
 from typing import Optional
 
 from src.Coordinate import Coordinate
+from src.GCmd import GCmd
 from src.MelfaCoordinateService import MelfaCoordinateService
 from src.clients.IClient import ClientError
 from src.clients.TcpClientR3 import TcpClientR3
-from src.gcode.GCmd import GCmd
 from src.prechecks.configs import melfa_rv_4a
 from src.prechecks.dataclasses import Constraints, Increments, Extrusion
 from src.prechecks.exceptions import CartesianLimitViolation, ConfigurationChangesError, JointVelocityViolation, \
@@ -66,6 +66,9 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
     y_hb = float(config_parser.get('prechecks', 'bed_origin_y', fallback=0))
     z_hb = float(config_parser.get('prechecks', 'bed_origin_z', fallback=0))
 
+    # Learning time
+    prm_learning_time_s = int(config_parser.get('prechecks', 'prm_learning_time', fallback=120))
+
     robot_config = melfa_rv_4a(atoff=tool_offset_z, rtoff=tool_offset_x)
 
     if ip is not None and port is not None:
@@ -92,9 +95,11 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
         joint_limits = [float(i) for i in joint_limits_str.split(', ')]
 
     print('\nConfiguration parameters:')
-    print(f'Joint home position in rad: {home_position}')
+    print(f'Joint home position in deg: {home_position}')
+    home_position = [i / 180 * pi for i in home_position]
     print(f'Cartesian limits in mm: {cartesian_limits}')
-    print(f'Joint limits in rad: {joint_limits}')
+    print(f'Joint limits in deg: {joint_limits}')
+    joint_limits = [i / 180 * pi for i in joint_limits]
     print(f'Maximum joint velocities in rad/s: {joint_velocity_limits}')
     print(f'Checking resolution in mm: {inc_distance_mm}')
     print(f'URDF filepath: {urdf}')
@@ -114,7 +119,8 @@ def check_trajectory(config_f='./../config.ini', gcode_f='./../test.gcode', ip: 
 
     try:
         # Check the trajectory
-        check_traj(commands, robot_config, traj_constraint, home_position, incs, extr, default_acc, urdf, hb_offset)
+        check_traj(commands, robot_config, traj_constraint, home_position, incs, extr, default_acc, urdf, hb_offset,
+                   prm_learning_time_s)
     except (CartesianLimitViolation, WorkspaceViolation):
         logging.error('Please verify that the limits are correct and check the positioning of the part.')
         raise

@@ -1,11 +1,13 @@
+import logging
 from typing import List
 
 import numpy as np
 from dijkstar import find_path, NoPathError
 
+from src.prechecks.utils import print_progress
 from src.prechecks.collision_checking import get_first_colliding_point
 from src.prechecks.exceptions import CollisionViolation, NoValidPathFound
-from src.prechecks.graph_search import calc_node_idx, calc_conf_from_node
+from src.prechecks.graph_creation import calc_node_idx, calc_conf_from_node
 from src.prechecks.trajectory_segment import JointTrajSegment
 
 
@@ -34,12 +36,18 @@ def get_best_valid_path(collider, graph, joint_traj: List[JointTrajSegment], sta
         seg_configs = []
 
         # Iterate over the segments
+        total_len = len(joint_traj)
+        print('\n')
         for segment_idx, seg in enumerate(joint_traj):
             # Check the current segment for collisions using the relevant slice of all point configurations
             start, end = seg_pt_start[segment_idx], seg_pt_end[segment_idx]
             curr_seg_conf = list(set(pt_configurations[start:end]))
             if len(curr_seg_conf) > 1:
                 raise ValueError('Only common configurations are supported per segment')
+
+            # Progress bar
+            prefix = f'Checking collisions for segment #{seg.idx} in robot config {curr_seg_conf}...'
+            print_progress(segment_idx, total_len, prefix=prefix)
 
             # Calculate the collisions
             colliding_point_idx = get_first_colliding_point(collider, seg, curr_seg_conf[0])
@@ -53,19 +61,19 @@ def get_best_valid_path(collider, graph, joint_traj: List[JointTrajSegment], sta
 
         if all(i is None for i in colliding_points):
             # The configuration list is valid for all segments, no need to calculate the next best path
-            print('All segments were collision-free with the current configuration path.')
+            logging.info('\nAll segments were collision-free with the current configuration path.')
             break
 
         # Calculate indices of nodes to be removed
         node_indices = [calc_node_idx(pt, conf) for conf, pt in zip(seg_configs, colliding_points) if pt is not None]
 
         # Remove the nodes from the graph
-        print('Removing first colliding point of each segment in collision.')
+        logging.warning('Removing first colliding point of each segment in collision.')
         for node in node_indices:
             graph.remove_node(node)
 
         # Nodes in collision can be removed to query for the next best path.
-        print('Querying next-best configuration path.')
+        logging.info('Querying next-best configuration path.')
     else:
         raise CollisionViolation('No collision-free trajectory could be determined.')
     return pt_configurations
@@ -82,12 +90,13 @@ def get_best_path_configs(graph, start_node: int, stop_node: int) -> List[int]:
     """
     # Find the initially shortest path to be checked for collisions.
     try:
+        print('\nSearching minimum cost path...')
         path = find_path(graph, start_node, stop_node)
     except NoPathError as e:
         raise NoValidPathFound from e
-    print(f'Total cost for the current minimum cost path: {path.total_cost}')
+    print(f'=>Total cost for the current minimum cost path: {path.total_cost :.4f}')
     if path.total_cost == float('inf'):
         raise NoValidPathFound('Path cost is infinite (invalid transitions).')
     pt_configurations = [calc_conf_from_node(node_idx, pt_idx) for pt_idx, node_idx in enumerate(path.nodes[1:-1])]
-    print(f'Configurations in current shortest path: {set(pt_configurations)}')
+    print(f'=>Configurations in current shortest path: {set(pt_configurations)}')
     return pt_configurations
