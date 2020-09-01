@@ -323,6 +323,7 @@ class MelfaRobot(PrinterComponent):
 
             # Acquire current position to determine robot orientation
             current_position = self.protocol.reader.get_current_xyzabc()
+            zero.add_axis(current_position)
             zero.update_empty(current_position)
 
             # Move to zero

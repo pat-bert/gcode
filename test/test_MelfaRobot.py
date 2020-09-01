@@ -271,9 +271,3 @@ class TestMelfaRobot:
 
     def test_set_global_positions(self):
         assert True
-
-    def test_wait(self):
-        assert True
-
-    def test__zero(self):
-        assert True
