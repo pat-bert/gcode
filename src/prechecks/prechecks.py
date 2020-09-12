@@ -9,7 +9,7 @@ from src.prechecks.dataclasses import Constraints, Increments, Extrusion
 from src.prechecks.exceptions import CollisionViolation
 from src.prechecks.graph_creation import create_graph
 from src.prechecks.path_finding import get_best_valid_path
-from src.prechecks.prm import create_prm
+# from src.prechecks.prm import create_prm
 from src.prechecks.trajectory_generation import generate_task_trajectory, generate_joint_trajectory
 from src.prechecks.trajectory_segment import check_cartesian_limits, filter_joint_limits, check_common_configurations, \
     check_joint_velocities
@@ -91,9 +91,7 @@ def check_traj(cmds: List[GCmd], config: List[BaseJoint], limits: Constraints, h
         print('Home position is not in collision.')
 
         # Create the PRM
-        max_time = [30, 60, 120, 180, 240, 300]
-
-        prm_graph, prm_nodes = create_prm(config, collider, limits, 5, float('Inf'), max_time_s=prm_learning_time_s)
+        # prm_graph, prm_nodes = create_prm(config, collider, limits, 5, float('Inf'), max_time_s=prm_learning_time_s)
 
         # Get the best path that is valid
         pt_configurations = get_best_valid_path(collider, graph, joint_traj, start_node, stop_node)
