@@ -19,7 +19,7 @@ def melfa_rv_4a(rtoff=0, atoff=0):
         [135, -pi / 2, 0.0, -pi / 2],
         [0.0, +pi / 2, 250, 0],
         [0.0, -pi / 2, 0.0, 0],
-        [-rtoff, 0.00000, 90 + atoff, pi]
+        [rtoff, 0.00000, 90 + atoff, pi]
     ]
 
     config = [BaseJointFactory.new(a=a, alpha=alpha, d=d, theta=None, offset=z) for a, alpha, d, z in dh_parameters]

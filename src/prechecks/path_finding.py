@@ -61,7 +61,7 @@ def get_best_valid_path(collider, graph, joint_traj: List[JointTrajSegment], sta
 
         if all(i is None for i in colliding_points):
             # The configuration list is valid for all segments, no need to calculate the next best path
-            logging.info('\nAll segments were collision-free with the current configuration path.')
+            print('\nAll segments were collision-free with the current configuration path.')
             break
 
         # Calculate indices of nodes to be removed

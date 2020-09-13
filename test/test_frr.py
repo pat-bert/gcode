@@ -17,7 +17,7 @@ from src.prechecks.frr import frr
                          ]
                          )
 def test_frr(home):
-    robot = melfa_rv_4a(rtoff=-50, atoff=200)
+    robot = melfa_rv_4a(rtoff=50, atoff=200)
     tuning = [0.005, 0.1, 0.1, 0.1, 0.1, 0.01]
     home = [i / 180 * pi for i in home]
     new_joints = frr(robot, home, weights=tuning)

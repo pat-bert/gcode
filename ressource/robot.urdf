@@ -79,9 +79,9 @@
     <link name="tool">
         <visual name="EXTRUDER">
             <geometry>
-                <box size="80 80 350"/>
+                <box size="80 80 180"/>
             </geometry>
-            <origin xyz="175 0 150" rpy="-1.5708 0 -1.5708"/>
+            <origin xyz="90 0 150" rpy="-1.5708 0 -1.5708"/>
             <material name="red"/>
         </visual>
     </link>
