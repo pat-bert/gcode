@@ -327,7 +327,7 @@ class MelfaRobot(PrinterComponent):
             zero.update_empty(current_position)
 
             # Move to zero
-            self.linear_move_poll(self.zero)
+            self.linear_move_poll(zero)
         else:
             self.go_safe_pos()
 
