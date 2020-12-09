@@ -471,7 +471,7 @@ class R3Setter(R3SubApi):
         :return: None
         :raises: ValueError, if the value is outside of the bounds
         """
-        self._set_float_cmd(LINEAR_SPEED, speed, lbound=1.0, ubound=1000.0)
+        self._set_float_cmd(LINEAR_SPEED, speed, lbound=1.0)
 
     def set_joint_speed(self, speed: float) -> None:
         """
