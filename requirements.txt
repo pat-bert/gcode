@@ -23,7 +23,7 @@ packaging==20.7
 pip-tools==5.4.0
 pipdeptree==1.0.0
 pluggy==0.13.1
-py==1.9.0
+py==1.10.0
 py-cpuinfo==7.0.0
 pyparsing==2.4.7
 pyserial==3.5
