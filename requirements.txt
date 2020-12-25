@@ -21,7 +21,7 @@ more-itertools==8.6.0
 numpy==1.19.4
 packaging==20.8
 pip-tools==5.4.0
-pipdeptree==1.0.0
+pipdeptree==2.0.0
 pluggy==0.13.1
 py==1.10.0
 py-cpuinfo==7.0.0
