@@ -74,7 +74,7 @@ def main(*argv):
     else:
         # Default to debugging (complete I/O output)
         log_level = logging.DEBUG
-    logging.basicConfig(level=log_level, format='%(levelname)5s:%(asctime)s %(message)s',
+    logging.basicConfig(level=log_level, format='%(levelname)5s:%(asctime)s.%(msecs)03d %(message)s',
                         datefmt='%d/%m/%Y %H:%M:%S')
     """
     Create input schemata - Options accepting user input as value are checked for plausibility
