@@ -24,7 +24,7 @@ pip-tools==6.0.1
 pipdeptree==2.0.0
 pluggy==0.13.1
 py==1.10.0
-py-cpuinfo==7.0.0
+py-cpuinfo==8.0.0
 pyparsing==2.4.7
 pyserial==3.5
 pytest==6.2.3
