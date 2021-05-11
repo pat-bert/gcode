@@ -2,7 +2,7 @@ apipkg==1.5
 appdirs==1.4.4
 atomicwrites==1.4.0
 attrs==21.2.0
-click==7.1.2
+click==8.0.0
 colorama==0.4.4
 contextlib2==0.6.0.post1
 coverage==5.5
