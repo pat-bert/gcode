@@ -10,7 +10,7 @@ cycler==0.10.0
 Dijkstar==2.6.0
 distlib==0.3.1
 docopt==0.6.2
-execnet==1.8.0
+execnet==1.8.1
 filelock==3.0.12
 importlib-metadata==4.2.0
 importlib-resources==5.1.4
