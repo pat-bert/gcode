@@ -8,7 +8,7 @@ contextlib2==0.6.0.post1
 coverage==5.5
 cycler==0.10.0
 Dijkstar==2.6.0
-distlib==0.3.1
+distlib==0.3.2
 docopt==0.6.2
 execnet==1.9.0
 filelock==3.0.12
